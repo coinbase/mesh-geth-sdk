@@ -1,0 +1,38 @@
+{
+    "output": "0x",
+    "stateDiff": null,
+    "trace": [
+      {
+        "action": {
+          "callType": "call",
+          "from": "0x038575e1ed8566dba699599347789d7c705c1819",
+          "gas": "0x1116f",
+          "input": "0xeda1122c5871483478cddc554e6b6e3019c0c2019e22be63e87c733e8b765b3c6510edb4",
+          "to": "0x000000000000000000000000000000000000006e",
+          "value": "0x0"
+        },
+        "error": "Revert",
+        "subtraces": 1,
+        "traceAddress": [],
+        "type": "call"
+      },
+      {
+        "action": {
+          "callType": "call",
+          "from": "0x038575e1ed8566dba699599347789d7c705c1819",
+          "gas": "0x109b7",
+          "input": "0xa413686200000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000027492063616d652066726f6d20746865206272696467652d626f78204c3120636f6e74726163742100000000000000000000000000000000000000000000000000",
+          "to": "0x07f73d93d652204acbcf1ce4a4948f7f415ed501",
+          "value": "0x0"
+        },
+        "error": "ExecutionRanOutOfGas",
+        "subtraces": 0,
+        "traceAddress": [
+          0
+        ],
+        "type": "call"
+      }
+    ],
+    "vmTrace": null,
+    "destroyedContracts": null
+}
