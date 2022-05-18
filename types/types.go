@@ -1,0 +1,209 @@
+package types
+
+import (
+	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
+)
+
+const (
+	// NodeVersion is the version of geth we are using.
+	NodeVersion = "1.9.24"
+
+	// Symbol is the symbol value
+	// used in Currency.
+	Symbol = "ETH"
+
+	// Decimals is the decimals value
+	// used in Currency.
+	Decimals = 18
+
+	// MinerRewardOpType is used to describe
+	// a miner block reward.
+	MinerRewardOpType = "MINER_REWARD"
+
+	// UncleRewardOpType is used to describe
+	// an uncle block reward.
+	UncleRewardOpType = "UNCLE_REWARD"
+
+	// FeeOpType is used to represent fee operations.
+	FeeOpType = "FEE"
+
+	// CallOpType is used to represent CALL trace operations.
+	CallOpType = "CALL"
+
+	// CreateOpType is used to represent CREATE trace operations.
+	CreateOpType = "CREATE"
+
+	// Create2OpType is used to represent CREATE2 trace operations.
+	Create2OpType = "CREATE2"
+
+	// SelfDestructOpType is used to represent SELFDESTRUCT trace operations.
+	SelfDestructOpType = "SELFDESTRUCT"
+
+	// CallCodeOpType is used to represent CALLCODE trace operations.
+	CallCodeOpType = "CALLCODE"
+
+	// DelegateCallOpType is used to represent DELEGATECALL trace operations.
+	DelegateCallOpType = "DELEGATECALL"
+
+	// StaticCallOpType is used to represent STATICCALL trace operations.
+	StaticCallOpType = "STATICCALL"
+
+	// DestructOpType is a synthetic operation used to represent the
+	// deletion of suicided accounts that still have funds at the end
+	// of a transaction.
+	DestructOpType = "DESTRUCT"
+
+	OpErc20Transfer = "ERC20_TRANSFER"
+
+	OpErc20Mint = "ERC20_MINT"
+
+	OpErc20Burn = "ERC20_BURN"
+
+	// SuccessStatus is the status of any
+	// Ethereum operation considered successful.
+	SuccessStatus = "SUCCESS"
+
+	// FailureStatus is the status of any
+	// Ethereum operation considered unsuccessful.
+	FailureStatus = "FAILURE"
+
+	// HistoricalBalanceSupported is whether
+	// historical balance is supported.
+	HistoricalBalanceSupported = true
+
+	// UnclesRewardMultiplier is the uncle reward
+	// multiplier.
+	UnclesRewardMultiplier = 32
+
+	// MaxUncleDepth is the maximum depth for
+	// an uncle to be rewarded.
+	MaxUncleDepth = 8
+
+	// GenesisBlockIndex is the index of the
+	// genesis block.
+	GenesisBlockIndex = int64(0)
+
+	// TransferGasLimit is the gas limit
+	// of a transfer.
+	TransferGasLimit = int64(21000) //nolint:gomnd
+
+	// MainnetGethArguments are the arguments to start a mainnet geth instance.
+	MainnetGethArguments = `--config=/app/ethereum/geth.toml --gcmode=archive --graphql`
+
+	// IncludeMempoolCoins does not apply to rosetta-ethereum as it is not UTXO-based.
+	IncludeMempoolCoins = false
+
+	Online = "ONLINE"
+
+	Offline = "OFFLINE"
+)
+
+var (
+	// OperationTypes are all suppoorted operation types.
+	OperationTypes = []string{
+		MinerRewardOpType,
+		UncleRewardOpType,
+		FeeOpType,
+		CallOpType,
+		CreateOpType,
+		Create2OpType,
+		OpErc20Transfer,
+		SelfDestructOpType,
+		CallCodeOpType,
+		DelegateCallOpType,
+		StaticCallOpType,
+		DestructOpType,
+		OpErc20Mint,
+		OpErc20Burn,
+	}
+
+	// OperationStatuses are all supported operation statuses.
+	OperationStatuses = []*RosettaTypes.OperationStatus{
+		{
+			Status:     SuccessStatus,
+			Successful: true,
+		},
+		{
+			Status:     FailureStatus,
+			Successful: false,
+		},
+	}
+
+	// CallMethods are all supported call methods.
+	CallMethods = []string{
+		"eth_getBlockByNumber",
+		"eth_getTransactionReceipt",
+		"eth_call",
+		"eth_estimateGas",
+	}
+
+	Currency = &RosettaTypes.Currency{
+		Symbol:   Symbol,
+		Decimals: Decimals,
+	}
+)
+
+type Types struct {
+	// OperationTypes are all supported operation types.
+	OperationTypes []string
+
+	// OperationStatuses are all supported operation statuses.
+	OperationStatuses []*RosettaTypes.OperationStatus
+
+	// CallMethods are all supported call methods.
+	CallMethods []string
+
+	Currency *RosettaTypes.Currency
+
+	HistoricalBalanceSupported bool
+	NodeVersion                string
+}
+
+// CallType returns a boolean indicating
+// if the provided trace type is a call type.
+func CallType(t string) bool {
+	callTypes := []string{
+		CallOpType,
+		CallCodeOpType,
+		DelegateCallOpType,
+		StaticCallOpType,
+	}
+
+	for _, callType := range callTypes {
+		if callType == t {
+			return true
+		}
+	}
+
+	return false
+}
+
+// CreateType returns a boolean indicating
+// if the provided trace type is a create type.
+func CreateType(t string) bool {
+	createTypes := []string{
+		CreateOpType,
+		Create2OpType,
+	}
+
+	for _, createType := range createTypes {
+		if createType == t {
+			return true
+		}
+	}
+
+	return false
+}
+
+func LoadTypes() *Types {
+	types := &Types{}
+
+	types.OperationStatuses = OperationStatuses
+	types.OperationTypes = OperationTypes
+	types.CallMethods = CallMethods
+	types.Currency = Currency
+	types.HistoricalBalanceSupported = HistoricalBalanceSupported
+	types.NodeVersion = NodeVersion
+
+	return types
+}
