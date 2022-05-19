@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -15,10 +29,13 @@ var (
 	// 	Blockchain: "Ethereum",
 	// }
 
-	preprocessTransferValue     = uint64(1)
-	methodSignature             = "approve(address,uint256)"
-	methodArgs                  = []string{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"}
-	expectedMethodArgs          = []interface{}{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"}
+	preprocessTransferValue = uint64(1)
+	methodSignature         = "approve(address,uint256)"
+	methodArgs              = []string{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"}
+	expectedMethodArgs      = []interface{}{
+		"0xD10a72Cf054650931365Cc44D912a4FD75257058",
+		"1000",
+	}
 	preprocessZeroTransferValue = uint64(0)
 	// preprocessTransferValueHex     = hexutil.EncodeUint64(preprocessTransferValue)
 	// preprocessGasPrice             = uint64(100000000000)
@@ -63,7 +80,11 @@ func TestConstructionPreprocess(t *testing.T) {
 			},
 		},
 		"happy path: Generic Contract call with zero transfer value": {
-			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
+			operations: templateOperations(
+				preprocessZeroTransferValue,
+				ethereumCurrencyConfig,
+				"CALL",
+			),
 			metadata: map[string]interface{}{
 				"method_signature": "approve(address,uint256)",
 				"method_args":      []string{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"},
@@ -123,16 +144,27 @@ func TestConstructionPreprocess(t *testing.T) {
 		},
 		"error: both positive amount": {
 			operations: func() []*types.Operation {
-				operations := templateOperations(preprocessTransferValue, ethereumCurrencyConfig, "CALL")
+				operations := templateOperations(
+					preprocessTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				)
 				operations[0].Amount.Value = "1"
 				return operations
 			}(),
 			expectedResponse: nil,
-			expectedError:    templateError(AssetTypes.ErrInvalidInput, "unable to find match for operation: at index 1"),
+			expectedError: templateError(
+				AssetTypes.ErrInvalidInput,
+				"unable to find match for operation: at index 1",
+			),
 		},
 		"error: missing currency": {
 			operations: func() []*types.Operation {
-				operations := templateOperations(preprocessTransferValue, ethereumCurrencyConfig, "CALL")
+				operations := templateOperations(
+					preprocessTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				)
 				operations[0].Amount.Currency = nil
 				return operations
 			}(),
@@ -142,7 +174,11 @@ func TestConstructionPreprocess(t *testing.T) {
 		},
 		"error: unequal currency": {
 			operations: func() []*types.Operation {
-				operations := templateOperations(preprocessTransferValue, ethereumCurrencyConfig, "CALL")
+				operations := templateOperations(
+					preprocessTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				)
 				operations[0].Amount.Currency = &types.Currency{
 					Symbol:   "USDC",
 					Decimals: 18,
@@ -155,7 +191,11 @@ func TestConstructionPreprocess(t *testing.T) {
 		},
 		"error: invalid from address": {
 			operations: func() []*types.Operation {
-				operations := templateOperations(preprocessTransferValue, ethereumCurrencyConfig, "CALL")
+				operations := templateOperations(
+					preprocessTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				)
 				operations[0].Account.Address = "invalid"
 				return operations
 			}(),
@@ -165,7 +205,11 @@ func TestConstructionPreprocess(t *testing.T) {
 		},
 		"error: invalid destination address": {
 			operations: func() []*types.Operation {
-				operations := templateOperations(preprocessTransferValue, ethereumCurrencyConfig, "CALL")
+				operations := templateOperations(
+					preprocessTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				)
 				operations[1].Account.Address = "invalid"
 				return operations
 			}(),
@@ -180,7 +224,9 @@ func TestConstructionPreprocess(t *testing.T) {
 			}, "ERC20_TRANSFER"),
 			expectedResponse: nil,
 			expectedError: templateError(
-				AssetTypes.ErrInvalidInput, "non-native currency must have contractAddress in Metadata"),
+				AssetTypes.ErrInvalidInput,
+				"non-native currency must have contractAddress in Metadata",
+			),
 		},
 		"error: token address not a string": {
 			operations: templateOperations(preprocessTransferValue, &types.Currency{
@@ -192,7 +238,9 @@ func TestConstructionPreprocess(t *testing.T) {
 			}, "ERC20_TRANSFER"),
 			expectedResponse: nil,
 			expectedError: templateError(
-				AssetTypes.ErrInvalidInput, "non-native currency must have contractAddress in Metadata"),
+				AssetTypes.ErrInvalidInput,
+				"non-native currency must have contractAddress in Metadata",
+			),
 		},
 	}
 
@@ -203,7 +251,10 @@ func TestConstructionPreprocess(t *testing.T) {
 				Operations:        test.operations,
 				Metadata:          test.metadata,
 			}
-			resp, err := testingClient.servicer.ConstructionPreprocess(context.Background(), request)
+			resp, err := testingClient.servicer.ConstructionPreprocess(
+				context.Background(),
+				request,
+			)
 
 			if err != nil {
 				assert.Equal(t, test.expectedError, err)

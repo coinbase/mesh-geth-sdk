@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -32,7 +46,7 @@ import (
 //
 func (s *APIService) ConstructionPayloads(
 	ctx context.Context,
-	req *types.ConstructionPayloadsRequest, ) (*types.ConstructionPayloadsResponse, *types.Error) {
+	req *types.ConstructionPayloadsRequest) (*types.ConstructionPayloadsResponse, *types.Error) {
 	isContractCall := false
 	if _, ok := req.Metadata["method_signature"]; ok {
 		isContractCall = true
@@ -71,12 +85,18 @@ func (s *APIService) ConstructionPayloads(
 
 	checkFrom, ok := client.ChecksumAddress(fromAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", fromAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("%s is not a valid address", fromAddress),
+		)
 	}
 
 	checkTo, ok := client.ChecksumAddress(toAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", toAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("%s is not a valid address", toAddress),
+		)
 	}
 	var transferData []byte
 	var sendToAddress common.Address
@@ -94,7 +114,10 @@ func (s *APIService) ConstructionPayloads(
 		}
 		res := bytes.Compare(data, contractData)
 		if res != 0 {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("invalid conctract data"))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("invalid conctract data"),
+			)
 		}
 		transferData = contractData
 		sendToAddress = common.HexToAddress(checkTo)
@@ -107,7 +130,11 @@ func (s *APIService) ConstructionPayloads(
 		if !ok {
 			return nil, sdkTypes.WrapErr(
 				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s currency doesn't have a contract address in Metadata", fromCurrency.Symbol))
+				fmt.Errorf(
+					"%s currency doesn't have a contract address in Metadata",
+					fromCurrency.Symbol,
+				),
+			)
 		}
 
 		transferData = client.GenerateErc20TransferData(toAddress, amount)

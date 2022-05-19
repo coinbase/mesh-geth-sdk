@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -34,20 +48,32 @@ func (s APIService) ConstructionMetadata( //nolint
 	}
 
 	if len(input.From) == 0 {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("from address is not provided"))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("from address is not provided"),
+		)
 	}
 
 	if len(input.To) == 0 {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("to address is not provided"))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("to address is not provided"),
+		)
 	}
 
 	_, okFrom := client.ChecksumAddress(input.From)
 	if !okFrom {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.From))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("%s is not a valid address", input.From),
+		)
 	}
 	_, okTo := client.ChecksumAddress(input.To)
 	if !okTo {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.To))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("%s is not a valid address", input.To),
+		)
 	}
 
 	nonce, err := s.client.GetNonce(ctx, input)
@@ -66,26 +92,45 @@ func (s APIService) ConstructionMetadata( //nolint
 		case len(input.ContractAddress) > 0:
 			checkContractAddress, ok := client.ChecksumAddress(input.ContractAddress)
 			if !ok {
-				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.To))
+				return nil, sdkTypes.WrapErr(
+					sdkTypes.ErrInvalidInput,
+					fmt.Errorf("%s is not a valid address", input.To),
+				)
 			}
 			contractData, err := hexutil.Decode(input.ContractData)
 			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 			}
 			// Override the destination address to be the contract address
-			gasLimit, err = s.client.GetContractCallGasLimit(ctx, checkContractAddress, input.From, contractData)
+			gasLimit, err = s.client.GetContractCallGasLimit(
+				ctx,
+				checkContractAddress,
+				input.From,
+				contractData,
+			)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}
 		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
-			gasLimit, err = s.client.GetNativeTransferGasLimit(ctx, input.To, input.From, input.Value)
+			gasLimit, err = s.client.GetNativeTransferGasLimit(
+				ctx,
+				input.To,
+				input.From,
+				input.Value,
+			)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrNativeGasLimitError, err)
 			}
 		case len(input.TokenAddress) > 0:
-			gasLimit, err = s.client.GetErc20TransferGasLimit(ctx, input.To, input.From, input.Value, input.Currency)
+			gasLimit, err = s.client.GetErc20TransferGasLimit(
+				ctx,
+				input.To,
+				input.From,
+				input.Value,
+				input.Currency,
+			)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)

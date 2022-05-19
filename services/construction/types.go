@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -59,7 +73,10 @@ type Client interface {
 	// TraceTransaction returns all traces for one transaction
 	// by calling geth debug_traceTransaction JSON RPC.
 	// The output is a list of FlatCall. Each Flatcall is populated from one single trace.
-	TraceTransaction(ctx context.Context, hash common.Hash) (json.RawMessage, []*evmClient.FlatCall, error)
+	TraceTransaction(
+		ctx context.Context,
+		hash common.Hash,
+	) (json.RawMessage, []*evmClient.FlatCall, error)
 
 	// BlockRewardTransaction returns the block reward Rosetta transaction for the miner
 	BlockRewardTransaction(
@@ -96,7 +113,10 @@ type Client interface {
 	// TraceTransaction returns all traces for one transaction
 	// by calling open ethereum trace_replayTransaction JSON RPC.
 	// The output is a list of FlatCall. Each Flatcall is populated from one single trace.
-	TraceReplayTransaction(ctx context.Context, hsh string) (json.RawMessage, []*evmClient.FlatCall, error)
+	TraceReplayTransaction(
+		ctx context.Context,
+		hsh string,
+	) (json.RawMessage, []*evmClient.FlatCall, error)
 
 	// PopulateCrossChainTransactions populates all the bridge transactions for the block
 	// This method is used for blockchain that supports bridging function

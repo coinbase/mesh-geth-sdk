@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -29,7 +43,8 @@ import (
 // any metadata that is needed for transaction construction given (i.e. account nonce).
 func (s *APIService) ConstructionPreprocess( //nolint
 	ctx context.Context,
-	req *types.ConstructionPreprocessRequest, ) (*types.ConstructionPreprocessResponse, *types.Error) {
+	req *types.ConstructionPreprocessRequest,
+) (*types.ConstructionPreprocessResponse, *types.Error) {
 	isContractCall := false
 	if _, ok := req.Metadata["method_signature"]; ok {
 		isContractCall = true
@@ -59,11 +74,17 @@ func (s *APIService) ConstructionPreprocess( //nolint
 
 	checkFrom, ok := client.ChecksumAddress(fromAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address", fromAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidAddress,
+			fmt.Errorf("%s is not a valid address", fromAddress),
+		)
 	}
 	checkTo, ok := client.ChecksumAddress(toAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address", toAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidAddress,
+			fmt.Errorf("%s is not a valid address", toAddress),
+		)
 	}
 
 	preprocessOptions := &client.Options{
@@ -77,33 +98,51 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	if v, ok := req.Metadata["gas_price"]; ok {
 		stringObj, ok := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas price string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas price string", v),
+			)
 		}
 		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas price", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas price", v),
+			)
 		}
 		preprocessOptions.GasPrice = bigObj
 	}
 	if v, ok := req.Metadata["gas_limit"]; ok {
 		stringObj, ok := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas limit string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas limit string", v),
+			)
 		}
 		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas limit", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas limit", v),
+			)
 		}
 		preprocessOptions.GasLimit = bigObj
 	}
 	if v, ok := req.Metadata["nonce"]; ok {
 		stringObj, ok := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid nonce string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid nonce string", v),
+			)
 		}
 		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid nonce", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid nonce", v),
+			)
 		}
 		preprocessOptions.Nonce = bigObj
 	}
@@ -111,7 +150,10 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	if v, ok := req.Metadata["method_signature"]; ok {
 		methodSigStringObj := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid method signature string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid method signature string", v),
+			)
 		}
 		var methodArgs []string
 		if v, ok := req.Metadata["method_args"]; ok {

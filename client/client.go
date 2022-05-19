@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client
 
 import (
@@ -172,8 +186,16 @@ func (ec *SDKClient) Balance(
 
 	blockNum := hexutil.EncodeUint64(head.Number.Uint64())
 	reqs := []rpc.BatchElem{
-		{Method: "eth_getBalance", Args: []interface{}{account.Address, blockNum}, Result: &nativeBalance},
-		{Method: "eth_getTransactionCount", Args: []interface{}{account.Address, blockNum}, Result: &nonce},
+		{
+			Method: "eth_getBalance",
+			Args:   []interface{}{account.Address, blockNum},
+			Result: &nativeBalance,
+		},
+		{
+			Method: "eth_getTransactionCount",
+			Args:   []interface{}{account.Address, blockNum},
+			Result: &nonce,
+		},
 		{Method: "eth_getCode", Args: []interface{}{account.Address, blockNum}, Result: &code},
 	}
 	if err := ec.BatchCallContext(ctx, reqs); err != nil {
@@ -194,7 +216,10 @@ func (ec *SDKClient) Balance(
 		value, ok := currency.Metadata[ContractAddressMetadata]
 		if !ok {
 			if utils.Equal(currency, ec.rosettaConfig.Currency) {
-				balances = append(balances, Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency))
+				balances = append(
+					balances,
+					Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency),
+				)
 				continue
 			}
 			return nil, fmt.Errorf("non-native currencies must specify contractAddress in metadata")
@@ -226,7 +251,13 @@ func (ec *SDKClient) Balance(
 			return nil, err
 		}
 
-		amount := Erc20Amount(balance.Bytes(), contractAddress, currency.Symbol, currency.Decimals, false)
+		amount := Erc20Amount(
+			balance.Bytes(),
+			contractAddress,
+			currency.Symbol,
+			currency.Decimals,
+			false,
+		)
 		balances = append(balances, amount)
 	}
 
@@ -515,7 +546,10 @@ func (ec *SDKClient) TraceBlockByHash(
 }
 
 // TraceTransaction returns a Transaction trace
-func (ec *SDKClient) TraceTransaction(ctx context.Context, hash common.Hash) (json.RawMessage, []*FlatCall, error) {
+func (ec *SDKClient) TraceTransaction(
+	ctx context.Context,
+	hash common.Hash,
+) (json.RawMessage, []*FlatCall, error) {
 	result := &Call{}
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, "debug_traceTransaction", hash, ec.tc)
@@ -532,7 +566,8 @@ func (ec *SDKClient) TraceTransaction(ctx context.Context, hash common.Hash) (js
 	return raw, flattened, nil
 }
 
-// TraceReplayBlockTransactions returns all transactions in a block returning the requested traces for each Transaction.
+// TraceReplayBlockTransactions returns all transactions in a block returning the requested traces
+// for each Transaction.
 func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh string) (
 	map[string][]*FlatCall, error,
 ) {
@@ -582,7 +617,10 @@ func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh strin
 }
 
 // TraceReplayTransaction returns a Transaction trace
-func (ec *SDKClient) TraceReplayTransaction(ctx context.Context, hsh string) (json.RawMessage, []*FlatCall, error) {
+func (ec *SDKClient) TraceReplayTransaction(
+	ctx context.Context,
+	hsh string,
+) (json.RawMessage, []*FlatCall, error) {
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, "trace_replayTransaction", hsh, []string{"trace"})
 	if err != nil {
@@ -845,7 +883,10 @@ func (ec *SDKClient) GetContractCallGasLimit(
 }
 
 // GetContractCurrency returns the currency for a specific address
-func (ec *SDKClient) GetContractCurrency(addr common.Address, erc20 bool) (*ContractCurrency, error) {
+func (ec *SDKClient) GetContractCurrency(
+	addr common.Address,
+	erc20 bool,
+) (*ContractCurrency, error) {
 	token, err := NewContractInfoToken(addr, ec.EthClient)
 	if err != nil {
 		return nil, err
@@ -873,7 +914,10 @@ func (ec *SDKClient) GetContractCurrency(addr common.Address, erc20 bool) (*Cont
 	return currency, nil
 }
 
-func (ec *SDKClient) GetTransactionReceipt(ctx context.Context, tx *LoadedTransaction) (*RosettaTxReceipt, error) {
+func (ec *SDKClient) GetTransactionReceipt(
+	ctx context.Context,
+	tx *LoadedTransaction,
+) (*RosettaTxReceipt, error) {
 	return nil, errors.New("GetTransactionReceipt not implemented")
 }
 
