@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package services
 
 import (
@@ -117,7 +131,10 @@ func (s *BlockAPIService) populateTransaction(
 			continue
 		}
 		if !s.config.IsAnalyticsMode() &&
-			!client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String()) {
+			!client.IsValidERC20Token(
+				s.client.GetRosettaConfig().TokenWhiteList,
+				log.Address.String(),
+			) {
 			continue
 		}
 		switch len(log.Topics) {
@@ -127,7 +144,8 @@ func (s *BlockAPIService) populateTransaction(
 				return nil, err
 			}
 
-			if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
+			if currency.Symbol == client.UnknownERC20Symbol &&
+				!s.config.RosettaCfg.IndexUnknownTokens {
 				continue
 			}
 			erc20Ops := erc20Ops(log, currency, int64(len(ops)))
@@ -168,7 +186,7 @@ func (s *BlockAPIService) populateTransaction(
 	return populatedTransaction, nil
 }
 
-// Block returns a populated block at the *RosettaTypes.PartialBlockIdentifier.
+// GetEthBlock returns a populated block at the *RosettaTypes.PartialBlockIdentifier.
 // If neither the hash or index is populated in the *RosettaTypes.PartialBlockIdentifier,
 // the current block is returned.
 func (s *BlockAPIService) GetEthBlock(
@@ -181,7 +199,12 @@ func (s *BlockAPIService) GetEthBlock(
 		}
 
 		if blockIdentifier.Index != nil {
-			return s.GetBlock(ctx, "eth_getBlockByNumber", client.ToBlockNumArg(big.NewInt(*blockIdentifier.Index)), true)
+			return s.GetBlock(
+				ctx,
+				"eth_getBlockByNumber",
+				client.ToBlockNumArg(big.NewInt(*blockIdentifier.Index)),
+				true,
+			)
 		}
 	}
 
@@ -223,7 +246,11 @@ func (s *BlockAPIService) GetBlock(
 	if s.client.GetRosettaConfig().SupportsBlockAuthor {
 		blockAuthor, err = s.client.BlockAuthor(ctx, head.Number.Int64())
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("%w: could not get block author for %x", err, body.Hash[:])
+			return nil, nil, nil, fmt.Errorf(
+				"%w: could not get block author for %x",
+				err,
+				body.Hash[:],
+			)
 		}
 	}
 
@@ -387,12 +414,18 @@ func (s *BlockAPIService) BlockTransaction(
 	}
 
 	if request.BlockIdentifier == nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInvalidInput, fmt.Errorf("block identifier is not provided"))
+		return nil, AssetTypes.WrapErr(
+			AssetTypes.ErrInvalidInput,
+			fmt.Errorf("block identifier is not provided"),
+		)
 	}
 
 	loadedTx, err := s.client.GetLoadedTransaction(ctx, request)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get loaded tx", err))
+		return nil, AssetTypes.WrapErr(
+			AssetTypes.ErrInternalError,
+			fmt.Errorf("%w: unable to get loaded tx", err),
+		)
 	}
 	var (
 		raw       json.RawMessage
@@ -406,14 +439,20 @@ func (s *BlockAPIService) BlockTransaction(
 		raw, flattened, traceErr = s.client.TraceTransaction(ctx, *loadedTx.TxHash)
 	}
 	if traceErr != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx trace", traceErr))
+		return nil, AssetTypes.WrapErr(
+			AssetTypes.ErrInternalError,
+			fmt.Errorf("%w: unable to get tx trace", traceErr),
+		)
 	}
 	loadedTx.RawTrace = raw
 	loadedTx.Trace = flattened
 
 	receipt, err := s.client.GetTransactionReceipt(ctx, loadedTx)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx receipt", err))
+		return nil, AssetTypes.WrapErr(
+			AssetTypes.ErrInternalError,
+			fmt.Errorf("%w: unable to get tx receipt", err),
+		)
 	}
 	loadedTx.Receipt = receipt
 
@@ -427,7 +466,10 @@ func (s *BlockAPIService) BlockTransaction(
 
 	transaction, err := s.populateTransaction(ctx, loadedTx)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to populate tx", err))
+		return nil, AssetTypes.WrapErr(
+			AssetTypes.ErrInternalError,
+			fmt.Errorf("%w: unable to populate tx", err),
+		)
 	}
 
 	return &RosettaTypes.BlockTransactionResponse{

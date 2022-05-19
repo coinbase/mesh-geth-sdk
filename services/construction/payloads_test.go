@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -55,14 +69,21 @@ func TestPayloads(t *testing.T) {
 		"happy path: Generic contract call": {
 			request: &types.ConstructionPayloadsRequest{
 				NetworkIdentifier: ethereumNetworkIdentifier,
-				Operations:        templateOperations(payloadsTransferValue, ethereumCurrencyConfig, "CALL"),
+				Operations: templateOperations(
+					payloadsTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				),
 				Metadata: map[string]interface{}{
 					"nonce":            float64(payloadsTransferNonce),
 					"gas_price":        float64(payloadsTransferGasPrice),
 					"gas_limit":        float64(payloadsTransferGasLimit),
 					"data":             payloadsGenericData,
 					"method_signature": "approve(address,uint256)",
-					"method_args":      []interface{}{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"},
+					"method_args": []interface{}{
+						"0xD10a72Cf054650931365Cc44D912a4FD75257058",
+						"1000",
+					},
 				},
 			},
 			expectedResponse: &types.ConstructionPayloadsResponse{
@@ -73,7 +94,11 @@ func TestPayloads(t *testing.T) {
 		"happy path: native currency": {
 			request: &types.ConstructionPayloadsRequest{
 				NetworkIdentifier: ethereumNetworkIdentifier,
-				Operations:        templateOperations(payloadsTransferValue, ethereumCurrencyConfig, "CALL"),
+				Operations: templateOperations(
+					payloadsTransferValue,
+					ethereumCurrencyConfig,
+					"CALL",
+				),
 				Metadata: map[string]interface{}{
 					"nonce":     float64(payloadsTransferNonce),
 					"gas_price": float64(payloadsTransferGasPrice),
@@ -110,7 +135,11 @@ func TestPayloads(t *testing.T) {
 			request: &types.ConstructionPayloadsRequest{
 				NetworkIdentifier: ethereumNetworkIdentifier,
 				Operations: func() []*types.Operation {
-					operations := templateOperations(payloadsTransferValue, ethereumCurrencyConfig, "CALL")
+					operations := templateOperations(
+						payloadsTransferValue,
+						ethereumCurrencyConfig,
+						"CALL",
+					)
 					operations[1].Amount.Currency = &types.Currency{
 						Symbol:   "BTC",
 						Decimals: 18,
@@ -123,7 +152,10 @@ func TestPayloads(t *testing.T) {
 					"gas_limit": float64(payloadsTransferGasLimit),
 				},
 			},
-			expectedError: templateError(AssetTypes.ErrInvalidInput, "currency info doesn't match between the operations"),
+			expectedError: templateError(
+				AssetTypes.ErrInvalidInput,
+				"currency info doesn't match between the operations",
+			),
 		},
 		"error: ErrInvalidInput: non-native currency must have contractAddress in Metadata": {
 			request: &types.ConstructionPayloadsRequest{
@@ -147,7 +179,10 @@ func TestPayloads(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			resp, err := testingClient.servicer.ConstructionPayloads(context.Background(), test.request)
+			resp, err := testingClient.servicer.ConstructionPayloads(
+				context.Background(),
+				test.request,
+			)
 
 			if err != nil {
 				assert.Equal(t, test.expectedError, err)

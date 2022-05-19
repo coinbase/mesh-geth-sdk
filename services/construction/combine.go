@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package construction
 
 import (
@@ -24,10 +38,16 @@ func (s *APIService) ConstructionCombine(
 	req *types.ConstructionCombineRequest,
 ) (*types.ConstructionCombineResponse, *types.Error) {
 	if len(req.UnsignedTransaction) == 0 {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("transaction data is not provided"))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("transaction data is not provided"),
+		)
 	}
 	if len(req.Signatures) == 0 {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("signature is not provided"))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("signature is not provided"),
+		)
 	}
 
 	var unsignedTx client.Transaction
@@ -55,7 +75,10 @@ func (s *APIService) ConstructionCombine(
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInternalError, err)
 	}
 
-	wrappedSignedTx := client.SignedTransactionWrapper{SignedTransaction: signedTxJSON, Currency: unsignedTx.Currency}
+	wrappedSignedTx := client.SignedTransactionWrapper{
+		SignedTransaction: signedTxJSON,
+		Currency:          unsignedTx.Currency,
+	}
 
 	wrappedSignedTxJSON, err := json.Marshal(wrappedSignedTx)
 	if err != nil {

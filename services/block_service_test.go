@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package services
 
 import (
@@ -325,9 +339,15 @@ func TestBlockService_Online(t *testing.T) {
 		).Once()
 
 		tokenAddress := common.HexToAddress("0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b")
-		erc20TransferEvent := common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
-		fromAddress := common.HexToHash("0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0")
-		toAddress := common.HexToHash("0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4")
+		erc20TransferEvent := common.HexToHash(
+			"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+		)
+		fromAddress := common.HexToHash(
+			"0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0",
+		)
+		toAddress := common.HexToHash(
+			"0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4",
+		)
 
 		log := EthTypes.Log{
 			Address: tokenAddress,
@@ -398,8 +418,8 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Equal(t, "0x0000000000000000000000000000000000001234",
 			b.Block.Transactions[0].Operations[2].Account.Address)
 		// ERC20 operations
-		//		assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[4].Type)
-		//	assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[5].Type)
+		// 		assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[4].Type)
+		// 	assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[5].Type)
 	})
 
 	t.Run("populated transactions with unknown token", func(t *testing.T) {
@@ -468,9 +488,15 @@ func TestBlockService_Online(t *testing.T) {
 		// ).Once()
 
 		fakeTokenAddress := common.HexToAddress("0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2c")
-		erc20TransferEvent := common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
-		fromAddress := common.HexToHash("0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0")
-		toAddress := common.HexToHash("0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4")
+		erc20TransferEvent := common.HexToHash(
+			"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+		)
+		fromAddress := common.HexToHash(
+			"0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0",
+		)
+		toAddress := common.HexToHash(
+			"0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4",
+		)
 
 		log := EthTypes.Log{
 			Address: fakeTokenAddress,

@@ -1,3 +1,17 @@
+// Copyright 2022 Coinbase, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package services
 
 import (
@@ -34,7 +48,9 @@ var (
 		Blockchain: "rosetta",
 	}
 
-	TestnetGenesisHash            = common.HexToHash("0x7ee576b35482195fc49205cec9af72ce14f003b9ae69f6ba0faef4514be8b442")
+	TestnetGenesisHash = common.HexToHash(
+		"0x7ee576b35482195fc49205cec9af72ce14f003b9ae69f6ba0faef4514be8b442",
+	)
 	TestnetGenesisBlockIdentifier = &types.BlockIdentifier{
 		Hash:  TestnetGenesisHash.Hex(),
 		Index: 0,
