@@ -79,7 +79,7 @@ type RosettaConfig struct {
 
 	IngestionMode      string
 	IndexUnknownTokens bool
-	TokenWhiteList     []Token
+	// TokenWhiteList     []Token
 }
 
 type Token struct {
@@ -132,6 +132,6 @@ func (c Configuration) IsAnalyticsMode() bool {
 }
 
 // IsTokenListEmpty returns true if the token addresses list is empty
-func (c Configuration) IsTokenListEmpty() bool {
-	return len(c.RosettaCfg.TokenWhiteList) == 0
-}
+// func (c Configuration) IsTokenListEmpty() bool {
+//	return len(c.RosettaCfg.TokenWhiteList) == 0
+// }

@@ -16,12 +16,8 @@ package client
 
 import (
 	"encoding/json"
-	"math/big"
-	"strings"
-
-	"github.com/coinbase/rosetta-geth-sdk/configuration"
-
 	"golang.org/x/crypto/sha3"
+	"math/big"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -156,14 +152,14 @@ func ConvertEVMTopicHashToAddress(hash *common.Hash) *common.Address {
 }
 
 // EqualFoldContains checks if the array contains the string regardless of casing
-func IsValidERC20Token(whiteList []configuration.Token, address string) bool {
-	for _, token := range whiteList {
-		if strings.EqualFold(token.Address, address) {
-			return true
-		}
-	}
-	return false
-}
+// func IsValidERC20Token(whiteList []configuration.Token, address string) bool {
+//	for _, token := range whiteList {
+//		if strings.EqualFold(token.Address, address) {
+//			return true
+//		}
+//	}
+//	return false
+// }
 
 func GenerateErc20TransferData(toAddress string, value *big.Int) []byte {
 	to := common.HexToAddress(toAddress)

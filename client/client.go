@@ -814,7 +814,8 @@ func (ec *SDKClient) GetGasPrice(
 ) (*big.Int, error) {
 	var gasPrice *big.Int
 	var err error
-	if input.GasPrice == nil {
+	if input.GasPrice == nil || input.GasPrice.Uint64() == 0 {
+		log.Println("Fetching gas price")
 		gasPrice, err = ec.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
@@ -827,6 +828,7 @@ func (ec *SDKClient) GetGasPrice(
 			newGasPrice.Int(gasPrice)
 		}
 	} else {
+		log.Println("Setting existing gas price")
 		gasPrice = input.GasPrice
 	}
 	return gasPrice, nil

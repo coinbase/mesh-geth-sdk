@@ -73,10 +73,6 @@ The [LoadConfiguration](examples/ethereum/config/config.go) file loads all the B
 
 The [NewEthereumClient](examples/ethereum/client/client.go) file creates a new service client, which leverages SDK functionalities, and implements a few gas related interfaces.
 
-### Valid Tokens
-
-See (examples/tokenList.json) for a list of supported ERC20 tokens.
-
 ### SDK Packages
 
 * [Client](client): Low-level communication with any `go-ethereum` based blockchain

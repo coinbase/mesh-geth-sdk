@@ -17,6 +17,7 @@ package construction
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -90,6 +91,7 @@ func (s APIService) ConstructionMetadata( //nolint
 	if input.GasLimit == nil {
 		switch {
 		case len(input.ContractAddress) > 0:
+			log.Info("Fetching generic contract call gas limit")
 			checkContractAddress, ok := client.ChecksumAddress(input.ContractAddress)
 			if !ok {
 				return nil, sdkTypes.WrapErr(
@@ -113,6 +115,7 @@ func (s APIService) ConstructionMetadata( //nolint
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}
 		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
+			log.Info("Fetching native gas limit")
 			gasLimit, err = s.client.GetNativeTransferGasLimit(
 				ctx,
 				input.To,
@@ -123,7 +126,8 @@ func (s APIService) ConstructionMetadata( //nolint
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrNativeGasLimitError, err)
 			}
-		case len(input.TokenAddress) > 0:
+		default:
+			log.Info("Fetching ERC20 gas limit")
 			gasLimit, err = s.client.GetErc20TransferGasLimit(
 				ctx,
 				input.To,
@@ -137,6 +141,7 @@ func (s APIService) ConstructionMetadata( //nolint
 			}
 		}
 	} else {
+		log.Info("Setting existing gas limit")
 		gasLimit = input.GasLimit.Uint64()
 	}
 

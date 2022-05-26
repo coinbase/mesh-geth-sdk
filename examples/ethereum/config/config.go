@@ -249,7 +249,7 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	//}
 	config.Port = 8080
 
-	payload := []configuration.Token{}
+	// payload := []configuration.Token{}
 	config.RosettaCfg = configuration.RosettaConfig{
 		SupportRewardTx: true,
 		TraceType:       configuration.GethNativeTrace,
@@ -257,7 +257,7 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
-		TokenWhiteList: payload,
+		// TokenWhiteList: payload,
 	}
 
 	return config, nil

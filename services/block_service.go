@@ -130,13 +130,13 @@ func (s *BlockAPIService) populateTransaction(
 		if !containsTopic(log, encodedTransferMethod) {
 			continue
 		}
-		if !s.config.IsAnalyticsMode() &&
-			!client.IsValidERC20Token(
-				s.client.GetRosettaConfig().TokenWhiteList,
-				log.Address.String(),
-			) {
-			continue
-		}
+		// if !s.config.IsAnalyticsMode() &&
+		//	!client.IsValidERC20Token(
+		//		s.client.GetRosettaConfig().TokenWhiteList,
+		//		log.Address.String(),
+		//	) {
+		//	continue
+		// }
 		switch len(log.Topics) {
 		case topicsInErc20Transfer:
 			currency, err := s.client.GetContractCurrency(log.Address, true)
