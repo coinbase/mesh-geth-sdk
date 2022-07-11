@@ -81,7 +81,7 @@ See (examples/tokenList.json) for a list of supported ERC20 tokens.
 
 * [Client](client): Low-level communication with any `go-ethereum` based blockchain
 * [Services](services): Rosetta RESTful services for Data and Construction APIs
-* [Utils](utils): Boostrap code for starting up a Rosetta API server
+* [Utils](utils): Bootstrap code for starting up a Rosetta API server
 * [Examples](examples): Examples of how to build your Rosetta integration with the SDK
 
 ### Configuring the SDK
