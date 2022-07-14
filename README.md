@@ -22,7 +22,7 @@ Jump to:
 
 * [Getting Started](#Getting-Started)
 * [Quick Examples](#Quick-Examples)
-* [Testing](#Test-the-Implementation-with-rosetta-cli)
+* [Testing](#Testing)
 * [Documentation](#Documentation)
 * [Related Projects](#Related-Projects)
 
@@ -132,7 +132,7 @@ make salus
 make coverage-local
 ```
 
-## Test the Implementation with rosetta-cli
+## Testing
 
 To validate `rosetta-geth-sdk`, [install `rosetta-cli`](https://github.com/coinbase/rosetta-cli#install) and run one of the following commands:
 
