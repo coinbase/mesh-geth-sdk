@@ -44,7 +44,7 @@ func TestOpenEthTraceAPI_EmptyTrace(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"trace_replayBlockTransactions",
+		"_replayBlockTransactions",
 		txHash,
 		[]string{"trace"},
 	).Return(
@@ -144,7 +144,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"trace_replayBlockTransactions",
+		"_replayBlockTransactions",
 		blkHash,
 		[]string{"trace"},
 	).Return(
@@ -196,7 +196,7 @@ func TestOpenEthTraceAPI_MultiTxns(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"trace_replayBlockTransactions",
+		"_replayBlockTransactions",
 		txHash,
 		[]string{"trace"},
 	).Return(
@@ -325,9 +325,7 @@ func TestBalance(t *testing.T) {
 		{
 			Symbol:   "USDC",
 			Decimals: 6,
-			Metadata: map[string]interface{}{
-				ContractAddressMetadata: "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d",
-			},
+			Metadata: map[string]interface{}{ContractAddressMetadata: "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d"},
 		},
 	}
 

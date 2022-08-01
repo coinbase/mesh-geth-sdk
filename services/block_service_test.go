@@ -271,6 +271,45 @@ func TestBlockService_Online(t *testing.T) {
 			nil,
 		).Once()
 
+		ops := []*RosettaTypes.Operation{
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: 0,
+				},
+				Type:    AssetTypes.CallOpType,
+				Status:  RosettaTypes.String(AssetTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: mock.Anything,
+				},
+				Amount:  client.Amount(big.NewInt(-1), AssetTypes.Currency),
+			},
+
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: 1,
+				},
+				RelatedOperations: []*RosettaTypes.OperationIdentifier{
+					{
+						Index: 0,
+					},
+				},
+				Type:   AssetTypes.CallOpType,
+				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: mock.Anything,
+				},
+				Amount: client.Amount(big.NewInt(1), AssetTypes.Currency),
+			},
+		}
+
+		mockClient.On(
+			"ParseOps",
+			mock.Anything,
+		).Return(
+			ops,
+			nil,
+		).Once()
+
 		mockClient.On(
 			"GetRosettaConfig",
 		).Return(
@@ -339,15 +378,9 @@ func TestBlockService_Online(t *testing.T) {
 		).Once()
 
 		tokenAddress := common.HexToAddress("0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b")
-		erc20TransferEvent := common.HexToHash(
-			"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-		)
-		fromAddress := common.HexToHash(
-			"0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0",
-		)
-		toAddress := common.HexToHash(
-			"0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4",
-		)
+		erc20TransferEvent := common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+		fromAddress := common.HexToHash("0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0")
+		toAddress := common.HexToHash("0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4")
 
 		log := EthTypes.Log{
 			Address: tokenAddress,
@@ -397,11 +430,63 @@ func TestBlockService_Online(t *testing.T) {
 			nil,
 		).Once()
 
+		ops := []*RosettaTypes.Operation{
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: 0,
+				},
+				Type:    AssetTypes.FeeOpType,
+				Status:  RosettaTypes.String(AssetTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: "0x0000000000000000000000000000000000001234",
+				},
+				Amount:  client.Amount(big.NewInt(-10000), AssetTypes.Currency),
+			},
+
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: 1,
+				},
+				RelatedOperations: []*RosettaTypes.OperationIdentifier{
+					{
+						Index: 0,
+					},
+				},
+				Type:   AssetTypes.FeeOpType,
+				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: "0x0000000000000000000000000000000000001234",
+				},
+				Amount: client.Amount(big.NewInt(-900000), AssetTypes.Currency),
+			},
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: 2,
+				},
+				Type:   AssetTypes.FeeOpType,
+				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: "0x0000000000000000000000000000000000001234",
+				},
+				Amount: client.Amount(big.NewInt(-900000), AssetTypes.Currency),
+			},
+		}
+
+		mockClient.On(
+			"ParseOps",
+			mock.Anything,
+		).Return(
+			ops,
+			nil,
+		).Once()
+
 		mockClient.On(
 			"GetRosettaConfig",
 		).Return(
 			configuration.RosettaConfig{
+				FilterTokens: true,
 				TokenWhiteList: loadTokenWhiteList(),
+				TracePrefix: "arbtrace",
 			},
 		)
 
@@ -418,148 +503,8 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Equal(t, "0x0000000000000000000000000000000000001234",
 			b.Block.Transactions[0].Operations[2].Account.Address)
 		// ERC20 operations
-		// 		assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[4].Type)
-		// 	assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[5].Type)
-	})
-
-	t.Run("populated transactions with unknown token", func(t *testing.T) {
-		blockWithTxns := &RosettaTypes.Block{
-			BlockIdentifier: &RosettaTypes.BlockIdentifier{
-				Index: 10994,
-				Hash:  "0xb6a2558c2e54bfb11247d0764311143af48d122f29fc408d9519f47d70aa2d50",
-			},
-		}
-		blockResp := &RosettaTypes.BlockResponse{
-			Block: blockWithTxns,
-		}
-
-		mockClient.On(
-			"CallContext",
-			ctx,
-			mock.Anything,
-			"eth_getBlockByNumber",
-			"latest",
-			true,
-		).Return(
-			nil,
-		).Run(
-			func(args mock.Arguments) {
-				r := args.Get(1).(*json.RawMessage)
-
-				file, err := ioutil.ReadFile("testdata/block_10994.json")
-				assert.NoError(t, err)
-
-				*r = json.RawMessage(file)
-			},
-		).Once()
-
-		m := make(map[string][]*client.FlatCall)
-		m[hsh] = append(m[hsh], &client.FlatCall{
-			Type:         "call",
-			From:         common.HexToAddress("0x1234"),
-			To:           common.HexToAddress("0x4566"),
-			Value:        big.NewInt(900000),
-			GasUsed:      big.NewInt(10000),
-			Revert:       false,
-			ErrorMessage: "",
-		})
-
-		// TraceBlockByHash returns valid traces map
-		mockClient.On(
-			"TraceBlockByHash",
-			ctx,
-			mock.Anything,
-			mock.Anything,
-		).Return(
-			m,
-			nil,
-		).Once()
-
-		// mockClient.On(
-		//	"GetContractCurrency",
-		//	mock.Anything,
-		//	mock.Anything,
-		// ).Return(
-		//	&client.ContractCurrency{
-		//		Symbol:   client.UnknownERC20Symbol,
-		//		Decimals: client.UnknownERC20Decimals,
-		//	},
-		//	nil,
-		// ).Once()
-
-		fakeTokenAddress := common.HexToAddress("0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2c")
-		erc20TransferEvent := common.HexToHash(
-			"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-		)
-		fromAddress := common.HexToHash(
-			"0x0000000000000000000000004dc8f417d4eb731d179a0f08b1feaf25216cefd0",
-		)
-		toAddress := common.HexToHash(
-			"0x0000000000000000000000000d2b2fb39b10cd50cab7aa8e834879069ab1a8d4",
-		)
-
-		log := EthTypes.Log{
-			Address: fakeTokenAddress,
-			Topics:  []common.Hash{erc20TransferEvent, fromAddress, toAddress},
-			Data:    []byte{},
-			TxHash:  common.HexToHash(hsh),
-		}
-
-		receipt := client.RosettaTxReceipt{
-			TransactionFee: big.NewInt(10000),
-			Logs:           []*EthTypes.Log{&log},
-		}
-		rosettaReceipts := make([]*client.RosettaTxReceipt, 0)
-		rosettaReceipts = append(rosettaReceipts, &receipt)
-
-		var baseFee *big.Int
-		mockClient.On(
-			"GetBlockReceipts",
-			ctx,
-			mock.Anything,
-			mock.Anything,
-			baseFee,
-		).Return(
-			rosettaReceipts,
-			nil,
-		).Once()
-
-		rosettaTxs := make([]*RosettaTypes.Transaction, 0)
-		mockClient.On(
-			"PopulateCrossChainTransactions",
-			mock.Anything,
-			mock.Anything,
-		).Return(
-			rosettaTxs,
-			nil,
-		).Once()
-
-		mockClient.On(
-			"GetRosettaConfig",
-		).Return(
-			configuration.RosettaConfig{
-				TokenWhiteList: loadTokenWhiteList(),
-			},
-		)
-
-		b, err := servicer.Block(ctx, &RosettaTypes.BlockRequest{})
-		assert.Nil(t, err)
-		// No ERC20 ops because token address is invalid
-		for _, tx := range b.Block.Transactions {
-			for _, op := range tx.Operations {
-				assert.NotEqual(t, AssetTypes.OpErc20Transfer, op.Type)
-			}
-		}
-		assert.Equal(t, blockResp.Block.BlockIdentifier, b.Block.BlockIdentifier)
-		assert.Equal(t, 1, len(b.Block.Transactions))
-		assert.Equal(t, 4, len(b.Block.Transactions[0].Operations))
-		// FEE operation
-		assert.Equal(t, "FEE", b.Block.Transactions[0].Operations[0].Type)
-		assert.Equal(t, "-10000", b.Block.Transactions[0].Operations[0].Amount.Value)
-		// Debit operation
-		assert.Equal(t, "-900000", b.Block.Transactions[0].Operations[2].Amount.Value)
-		assert.Equal(t, "0x0000000000000000000000000000000000001234",
-			b.Block.Transactions[0].Operations[2].Account.Address)
+		//		assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[4].Type)
+		//	assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[5].Type)
 	})
 
 	mockClient.AssertExpectations(t)

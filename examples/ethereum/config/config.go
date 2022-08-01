@@ -17,6 +17,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -98,6 +99,11 @@ const (
 	// read to determine the port for the Rosetta
 	// implementation.
 	PortEnv = "PORT"
+
+	// TokenFilterEnv is the environment variable
+	// read to determine if we will filter tokens
+	// using our token white list
+	TokenFilterEnv = "FILTER"
 
 	// GethEnv is an optional environment variable
 	// used to connect rosetta-ethereum to an already
@@ -247,7 +253,12 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	//if err != nil || len(portValue) == 0 || port <= 0 {
 	//	return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
 	//}
-	config.Port = 8080
+
+	tokenFilter := os.Getenv(TokenFilterEnv)
+	tokenFilterValue, err := strconv.ParseBool(tokenFilter)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	payload := []configuration.Token{}
 	config.RosettaCfg = configuration.RosettaConfig{
@@ -257,6 +268,8 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
+		TracePrefix: "trace",
+		FilterTokens:  tokenFilterValue,
 		TokenWhiteList: payload,
 	}
 

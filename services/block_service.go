@@ -82,7 +82,7 @@ func (s *BlockAPIService) populateTransactions(
 			// Bridge tx is already handled in PopulateCrossChainTransactions flow
 			continue
 		}
-		transaction, err := s.populateTransaction(ctx, tx)
+		transaction, err := s.PopulateTransaction(ctx, tx)
 		if err != nil {
 			return nil, fmt.Errorf("%w: cannot parse %s", err, tx.Transaction.Hash().Hex())
 		}
@@ -92,7 +92,7 @@ func (s *BlockAPIService) populateTransactions(
 	return transactions, nil
 }
 
-func containsTopic(log *EthTypes.Log, topic string) bool {
+func ContainsTopic(log *EthTypes.Log, topic string) bool {
 	for _, t := range log.Topics {
 		hex := t.Hex()
 		if hex == topic {
@@ -102,19 +102,18 @@ func containsTopic(log *EthTypes.Log, topic string) bool {
 	return false
 }
 
-func (s *BlockAPIService) populateTransaction(
-	_ context.Context,
+func (s *BlockAPIService) PopulateTransaction(
+	ctx context.Context,
 	tx *client.LoadedTransaction,
 ) (*RosettaTypes.Transaction, error) {
-	var ops []*RosettaTypes.Operation
+	// var ops []*RosettaTypes.Operation
 
 	// Compute fee operations
 
-	feeOps := feeOps(tx)
-	ops = append(ops, feeOps...)
-
-	traceOps := traceOps(tx.Trace, len(ops))
-	ops = append(ops, traceOps...)
+	ops, err := s.client.ParseOps(tx)
+	if err != nil {
+		return nil, err
+	}
 
 	keccak := crypto.Keccak256([]byte(client.Erc20TransferEventLogTopics))
 	encodedTransferMethod := hexutil.Encode(keccak)
@@ -126,31 +125,25 @@ func (s *BlockAPIService) populateTransaction(
 	// Compute tx operations via tx.Receipt logs for ERC20 transfers
 	for _, log := range receiptLogs {
 		// If this isn't an ERC20 transfer, skip
-
-		if !containsTopic(log, encodedTransferMethod) {
+		if !ContainsTopic(log, encodedTransferMethod) {
 			continue
 		}
-		if !s.config.IsAnalyticsMode() &&
-			!client.IsValidERC20Token(
-				s.client.GetRosettaConfig().TokenWhiteList,
-				log.Address.String(),
-			) {
-			continue
-		}
-		switch len(log.Topics) {
-		case topicsInErc20Transfer:
-			currency, err := s.client.GetContractCurrency(log.Address, true)
-			if err != nil {
-				return nil, err
-			}
+		if s.client.GetRosettaConfig().FilterTokens &&
+			!client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String()) {
+			switch len(log.Topics) {
+			case TopicsInErc20Transfer:
+				currency, err := s.client.GetContractCurrency(log.Address, true)
+				if err != nil {
+					return nil, err
+				}
 
-			if currency.Symbol == client.UnknownERC20Symbol &&
-				!s.config.RosettaCfg.IndexUnknownTokens {
-				continue
+				if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
+					continue
+				}
+				erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
+				ops = append(ops, erc20Ops...)
+			default:
 			}
-			erc20Ops := erc20Ops(log, currency, int64(len(ops)))
-			ops = append(ops, erc20Ops...)
-		default:
 		}
 	}
 
@@ -186,7 +179,7 @@ func (s *BlockAPIService) populateTransaction(
 	return populatedTransaction, nil
 }
 
-// GetEthBlock returns a populated block at the *RosettaTypes.PartialBlockIdentifier.
+// Block returns a populated block at the *RosettaTypes.PartialBlockIdentifier.
 // If neither the hash or index is populated in the *RosettaTypes.PartialBlockIdentifier,
 // the current block is returned.
 func (s *BlockAPIService) GetEthBlock(
@@ -199,12 +192,7 @@ func (s *BlockAPIService) GetEthBlock(
 		}
 
 		if blockIdentifier.Index != nil {
-			return s.GetBlock(
-				ctx,
-				"eth_getBlockByNumber",
-				client.ToBlockNumArg(big.NewInt(*blockIdentifier.Index)),
-				true,
-			)
+			return s.GetBlock(ctx, "eth_getBlockByNumber", client.ToBlockNumArg(big.NewInt(*blockIdentifier.Index)), true)
 		}
 	}
 
@@ -240,17 +228,13 @@ func (s *BlockAPIService) GetBlock(
 	}
 	// Note: We need a full node to return a complete RPCBlock,
 	// otherwise, only body.Hash is populated. body.Transactions is empty.
-	// TODO: log warn if len(body.Hash) > 1 && len(body.txs) == 0
+	// TODO(xiaying): log warn if len(body.Hash) > 1 && len(body.txs) == 0
 
 	var blockAuthor string
 	if s.client.GetRosettaConfig().SupportsBlockAuthor {
 		blockAuthor, err = s.client.BlockAuthor(ctx, head.Number.Int64())
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf(
-				"%w: could not get block author for %x",
-				err,
-				body.Hash[:],
-			)
+			return nil, nil, nil, fmt.Errorf("%w: could not get block author for %x", err, body.Hash[:])
 		}
 	}
 
@@ -326,6 +310,7 @@ func (s *BlockAPIService) Block(
 		blockIdentifier       *RosettaTypes.BlockIdentifier
 		parentBlockIdentifier *RosettaTypes.BlockIdentifier
 	)
+
 
 	block, loadedTxns, rpcBlock, err := s.GetEthBlock(ctx, request.BlockIdentifier)
 	if errors.Is(err, AssetTypes.ErrClientBlockOrphaned) {
@@ -414,18 +399,12 @@ func (s *BlockAPIService) BlockTransaction(
 	}
 
 	if request.BlockIdentifier == nil {
-		return nil, AssetTypes.WrapErr(
-			AssetTypes.ErrInvalidInput,
-			fmt.Errorf("block identifier is not provided"),
-		)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInvalidInput, fmt.Errorf("block identifier is not provided"))
 	}
 
 	loadedTx, err := s.client.GetLoadedTransaction(ctx, request)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(
-			AssetTypes.ErrInternalError,
-			fmt.Errorf("%w: unable to get loaded tx", err),
-		)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get loaded tx", err))
 	}
 	var (
 		raw       json.RawMessage
@@ -439,20 +418,14 @@ func (s *BlockAPIService) BlockTransaction(
 		raw, flattened, traceErr = s.client.TraceTransaction(ctx, *loadedTx.TxHash)
 	}
 	if traceErr != nil {
-		return nil, AssetTypes.WrapErr(
-			AssetTypes.ErrInternalError,
-			fmt.Errorf("%w: unable to get tx trace", traceErr),
-		)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx trace", traceErr))
 	}
 	loadedTx.RawTrace = raw
 	loadedTx.Trace = flattened
 
 	receipt, err := s.client.GetTransactionReceipt(ctx, loadedTx)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(
-			AssetTypes.ErrInternalError,
-			fmt.Errorf("%w: unable to get tx receipt", err),
-		)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx receipt", err))
 	}
 	loadedTx.Receipt = receipt
 
@@ -464,12 +437,9 @@ func (s *BlockAPIService) BlockTransaction(
 		loadedTx.FeeBurned = nil
 	}
 
-	transaction, err := s.populateTransaction(ctx, loadedTx)
+	transaction, err := s.PopulateTransaction(ctx, loadedTx)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(
-			AssetTypes.ErrInternalError,
-			fmt.Errorf("%w: unable to populate tx", err),
-		)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to populate tx", err))
 	}
 
 	return &RosettaTypes.BlockTransactionResponse{
