@@ -17,7 +17,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 
@@ -244,20 +243,20 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.SkipGethAdmin = val
 	}
 
-	//portValue := os.Getenv(PortEnv)
-	//if len(portValue) == 0 {
-	//	return nil, errors.New("PORT must be populated")
-	//}
-	//
-	//port, err := strconv.Atoi(portValue)
-	//if err != nil || len(portValue) == 0 || port <= 0 {
-	//	return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
-	//}
+	portValue := os.Getenv(PortEnv)
+	if len(portValue) == 0 {
+		return nil, errors.New("PORT must be populated")
+	}
+
+	port, err := strconv.Atoi(portValue)
+	if err != nil || len(portValue) == 0 || port <= 0 {
+		return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
+	}
 
 	tokenFilter := os.Getenv(TokenFilterEnv)
 	tokenFilterValue, err := strconv.ParseBool(tokenFilter)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%w: unable to parse token filter %t", err, tokenFilterValue)
 	}
 
 	payload := []configuration.Token{}

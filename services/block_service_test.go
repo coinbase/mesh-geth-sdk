@@ -389,18 +389,6 @@ func TestBlockService_Online(t *testing.T) {
 			TxHash:  common.HexToHash(hsh),
 		}
 
-		// mockClient.On(
-		//	"GetContractCurrency",
-		//	mock.Anything,
-		//	mock.Anything,
-		// ).Return(
-		//	&client.ContractCurrency{
-		//		Symbol:   "USDC",
-		//		Decimals: 6,
-		//	},
-		//	nil,
-		// ).Once()
-
 		receipt := client.RosettaTxReceipt{
 			TransactionFee: big.NewInt(10000),
 			Logs:           []*EthTypes.Log{&log},
@@ -494,7 +482,7 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, blockResp.Block.BlockIdentifier, b.Block.BlockIdentifier)
 		assert.Equal(t, 1, len(b.Block.Transactions))
-		// assert.Equal(t, 4, len(b.Block.Transactions[0].Operations))
+		assert.Equal(t, 3, len(b.Block.Transactions[0].Operations))
 		// FEE operation
 		assert.Equal(t, "FEE", b.Block.Transactions[0].Operations[0].Type)
 		assert.Equal(t, "-10000", b.Block.Transactions[0].Operations[0].Amount.Value)
@@ -502,9 +490,6 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Equal(t, "-900000", b.Block.Transactions[0].Operations[2].Amount.Value)
 		assert.Equal(t, "0x0000000000000000000000000000000000001234",
 			b.Block.Transactions[0].Operations[2].Account.Address)
-		// ERC20 operations
-		//		assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[4].Type)
-		//	assert.Equal(t, AssetTypes.OpErc20Transfer, b.Block.Transactions[0].Operations[5].Type)
 	})
 
 	mockClient.AssertExpectations(t)

@@ -90,7 +90,6 @@ type Transaction struct {
 	To       string                 `json:"to"`
 	Value    *big.Int               `json:"value"`
 	Data     []byte                 `json:"data"`
-	// ContractData     string          `json:"contractData"`
 	Nonce    uint64                 `json:"nonce"`
 	GasPrice *big.Int               `json:"gas_price"`
 	GasLimit uint64                 `json:"gas"`

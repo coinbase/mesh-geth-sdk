@@ -116,7 +116,10 @@ func (c *EthereumClient) GetBlockReceipts(
 	return receipts, nil
 }
 
-func (c *EthereumClient) GetTransactionReceipt(ctx context.Context, tx *evmClient.LoadedTransaction) (*evmClient.RosettaTxReceipt, error) {
+func (c *EthereumClient) GetTransactionReceipt(
+	ctx context.Context,
+	tx *evmClient.LoadedTransaction,
+) (*evmClient.RosettaTxReceipt, error) {
 	var r *EthTypes.Receipt
 	err := c.CallContext(ctx, &r, "eth_getTransactionReceipt", tx.TxHash)
 	if err == nil {

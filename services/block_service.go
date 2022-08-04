@@ -106,15 +106,12 @@ func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
 ) (*RosettaTypes.Transaction, error) {
-	// var ops []*RosettaTypes.Operation
 
 	// Compute fee operations
-
 	ops, err := s.client.ParseOps(tx)
 	if err != nil {
 		return nil, err
 	}
-
 	keccak := crypto.Keccak256([]byte(client.Erc20TransferEventLogTopics))
 	encodedTransferMethod := hexutil.Encode(keccak)
 
@@ -179,7 +176,7 @@ func (s *BlockAPIService) PopulateTransaction(
 	return populatedTransaction, nil
 }
 
-// Block returns a populated block at the *RosettaTypes.PartialBlockIdentifier.
+// GetEthBlock returns a populated block at the *RosettaTypes.PartialBlockIdentifier.
 // If neither the hash or index is populated in the *RosettaTypes.PartialBlockIdentifier,
 // the current block is returned.
 func (s *BlockAPIService) GetEthBlock(
@@ -330,7 +327,6 @@ func (s *BlockAPIService) Block(
 		formtErr := fmt.Errorf("%w: could not get receipts for %x", err, rpcBlock.Hash[:])
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, formtErr)
 	}
-	// var receipts *[]client.RosettaTxReceipt = nil
 
 	for i, tx := range loadedTxns {
 		if receipts != nil {
