@@ -73,10 +73,7 @@ type Client interface {
 	// TraceTransaction returns all traces for one transaction
 	// by calling geth debug_traceTransaction JSON RPC.
 	// The output is a list of FlatCall. Each Flatcall is populated from one single trace.
-	TraceTransaction(
-		ctx context.Context,
-		hash common.Hash,
-	) (json.RawMessage, []*evmClient.FlatCall, error)
+	TraceTransaction(ctx context.Context, hash common.Hash) (json.RawMessage, []*evmClient.FlatCall, error)
 
 	// BlockRewardTransaction returns the block reward Rosetta transaction for the miner
 	BlockRewardTransaction(
@@ -113,10 +110,7 @@ type Client interface {
 	// TraceTransaction returns all traces for one transaction
 	// by calling open ethereum trace_replayTransaction JSON RPC.
 	// The output is a list of FlatCall. Each Flatcall is populated from one single trace.
-	TraceReplayTransaction(
-		ctx context.Context,
-		hsh string,
-	) (json.RawMessage, []*evmClient.FlatCall, error)
+	TraceReplayTransaction(ctx context.Context, hsh string) (json.RawMessage, []*evmClient.FlatCall, error)
 
 	// PopulateCrossChainTransactions populates all the bridge transactions for the block
 	// This method is used for blockchain that supports bridging function
@@ -182,4 +176,9 @@ type Client interface {
 		fromAddress string,
 		data []byte,
 	) (uint64, error)
+
+	// ParseOps returns a list of operations
+	ParseOps(
+		tx *evmClient.LoadedTransaction,
+	) ([]*RosettaTypes.Operation, error)
 }

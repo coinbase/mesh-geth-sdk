@@ -99,6 +99,11 @@ const (
 	// implementation.
 	PortEnv = "PORT"
 
+	// TokenFilterEnv is the environment variable
+	// read to determine if we will filter tokens
+	// using our token white list
+	TokenFilterEnv = "FILTER"
+
 	// GethEnv is an optional environment variable
 	// used to connect rosetta-ethereum to an already
 	// running geth node.
@@ -168,7 +173,8 @@ var (
 func LoadConfiguration() (*configuration.Configuration, error) {
 	config := &configuration.Configuration{}
 
-	modeValue := Online
+	mode := os.Getenv(ModeEnv)
+	modeValue := configuration.Mode(mode)
 
 	switch modeValue {
 	case Online:
@@ -238,16 +244,22 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.SkipGethAdmin = val
 	}
 
-	//portValue := os.Getenv(PortEnv)
-	//if len(portValue) == 0 {
-	//	return nil, errors.New("PORT must be populated")
-	//}
-	//
-	//port, err := strconv.Atoi(portValue)
-	//if err != nil || len(portValue) == 0 || port <= 0 {
-	//	return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
-	//}
-	config.Port = 8080
+	portValue := os.Getenv(PortEnv)
+	if len(portValue) == 0 {
+		return nil, errors.New("PORT must be populated")
+	}
+
+	port, err := strconv.Atoi(portValue)
+	if err != nil || len(portValue) == 0 || port <= 0 {
+		return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
+	}
+	config.Port = port
+
+	tokenFilter := os.Getenv(TokenFilterEnv)
+	tokenFilterValue, err := strconv.ParseBool(tokenFilter)
+	if err != nil {
+		return nil, fmt.Errorf("%w: unable to parse token filter %t", err, tokenFilterValue)
+	}
 
 	payload := []configuration.Token{}
 	config.RosettaCfg = configuration.RosettaConfig{
@@ -257,6 +269,8 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
+		TracePrefix: "",
+		FilterTokens:  tokenFilterValue,
 		TokenWhiteList: payload,
 	}
 

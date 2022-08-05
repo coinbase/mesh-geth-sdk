@@ -17,6 +17,8 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/coinbase/rosetta-geth-sdk/services"
+	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -35,6 +37,21 @@ type EthereumClient struct {
 	// Use embedding for inheritance. So all the methods of the SDKClient
 	// are instantly available on EthereumClient.
 	evmClient.SDKClient
+}
+
+func (c *EthereumClient) ParseOps(
+	tx *evmClient.LoadedTransaction,
+) ([]*RosettaTypes.Operation, error) {
+	var ops []*RosettaTypes.Operation
+
+	// Compute fee operations
+	feeOps := services.FeeOps(tx)
+	ops = append(ops, feeOps...)
+
+	traceOps := services.TraceOps(tx.Trace, len(ops))
+	ops = append(ops, traceOps...)
+
+	return ops, nil
 }
 
 func (c *EthereumClient) GetBlockReceipts(

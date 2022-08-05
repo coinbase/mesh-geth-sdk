@@ -19,8 +19,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
@@ -88,11 +86,10 @@ type ParseMetadata struct {
 }
 
 type Transaction struct {
-	From  string   `json:"from"`
-	To    string   `json:"to"`
-	Value *big.Int `json:"value"`
-	Data  []byte   `json:"data"`
-	// ContractData     string          `json:"contractData"`
+	From     string                 `json:"from"`
+	To       string                 `json:"to"`
+	Value    *big.Int               `json:"value"`
+	Data     []byte                 `json:"data"`
 	Nonce    uint64                 `json:"nonce"`
 	GasPrice *big.Int               `json:"gas_price"`
 	GasLimit uint64                 `json:"gas"`
@@ -139,27 +136,6 @@ type RosettaTxReceipt struct {
 	TransactionFee *big.Int
 	Logs           []*EthTypes.Log
 	RawMessage     json.RawMessage
-}
-
-type FeeSetResult struct {
-	L1Transaction *hexutil.Big `json:"l1Transaction"`
-	L1Calldata    *hexutil.Big `json:"l1Calldata"`
-	L2Storage     *hexutil.Big `json:"l2Storage"`
-	L2Computation *hexutil.Big `json:"l2Computation"`
-}
-
-type FeeStatsResult struct {
-	Prices    *FeeSetResult `json:"prices"`
-	UnitsUsed *FeeSetResult `json:"unitsUsed"`
-	Paid      *FeeSetResult `json:"paid"`
-}
-
-type L1InboxBatchInfo struct {
-	Confirmations *hexutil.Big   `json:"confirmations"`
-	BlockNumber   *hexutil.Big   `json:"blockNumber"`
-	LogAddress    common.Address `json:"logAddress"`
-	LogTopics     []common.Hash  `json:"logTopics"`
-	LogData       hexutil.Bytes  `json:"logData"`
 }
 
 type PayloadsResponse struct {

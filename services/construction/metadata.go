@@ -17,6 +17,7 @@ package construction
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -48,32 +49,20 @@ func (s APIService) ConstructionMetadata( //nolint
 	}
 
 	if len(input.From) == 0 {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("from address is not provided"),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("from address is not provided"))
 	}
 
 	if len(input.To) == 0 {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("to address is not provided"),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("to address is not provided"))
 	}
 
 	_, okFrom := client.ChecksumAddress(input.From)
 	if !okFrom {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("%s is not a valid address", input.From),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.From))
 	}
 	_, okTo := client.ChecksumAddress(input.To)
 	if !okTo {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("%s is not a valid address", input.To),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.To))
 	}
 
 	nonce, err := s.client.GetNonce(ctx, input)
@@ -87,56 +76,41 @@ func (s APIService) ConstructionMetadata( //nolint
 	}
 
 	var gasLimit uint64
-	if input.GasLimit == nil {
+	if input.GasLimit == nil || input.GasLimit.Uint64() == 0 {
 		switch {
 		case len(input.ContractAddress) > 0:
+			log.Info("Fetching generic contract call gas limit")
 			checkContractAddress, ok := client.ChecksumAddress(input.ContractAddress)
 			if !ok {
-				return nil, sdkTypes.WrapErr(
-					sdkTypes.ErrInvalidInput,
-					fmt.Errorf("%s is not a valid address", input.To),
-				)
+				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.To))
 			}
 			contractData, err := hexutil.Decode(input.ContractData)
 			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 			}
 			// Override the destination address to be the contract address
-			gasLimit, err = s.client.GetContractCallGasLimit(
-				ctx,
-				checkContractAddress,
-				input.From,
-				contractData,
-			)
+			gasLimit, err = s.client.GetContractCallGasLimit(ctx, checkContractAddress, input.From, contractData)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}
 		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
-			gasLimit, err = s.client.GetNativeTransferGasLimit(
-				ctx,
-				input.To,
-				input.From,
-				input.Value,
-			)
+			log.Info("Fetching native gas limit")
+			gasLimit, err = s.client.GetNativeTransferGasLimit(ctx, input.To, input.From, input.Value)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrNativeGasLimitError, err)
 			}
-		case len(input.TokenAddress) > 0:
-			gasLimit, err = s.client.GetErc20TransferGasLimit(
-				ctx,
-				input.To,
-				input.From,
-				input.Value,
-				input.Currency,
-			)
+		default:
+			log.Info("Fetching ERC20 gas limit")
+			gasLimit, err = s.client.GetErc20TransferGasLimit(ctx, input.To, input.From, input.Value, input.Currency)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}
 		}
 	} else {
+		log.Info("Setting existing gas limit")
 		gasLimit = input.GasLimit.Uint64()
 	}
 

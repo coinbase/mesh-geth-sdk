@@ -27,11 +27,12 @@ import (
 )
 
 const (
-	topicsInErc20Transfer = 3
+	TopicsInErc20Transfer = 3
 	zeroAddress           = "0x0000000000000000000000000000000000000000000000000000000000000000"
 )
 
-func feeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
+// FeeOps returns the fee operations for a given transaction
+func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 	var minerEarnedAmount *big.Int
 	if tx.FeeBurned == nil {
 		minerEarnedAmount = tx.FeeAmount
@@ -53,12 +54,12 @@ func feeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: 0,
 			},
-			Type:   sdkTypes.FeeOpType,
-			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.FeeOpType,
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 		},
 
 		{
@@ -85,19 +86,22 @@ func feeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 
 	burntOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
-			Index: 2, // nolint:gomnd
+			Index: 0, // nolint:gomnd
 		},
 		Type:    sdkTypes.FeeOpType,
 		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
 		Account: evmClient.Account(tx.From),
 		Amount:  evmClient.Amount(new(big.Int).Neg(tx.FeeBurned), sdkTypes.Currency),
 	}
-	return append(ops, burntOp)
+
+	ops = append(ops, burntOp)
+
+	return ops
 }
 
-// traceOps returns all *RosettaTypes.Operation for a given
+// TraceOps returns all *RosettaTypes.Operation for a given
 // array of flattened traces.
-func traceOps(
+func TraceOps(
 	calls []*evmClient.FlatCall,
 	startIndex int,
 ) []*RosettaTypes.Operation { // nolint: gocognit
@@ -261,7 +265,8 @@ func traceOps(
 	return ops
 }
 
-func erc20Ops(
+// Erc20Ops returns a list of erc20 operations parsed from the log from a transaction receipt
+func Erc20Ops(
 	transferLog *EthTypes.Log,
 	currency *evmClient.ContractCurrency,
 	opsLen int64,
@@ -277,15 +282,9 @@ func erc20Ops(
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: opsLen,
 			},
-			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
-			Type:   sdkTypes.OpErc20Mint,
-			Amount: evmClient.Erc20Amount(
-				transferLog.Data,
-				contractAddress,
-				currency.Symbol,
-				currency.Decimals,
-				false,
-			),
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.OpErc20Mint,
+			Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, false),
 			Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressTo)),
 		}
 		ops = append(ops, &mintOp)
@@ -297,15 +296,9 @@ func erc20Ops(
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: opsLen,
 			},
-			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
-			Type:   sdkTypes.OpErc20Burn,
-			Amount: evmClient.Erc20Amount(
-				transferLog.Data,
-				contractAddress,
-				currency.Symbol,
-				currency.Decimals,
-				true,
-			),
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.OpErc20Burn,
+			Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, true),
 			Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressFrom)),
 		}
 		ops = append(ops, &burnOp)
@@ -315,30 +308,18 @@ func erc20Ops(
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
 			Index: opsLen,
 		},
-		Status: RosettaTypes.String(sdkTypes.SuccessStatus),
-		Type:   sdkTypes.OpErc20Transfer,
-		Amount: evmClient.Erc20Amount(
-			transferLog.Data,
-			contractAddress,
-			currency.Symbol,
-			currency.Decimals,
-			true,
-		),
+		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+		Type:    sdkTypes.OpErc20Transfer,
+		Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, true),
 		Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressFrom)),
 	}
 	receiptOp := RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
 			Index: opsLen + 1,
 		},
-		Status: RosettaTypes.String(sdkTypes.SuccessStatus),
-		Type:   sdkTypes.OpErc20Transfer,
-		Amount: evmClient.Erc20Amount(
-			transferLog.Data,
-			contractAddress,
-			currency.Symbol,
-			currency.Decimals,
-			false,
-		),
+		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+		Type:    sdkTypes.OpErc20Transfer,
+		Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, false),
 		Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressTo)),
 		RelatedOperations: []*RosettaTypes.OperationIdentifier{
 			{

@@ -50,7 +50,6 @@ type SDKClient struct {
 
 	*RPCClient
 	*EthClient
-	// *ContractClient
 
 	traceSemaphore *semaphore.Weighted
 
@@ -86,8 +85,13 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 		RPCClient:      c,
 		EthClient:      ec,
 		traceSemaphore: semaphore.NewWeighted(maxTraceConcurrency),
-		//ContractClient: NewContractClient(*ec.Client),
 	}, nil
+}
+
+func (ec *SDKClient) ParseOps(
+	tx *LoadedTransaction,
+) ([]*RosettaTypes.Operation, error) {
+	return nil, errors.New("ParseOps not implemented")
 }
 
 func (ec *SDKClient) PopulateCrossChainTransactions(
@@ -196,7 +200,10 @@ func (ec *SDKClient) Balance(
 			Args:   []interface{}{account.Address, blockNum},
 			Result: &nonce,
 		},
-		{Method: "eth_getCode", Args: []interface{}{account.Address, blockNum}, Result: &code},
+		{	Method: "eth_getCode",
+			Args: []interface{}{account.Address, blockNum},
+			Result: &code,
+		},
 	}
 	if err := ec.BatchCallContext(ctx, reqs); err != nil {
 		return nil, err
@@ -209,17 +216,17 @@ func (ec *SDKClient) Balance(
 
 	balances := []*RosettaTypes.Amount{}
 	if len(currencies) == 0 {
-		balances = append(balances, Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency))
+		balances = append(
+			balances,
+			Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency),
+		)
 	}
 
 	for _, currency := range currencies {
 		value, ok := currency.Metadata[ContractAddressMetadata]
 		if !ok {
 			if utils.Equal(currency, ec.rosettaConfig.Currency) {
-				balances = append(
-					balances,
-					Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency),
-				)
+				balances = append(balances, Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency))
 				continue
 			}
 			return nil, fmt.Errorf("non-native currencies must specify contractAddress in metadata")
@@ -484,7 +491,6 @@ func (ec *SDKClient) GetUncles(
 			}
 		}
 	}
-
 	return uncles, nil
 }
 
@@ -522,16 +528,12 @@ func (ec *SDKClient) TraceBlockByHash(
 	var calls []*rpcCall
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, "debug_traceBlockByHash", blockHash, ec.tc)
-
 	if err != nil {
 		return nil, err
 	}
-
-	// Decode []*rpcCall
 	if err := json.Unmarshal(raw, &calls); err != nil {
 		return nil, err
 	}
-
 	m := make(map[string][]*FlatCall)
 	for i, tx := range calls {
 		flatCalls := FlattenTraces(tx.Result, []*FlatCall{})
@@ -553,35 +555,29 @@ func (ec *SDKClient) TraceTransaction(
 	result := &Call{}
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, "debug_traceTransaction", hash, ec.tc)
-
 	if err != nil {
 		return nil, nil, err
 	}
-
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return nil, nil, err
 	}
-
 	flattened := FlattenTraces(result, []*FlatCall{})
 	return raw, flattened, nil
 }
 
-// TraceReplayBlockTransactions returns all transactions in a block returning the requested traces
-// for each Transaction.
+// TraceReplayBlockTransactions returns all transactions in a block returning the requested traces for each Transaction.
 func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh string) (
 	map[string][]*FlatCall, error,
 ) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, "trace_replayBlockTransactions", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayBlockTransactions", hsh, []string{"trace"})
 	if err != nil {
 		return nil, err
 	}
-
 	var results []*OpenEthTraceCall
 	if err := json.Unmarshal(raw, &results); err != nil {
 		return nil, err
 	}
-
 	if len(results) == 0 {
 		log.Printf("Block %s does not have traces", hsh)
 	}
@@ -622,7 +618,7 @@ func (ec *SDKClient) TraceReplayTransaction(
 	hsh string,
 ) (json.RawMessage, []*FlatCall, error) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, "trace_replayTransaction", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", hsh, []string{"trace"})
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -699,11 +695,9 @@ func (ec *SDKClient) miningReward(
 	if ec.P.IsByzantium(currentBlock) {
 		blockReward = ethash.ByzantiumBlockReward.Int64()
 	}
-
 	if ec.P.IsConstantinople(currentBlock) {
 		blockReward = ethash.ConstantinopleBlockReward.Int64()
 	}
-
 	return blockReward
 }
 
@@ -814,7 +808,8 @@ func (ec *SDKClient) GetGasPrice(
 ) (*big.Int, error) {
 	var gasPrice *big.Int
 	var err error
-	if input.GasPrice == nil {
+	if input.GasPrice == nil || input.GasPrice.Uint64() == 0 {
+		log.Println("Fetching gas price")
 		gasPrice, err = ec.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
@@ -827,6 +822,7 @@ func (ec *SDKClient) GetGasPrice(
 			newGasPrice.Int(gasPrice)
 		}
 	} else {
+		log.Println("Setting existing gas price")
 		gasPrice = input.GasPrice
 	}
 	return gasPrice, nil
@@ -968,6 +964,5 @@ func (ec *SDKClient) GetLoadedTransaction(
 	} else {
 		loadedTx.Miner = MustChecksum(header.Coinbase.Hex())
 	}
-
 	return loadedTx, nil
 }

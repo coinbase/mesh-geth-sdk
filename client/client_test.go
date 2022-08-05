@@ -44,7 +44,7 @@ func TestOpenEthTraceAPI_EmptyTrace(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"trace_replayBlockTransactions",
+		"eth_replayBlockTransactions",
 		txHash,
 		[]string{"trace"},
 	).Return(
@@ -67,6 +67,9 @@ func TestOpenEthTraceAPI_EmptyTrace(t *testing.T) {
 	}
 	sdkClient := &SDKClient{
 		RPCClient: rpcClient,
+		rosettaConfig: configuration.RosettaConfig{
+			TracePrefix: "eth",
+		},
 	}
 
 	m, err := sdkClient.TraceReplayBlockTransactions(ctx, txHash)
@@ -111,6 +114,7 @@ func TestTraceBlockByHash(t *testing.T) {
 		traceSemaphore: semaphore.NewWeighted(100),
 		rosettaConfig: configuration.RosettaConfig{
 			TraceType: configuration.OpenEthereumTrace,
+			TracePrefix: "eth",
 		},
 	}
 
@@ -144,7 +148,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"trace_replayBlockTransactions",
+		"eth_replayBlockTransactions",
 		blkHash,
 		[]string{"trace"},
 	).Return(
@@ -170,6 +174,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		traceSemaphore: semaphore.NewWeighted(100),
 		rosettaConfig: configuration.RosettaConfig{
 			TraceType: configuration.OpenEthereumTrace,
+			TracePrefix: "eth",
 		},
 	}
 
@@ -196,7 +201,7 @@ func TestOpenEthTraceAPI_MultiTxns(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"trace_replayBlockTransactions",
+		"eth_replayBlockTransactions",
 		txHash,
 		[]string{"trace"},
 	).Return(
@@ -219,6 +224,9 @@ func TestOpenEthTraceAPI_MultiTxns(t *testing.T) {
 	}
 	sdkClient := &SDKClient{
 		RPCClient: rpcClient,
+		rosettaConfig: configuration.RosettaConfig{
+			TracePrefix: "eth",
+		},
 	}
 
 	m, err := sdkClient.TraceReplayBlockTransactions(ctx, txHash)
@@ -239,6 +247,9 @@ func TestBalance(t *testing.T) {
 	}
 	sdkClient := &SDKClient{
 		RPCClient: rpcClient,
+		rosettaConfig: configuration.RosettaConfig{
+			TracePrefix: "eth",
+		},
 	}
 
 	blockNum := fmt.Sprintf("0x%s", strconv.FormatInt(10992, 16))
@@ -325,9 +336,7 @@ func TestBalance(t *testing.T) {
 		{
 			Symbol:   "USDC",
 			Decimals: 6,
-			Metadata: map[string]interface{}{
-				ContractAddressMetadata: "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d",
-			},
+			Metadata: map[string]interface{}{ContractAddressMetadata: "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d"},
 		},
 	}
 
