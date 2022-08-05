@@ -99,7 +99,7 @@ type Client interface {
 	) ([]*EthTypes.Header, error)
 
 	// TraceReplayBlockTransactions returns all traces for each transaction in the block
-	// by calling open ethereum arbtrace_replayBlockTransactions JSON RPC.
+	// by calling open ethereum trace_replayBlockTransactions JSON RPC.
 	// The output is map which key is transaction hash, and the value is list of
 	// FlatCall. Each Flatcall is populated from one single trace.
 	TraceReplayBlockTransactions(

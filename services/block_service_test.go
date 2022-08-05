@@ -474,7 +474,7 @@ func TestBlockService_Online(t *testing.T) {
 			configuration.RosettaConfig{
 				FilterTokens: true,
 				TokenWhiteList: loadTokenWhiteList(),
-				TracePrefix: "arbtrace",
+				TracePrefix: "trace",
 			},
 		)
 

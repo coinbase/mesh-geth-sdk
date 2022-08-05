@@ -173,7 +173,8 @@ var (
 func LoadConfiguration() (*configuration.Configuration, error) {
 	config := &configuration.Configuration{}
 
-	modeValue := Online
+	mode := os.Getenv(ModeEnv)
+	modeValue := configuration.Mode(mode)
 
 	switch modeValue {
 	case Online:
@@ -252,6 +253,7 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	if err != nil || len(portValue) == 0 || port <= 0 {
 		return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
 	}
+	config.Port = port
 
 	tokenFilter := os.Getenv(TokenFilterEnv)
 	tokenFilterValue, err := strconv.ParseBool(tokenFilter)
