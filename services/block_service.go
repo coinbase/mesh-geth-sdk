@@ -125,8 +125,8 @@ func (s *BlockAPIService) PopulateTransaction(
 		if !ContainsTopic(log, encodedTransferMethod) {
 			continue
 		}
-		if s.client.GetRosettaConfig().FilterTokens &&
-			!client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String()) {
+		if !s.client.GetRosettaConfig().FilterTokens || (s.client.GetRosettaConfig().FilterTokens &&
+			client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
 			switch len(log.Topics) {
 			case TopicsInErc20Transfer:
 				currency, err := s.client.GetContractCurrency(log.Address, true)

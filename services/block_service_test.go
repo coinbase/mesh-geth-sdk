@@ -389,6 +389,18 @@ func TestBlockService_Online(t *testing.T) {
 			TxHash:  common.HexToHash(hsh),
 		}
 
+		mockClient.On(
+			"GetContractCurrency",
+			mock.Anything,
+			mock.Anything,
+		).Return(
+			&client.ContractCurrency{
+				Symbol:   "USDC",
+				Decimals: 6,
+			},
+			nil,
+		).Once()
+
 		receipt := client.RosettaTxReceipt{
 			TransactionFee: big.NewInt(10000),
 			Logs:           []*EthTypes.Log{&log},
@@ -482,7 +494,7 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, blockResp.Block.BlockIdentifier, b.Block.BlockIdentifier)
 		assert.Equal(t, 1, len(b.Block.Transactions))
-		assert.Equal(t, 3, len(b.Block.Transactions[0].Operations))
+		assert.Equal(t, 5, len(b.Block.Transactions[0].Operations))
 		// FEE operation
 		assert.Equal(t, "FEE", b.Block.Transactions[0].Operations[0].Type)
 		assert.Equal(t, "-10000", b.Block.Transactions[0].Operations[0].Amount.Value)
