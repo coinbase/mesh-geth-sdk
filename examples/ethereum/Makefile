@@ -37,17 +37,9 @@ run-geth-testnet:
 	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -e "NETWORK=TESTNET" -p 8545:8545 -p 30303:30303 rosetta-ethereum:latest
 
 run-rosetta:
-	MODE=ONLINE NETWORK=TESTNET PORT=8080 go run *.go
+	MODE=ONLINE NETWORK=MAINNET PORT=8080 FILTER=false go run *.go
 
-# run-mainnet-online:
-# 	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -v "${PWD}/ethereum-data:/data" -e "MODE=ONLINE" -e "NETWORK=MAINNET" -e "PORT=8080" -p 8545:8545 -p 8080:8080 -p 30303:30303 rosetta-ethereum:latest
-
-# run-mainnet-offline:
-# 	docker run -d --rm -e "MODE=OFFLINE" -e "NETWORK=MAINNET" -e "PORT=8081" -p 8545:8545 -p 8081:8081 rosetta-ethereum:latest
-
-# run-testnet-online:
-# 	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -v "${PWD}/ethereum-data:/data" -e "MODE=ONLINE" -e "NETWORK=TESTNET" -e "PORT=8080" -p 8545:8545 -p 8080:8080 -p 30303:30303 rosetta-ethereum:latest
-
-# run-testnet-offline:
-# 	docker run -d --rm -e "MODE=OFFLINE" -e "NETWORK=TESTNET" -e "PORT=8081" -p 8081:8081 rosetta-ethereum:latest
-
+init:
+	docker-compose run --rm geth ./scripts/init.sh
+up:
+	docker compose up geth
