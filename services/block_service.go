@@ -319,7 +319,7 @@ func (s *BlockAPIService) Block(
 	}
 
 	var baseFee *big.Int
-	if len(loadedTxns) > 1 {
+	if len(loadedTxns) > 0 {
 		baseFee = loadedTxns[0].BaseFee
 	}
 	receipts, err := s.client.GetBlockReceipts(ctx, rpcBlock.Hash, rpcBlock.Transactions, baseFee)

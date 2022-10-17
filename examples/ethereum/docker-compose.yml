@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  geth-ethereum-mainnet:
+    image: ethereum/client-go:v1.10.23
+    environment:
+      - DEVMODE=true
+    command: [ "--dev", "--dev.period", "0",
+               "--http", "--http.api",
+               "personal,eth,net,web3,debug",
+               "--http.addr", "0.0.0.0",
+               "--datadir", "./data", "--http.vhosts=*"]
+    volumes:
+      - ".docker/geth:/root"
+    ports:
+      - "8546:8545"
