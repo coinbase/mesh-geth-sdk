@@ -1,24 +1,24 @@
 #!/bin/bash
 
 cd examples/ethereum
+make run-rosetta
+#nohup make run-rosetta > /dev/null 2>&1 &
 
-nohup make run-rosetta > /dev/null 2>&1 &
+# sleep 10
 
-sleep 10
+# curl --location --request POST 'http://localhost:8080/network/list' \
+# --header 'Content-Type: application/json' \
+# --data-raw '{
+#     "metadata" : {}
+# }'
 
-curl --location --request POST 'http://localhost:8080/network/list' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "metadata" : {}
-}'
+# block_tip=($(curl -s --location --request POST 'http://localhost:8080/network/status' \
+# --header 'Content-Type: application/json' \
+# --data-raw '{
+#     "network_identifier": {
+#         "blockchain": "Ethereum",
+#         "network": "Mainnet"
+#     }
+# }' | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["current_block_identifier"]["index"])'))
 
-block_tip=($(curl -s --location --request POST 'http://localhost:8080/network/status' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "network_identifier": {
-        "blockchain": "Ethereum",
-        "network": "Mainnet"
-    }
-}' | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["current_block_identifier"]["index"])'))
-
-echo "latest block index is", $block_tip
+# echo "latest block index is", $block_tip
