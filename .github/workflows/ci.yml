@@ -13,20 +13,41 @@ env:
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
 jobs:
-  test:
+  Rosetta-Validation:
     runs-on: ubuntu-latest
-    name: test
     steps:
     - uses: actions/checkout@v3
+
     - name: Geth Action
       uses: xiaying-peng/geth-action@v0.0.0
       id: geth
+
     - name: Sleep for 30 seconds
       run: sleep 30s
       shell: bash
-    - name: curl
+
+    - name: Curl test
       run: |
         curl -X POST "http://127.0.0.1:8546" --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1}'
+      shell: bash
+
+    -name: Start Rosetta Server
+     run: nohup make run-rosetta > /dev/null 2>&1 &
+
+    - name: Sleep for 5 seconds
+      run: sleep 5s
+      shell: bash
+
+    - name: Test Rosetta API
+      run: |
+        curl -s --location --request POST 'http://localhost:8080/network/status' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "network_identifier": {
+                  "blockchain": "Ethereum",
+                  "network": "Mainnet"
+              }
+          }' | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["current_block_identifier"]["index"])'
       shell: bash
 
   # Test:
@@ -76,43 +97,5 @@ jobs:
   #         version: latest
   #     - run: make salus
   
-  # setup:
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     matrix: ${{steps.setup_work.outputs.matrix}}
-  #     workload: ${{steps.set_blks_per_chunk.outputs.blks_per_chunk}}
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: Set up Go
-  #     uses: actions/setup-go@v2
-  #     with:
-  #       go-version: 1.17
-  #   - id: setup_work 
-  #     env:
-  #         START_INDEX: 0
-  #         BLKS_PER_CHUNK: 400
-  #     run: echo "::set-output name=matrix::$(.github/scripts/setup.sh)"
-  #   - id: set_blks_per_chunk
-  #     run: echo "::set-output name=blks_per_chunk::400"
-
-  # rosetta-validation:
-  #   runs-on: ubuntu-latest
-  #   needs: setup
-  #   strategy:
-  #     matrix: 
-  #       range: ${{fromJson(needs.setup.outputs.matrix)}}
-  #   steps:
-  #   - run: |
-  #         echo ${{ matrix.range }}
-  #   - uses: actions/checkout@v2
-  #   - name: Set up Go
-  #     uses: actions/setup-go@v2
-  #     with:
-  #       go-version: 1.17
-  #   - name: run check:data on mainnet
-  #     env:
-  #       START_INDEX: ${{ matrix.range }}
-  #       COUNT: ${{ needs.setup.outputs.workload }}
-  #     run: .github/scripts/cli.sh
 
   
