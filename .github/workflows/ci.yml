@@ -13,16 +13,19 @@ env:
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
 jobs:
-  run-geth:
-    using: "composite"
+  test:
+    runs-on: ubuntu-latest
+    name: test
     steps:
-      - id: init
-        run: cd examples/ethereum; docker-compose up -d
-        shell: bash
-      - id: run
-        run: geth --exec "eth.accounts" attach http://127.0.0.1:8546
-        shell: bash
-        
+    - uses: actions/checkout@v2
+    - name: Geth Action
+      uses: odanado/geth-action@v0.0.12
+      id: geth
+    - name: curl
+      run: |
+        curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":67}' ${{ steps.geth.outputs.rpc_url }} -H "Content-Type: application/json"
+      shell: bash
+
   # Test:
   #   runs-on: ubuntu-latest
   #   steps:
