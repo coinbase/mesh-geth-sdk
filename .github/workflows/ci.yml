@@ -40,9 +40,9 @@ jobs:
       run: python .github/scripts/populate_txns.py
       shell: bash
 
-    # - name: Start Rosetta Server
-    #   run: .github/scripts/setup.sh
-    #   shell: bash
+    - name: Start Rosetta Server
+      run: .github/scripts/setup.sh
+      shell: bash
 
   # Test:
   #   runs-on: ubuntu-latest
