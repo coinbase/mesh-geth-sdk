@@ -1,0 +1,11 @@
+[
+   {
+        "account_identifier": {
+          "address":"0x0000000000000000000000000000000000000000"
+        },
+        "currency": {
+          "symbol": "ETH",
+          "decimals": 18
+        }
+    }
+]
