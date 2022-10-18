@@ -32,7 +32,9 @@ jobs:
       shell: bash
 
     -name: Start Rosetta Server
-     run: nohup make run-rosetta > /dev/null 2>&1 &
+     run: |
+      nohup make run-rosetta > /dev/null 2>&1 &
+     shell: bash
 
     - name: Sleep for 5 seconds
       run: sleep 5s
