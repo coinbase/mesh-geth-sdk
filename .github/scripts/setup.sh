@@ -3,7 +3,7 @@
 cd examples/ethereum
 nohup make run-rosetta > /dev/null 2>&1 &
 
-sleep 40
+sleep 60
 
 curl --location --request POST 'http://localhost:8080/network/list' \
 --header 'Content-Type: application/json' \
