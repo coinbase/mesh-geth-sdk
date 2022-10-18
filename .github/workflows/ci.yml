@@ -23,7 +23,7 @@ jobs:
       id: geth
     - name: curl
       run: |
-        curl -X POST --data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":67}' ${{ steps.geth.outputs.rpc_url }} -H "Content-Type: application/json"
+        curl -X POST "http://127.0.0.1:8546" --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1}'
       shell: bash
 
   # Test:
