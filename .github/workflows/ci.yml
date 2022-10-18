@@ -17,9 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     name: test
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+    - uses: actions/checkout@v3
     - name: Geth Action
-      uses: odanado/geth-action@v0.0.12
+      uses: xiaying-peng/geth-action@v0.0.0
       id: geth
     - name: curl
       run: |
