@@ -11,6 +11,15 @@ curl --location --request POST 'http://localhost:8080/network/list' \
     "metadata" : {}
 }'
 
+curl --location --request POST 'http://localhost:8080/network/status' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "network_identifier": {
+        "blockchain": "Ethereum",
+        "network": "Mainnet"
+    }
+}'
+
 block_tip=($(curl -s --location --request POST 'http://localhost:8080/network/status' \
 --header 'Content-Type: application/json' \
 --data-raw '{
