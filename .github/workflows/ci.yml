@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - enable-ci
   pull_request:
 
 env:
@@ -12,51 +13,90 @@ env:
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
 jobs:
-  Test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.go_version }}
-      - run: make test
-  Lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.go_version }}
-      - uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout 3m
+  # Test:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-go@v3
+  #       with:
+  #         go-version: ${{ env.go_version }}
+  #     - run: make test
+  # Lint:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-go@v3
+  #       with:
+  #         go-version: ${{ env.go_version }}
+  #     - uses: golangci/golangci-lint-action@v3
+  #       with:
+  #         version: latest
+  #         args: --timeout 3m
 
-  Check-License:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          version: latest
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.go_version }}
-      - run: make check-license
+  # Check-License:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         version: latest
+  #     - uses: actions/setup-go@v3
+  #       with:
+  #         go-version: ${{ env.go_version }}
+  #     - run: make check-license
 
-  Check-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          version: latest
-      - run: make check-format
+  # Check-format:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         version: latest
+  #     - run: make check-format
 
-  Salus:
+  # Salus:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         version: latest
+  #     - run: make salus
+  
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{steps.setup_work.outputs.matrix}}
+      workload: ${{steps.set_blks_per_chunk.outputs.blks_per_chunk}}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          version: latest
-      - run: make salus
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - id: setup_work 
+      env:
+          START_INDEX: 0
+          BLKS_PER_CHUNK: 400
+      run: echo "::set-output name=matrix::$(.github/workflows/scripts/setup.sh)"
+    - id: set_blks_per_chunk
+      run: echo "::set-output name=blks_per_chunk::400"
+
+  rosetta-validation:
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix: 
+        range: ${{fromJson(needs.setup.outputs.matrix)}}
+    steps:
+    - run: |
+          echo ${{ matrix.range }}
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - name: run check:data on mainnet
+      env:
+        START_INDEX: ${{ matrix.range }}
+        COUNT: ${{ needs.setup.outputs.workload }}
+      run: .github/workflows/scripts/cli.sh
 
   
