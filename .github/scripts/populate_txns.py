@@ -6,11 +6,12 @@ web3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 print("latest block", web3.eth.block_number)
 
-# transfer 12345 to account 0
-web3.eth.send_transaction({
-  'to': web3.eth.accounts[0],
-  'from': web3.eth.coinbase,
-  'value': 12345
-})
+for _ in range(5):
+    # transfer 12345 to account 0
+    web3.eth.send_transaction({
+    'to': web3.eth.accounts[0],
+    'from': web3.eth.coinbase,
+    'value': 12345
+    })
 
 print("latest block", web3.eth.block_number)
