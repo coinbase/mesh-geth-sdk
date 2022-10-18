@@ -1,18 +1,18 @@
-name: CI
+# name: CI
 
-on:
-  push:
-    branches:
-      - master
-      - enable-ci
-  pull_request:
+# on:
+#   push:
+#     branches:
+#       - master
+#       - enable-ci
+#   pull_request:
 
-env:
-  go_version: 1.16
-  GO111MODULE: on
-  COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+# env:
+#   go_version: 1.16
+#   GO111MODULE: on
+#   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
-jobs:
+# jobs:
   # Test:
   #   runs-on: ubuntu-latest
   #   steps:
