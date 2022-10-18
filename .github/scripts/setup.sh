@@ -1,10 +1,9 @@
 #!/bin/bash
 
 cd examples/ethereum
-make run-rosetta
-#nohup make run-rosetta > /dev/null 2>&1 &
+nohup make run-rosetta > /dev/null 2>&1 &
 
-# sleep 10
+sleep 40
 
 # curl --location --request POST 'http://localhost:8080/network/list' \
 # --header 'Content-Type: application/json' \

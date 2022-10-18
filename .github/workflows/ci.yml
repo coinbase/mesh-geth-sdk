@@ -22,8 +22,8 @@ jobs:
       uses: xiaying-peng/geth-action@v0.0.0
       id: geth
 
-    - name: Sleep for 30 seconds
-      run: sleep 30s
+    - name: Sleep for 20 seconds
+      run: sleep 20s
       shell: bash
 
     - name: Get latest block from geth node
