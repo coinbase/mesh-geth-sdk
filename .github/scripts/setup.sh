@@ -1,8 +1,6 @@
 #!/bin/bash
 
-nohup make run-rosetta > /dev/null 2>&1 &
-
-sleep 10s
+#nohup make run-rosetta > /dev/null 2>&1 &
 
 block_tip=($(curl -s --location --request POST 'http://localhost:8080/network/status' \
 --header 'Content-Type: application/json' \
@@ -13,4 +11,4 @@ block_tip=($(curl -s --location --request POST 'http://localhost:8080/network/st
     }
 }' | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["current_block_identifier"]["index"])'))
 
-echo $(seq $START_INDEX $BLKS_PER_CHUNK $block_tip | jq -cnR '[inputs | select(length>0)]')
+echo "latest block index is ", $block_tip
