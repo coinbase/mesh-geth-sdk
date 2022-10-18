@@ -11,4 +11,4 @@ block_tip=($(curl -s --location --request POST 'http://localhost:8080/network/st
     }
 }' | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["current_block_identifier"]["index"])'))
 
-echo "latest block index is ", $block_tip
+echo "latest block index is", $block_tip
