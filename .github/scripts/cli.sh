@@ -12,4 +12,4 @@ curl -sSfL https://raw.githubusercontent.com/coinbase/rosetta-cli/master/scripts
 sleep 180
 
 echo "start check:data"
-./bin/rosetta-cli --configuration-file <YOUR_CONFIG_PATH> check:data --start-block $START_INDEX --end-block $END_INDEX
+./bin/rosetta-cli --configuration-file examples/ethereum/rosetta-cli-conf/mainnet/config.json check:data --start-block $START_INDEX --end-block $END_INDEX
