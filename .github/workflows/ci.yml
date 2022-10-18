@@ -31,9 +31,13 @@ jobs:
         curl -X POST "http://127.0.0.1:8546" --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1}'
       shell: bash
 
-    - name: Start Rosetta Server
-      run: .github/scripts/setup.sh
+    - name: Populate transactions
+      run: python .github/scripts/populate_txns.py
       shell: bash
+
+    # - name: Start Rosetta Server
+    #   run: .github/scripts/setup.sh
+    #   shell: bash
 
   # Test:
   #   runs-on: ubuntu-latest
