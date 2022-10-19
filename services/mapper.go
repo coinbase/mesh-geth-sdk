@@ -28,7 +28,7 @@ import (
 
 const (
 	TopicsInErc20Transfer = 3
-	zeroAddress           = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	zeroAddress           = "0x0000000000000000000000000000000000000000"
 )
 
 // FeeOps returns the fee operations for a given transaction
@@ -49,44 +49,49 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 		feeRewarder = tx.Author
 	}
 
-	ops := []*RosettaTypes.Operation{
-		{
-			OperationIdentifier: &RosettaTypes.OperationIdentifier{
-				Index: 0,
-			},
-			Type:    sdkTypes.FeeOpType,
-			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
-			Account: &RosettaTypes.AccountIdentifier{
-				Address: evmClient.MustChecksum(tx.From.String()),
-			},
-			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
-		},
+	var ops []*RosettaTypes.Operation
 
-		{
-			OperationIdentifier: &RosettaTypes.OperationIdentifier{
-				Index: 1,
-			},
-			RelatedOperations: []*RosettaTypes.OperationIdentifier{
-				{
+	if feeRewarder != zeroAddress {
+		ops = []*RosettaTypes.Operation{
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: 0,
 				},
+				Type:    sdkTypes.FeeOpType,
+				Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: evmClient.MustChecksum(tx.From.String()),
+				},
+				Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 			},
-			Type:   sdkTypes.FeeOpType,
-			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
-			Account: &RosettaTypes.AccountIdentifier{
-				Address: evmClient.MustChecksum(feeRewarder),
+	
+			{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: 1,
+				},
+				RelatedOperations: []*RosettaTypes.OperationIdentifier{
+					{
+						Index: 0,
+					},
+				},
+				Type:   sdkTypes.FeeOpType,
+				Status: RosettaTypes.String(sdkTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: evmClient.MustChecksum(feeRewarder),
+				},
+				Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
 			},
-			Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
-		},
-	}
+		}
 
-	if tx.FeeBurned == nil {
-		return ops
+		if tx.FeeBurned == nil {
+			return ops
+		}
 	}
-
+	
+	idx := len(ops)
 	burntOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
-			Index: 2, // nolint:gomnd
+			Index: int64(idx), // nolint:gomnd
 		},
 		Type:    sdkTypes.FeeOpType,
 		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),

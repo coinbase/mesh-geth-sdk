@@ -7,13 +7,27 @@ web3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 print("latest block", web3.eth.block_number)
 
-dst = Account.create('KEYSMASH FJAFJKLDSKF7JKFDJ 2121')
+dst1 = Account.create('KEYSMASH FJAFJKLDSKF7JKFDJ 2121')
+dst2 = Account.create('KEYSMASH dassaad 441')
+
 
 for _ in range(5):
     web3.eth.send_transaction({
-        'to': dst.address,
+        'to': dst2.address,
         'from': web3.eth.coinbase,
-        'value': 10000
+        'value': 12345,
+        'gas': 21000,
+        'maxFeePerGas': web3.toWei(250, 'gwei'),
+        'maxPriorityFeePerGas': web3.toWei(2, 'gwei'),
+    })
+
+    web3.eth.send_transaction({
+        'to': dst1.address,
+        'from': web3.eth.coinbase,
+        'value': 100000,
+        'gas': 21000,
+        'maxFeePerGas': web3.toWei(250, 'gwei'),
+        'maxPriorityFeePerGas': web3.toWei(2, 'gwei'),
     })
 
 print("latest block", web3.eth.block_number)
