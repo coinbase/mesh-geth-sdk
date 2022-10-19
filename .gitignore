@@ -17,3 +17,4 @@
 .vscode/
 cli-data
 examples/ethereum/.docker/
+examples/ethereum/.ethereum/

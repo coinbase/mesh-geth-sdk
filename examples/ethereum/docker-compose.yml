@@ -15,16 +15,17 @@
 version: '3'
 
 services:
-  geth-ethereum-mainnet:
+  geth:
     image: ethereum/client-go:v1.10.23
     environment:
       - DEVMODE=true
-    command: [ "--dev", "--dev.period", "0",
-               "--http", "--http.api",
-               "personal,eth,net,web3,debug",
-               "--http.addr", "0.0.0.0",
-               "--datadir", "init genesis.json", "--http.vhosts=*"]
     volumes:
-      - ".docker/geth:/root"
+      - "./.ethereum:/root/.ethereum"
+      - "./geth/config:/root/config"
+      - "./geth/scripts:/root/scripts"
+    working_dir: /root
+    entrypoint: sh
     ports:
       - "8546:8545"
+    command: ./scripts/run.sh
+
