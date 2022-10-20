@@ -13,9 +13,19 @@ dst2 = Account.create('KEYSMASH dassaad 441')
 
 for _ in range(5):
     web3.eth.send_transaction({
-        'to': '0xd3CdA913deB6f67967B99D67aCDFa1712C293601',
-        'from': web3.eth.coinbase,
-        'value': 12345
+        'to': web3.eth.accounts[1],
+        'from': web3.eth.accounts[0],
+        'value': 12345,
+        'gas': 21000,
+        'gasPrice': web3.toWei(50, 'gwei'),
+    })
+
+    web3.eth.send_transaction({
+        'to': web3.eth.accounts[0],
+        'from': web3.eth.accounts[1],
+        'value': 54321,
+        'gas': 21000,
+        'gasPrice': web3.toWei(50, 'gwei'),
     })
 
 print("latest block", web3.eth.block_number)

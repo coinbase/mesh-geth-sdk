@@ -39,7 +39,7 @@ run-geth-testnet:
 run-rosetta:
 	MODE=ONLINE NETWORK=MAINNET PORT=8080 FILTER=false go run *.go
 
-init-geth:
+init:
 	docker-compose run --rm geth ./scripts/init.sh
 up:
 	docker compose up geth
