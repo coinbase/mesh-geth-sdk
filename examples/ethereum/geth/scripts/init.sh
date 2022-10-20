@@ -3,4 +3,4 @@
 set -eu
 
 geth init /root/config/genesis.json
-geth account import /root/config/private-key.txt --password /root/config/password.txt
+geth --password /root/config/password.txt account import /root/config/private-key.txt 

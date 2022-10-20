@@ -82,10 +82,10 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 				Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
 			},
 		}
+	}
 
-		if tx.FeeBurned == nil {
-			return ops
-		}
+	if tx.FeeBurned == nil {
+		return ops
 	}
 	
 	idx := len(ops)
