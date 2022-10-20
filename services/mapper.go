@@ -49,39 +49,35 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 		feeRewarder = tx.Author
 	}
 
-	var ops []*RosettaTypes.Operation
+	ops := []*RosettaTypes.Operation{
+		{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: 0,
+			},
+			Type:    sdkTypes.FeeOpType,
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Account: &RosettaTypes.AccountIdentifier{
+				Address: evmClient.MustChecksum(tx.From.String()),
+			},
+			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+		},
 
-	if feeRewarder != zeroAddress {
-		ops = []*RosettaTypes.Operation{
-			{
-				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+		{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: 1,
+			},
+			RelatedOperations: []*RosettaTypes.OperationIdentifier{
+				{
 					Index: 0,
 				},
-				Type:    sdkTypes.FeeOpType,
-				Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
-				Account: &RosettaTypes.AccountIdentifier{
-					Address: evmClient.MustChecksum(tx.From.String()),
-				},
-				Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 			},
-	
-			{
-				OperationIdentifier: &RosettaTypes.OperationIdentifier{
-					Index: 1,
-				},
-				RelatedOperations: []*RosettaTypes.OperationIdentifier{
-					{
-						Index: 0,
-					},
-				},
-				Type:   sdkTypes.FeeOpType,
-				Status: RosettaTypes.String(sdkTypes.SuccessStatus),
-				Account: &RosettaTypes.AccountIdentifier{
-					Address: evmClient.MustChecksum(feeRewarder),
-				},
-				Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
+			Type:   sdkTypes.FeeOpType,
+			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
+			Account: &RosettaTypes.AccountIdentifier{
+				Address: evmClient.MustChecksum(feeRewarder),
 			},
-		}
+			Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
+		},
 	}
 
 	if tx.FeeBurned == nil {

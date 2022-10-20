@@ -15,17 +15,13 @@ for _ in range(5):
     web3.eth.send_transaction({
         'to': web3.eth.accounts[1],
         'from': web3.eth.accounts[0],
-        'value': 12345,
-        'gas': 21000,
-        'gasPrice': web3.toWei(50, 'gwei'),
+        'value': 12345
     })
 
     web3.eth.send_transaction({
         'to': web3.eth.accounts[0],
         'from': web3.eth.accounts[1],
-        'value': 54321,
-        'gas': 21000,
-        'gasPrice': web3.toWei(50, 'gwei'),
+        'value': 54321
     })
 
 print("latest block", web3.eth.block_number)
