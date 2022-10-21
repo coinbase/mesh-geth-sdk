@@ -16,6 +16,8 @@ jobs:
   Rosetta-Validation:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
+    
     - name: Start a private ethereum network
       uses: ./actions/geth
       id: geth
