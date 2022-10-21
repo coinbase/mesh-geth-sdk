@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - enable-ci
   pull_request:
 
 env:
