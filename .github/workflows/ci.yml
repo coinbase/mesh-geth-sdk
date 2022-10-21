@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Start a private ethereum network
-      uses: ./actions/geth
+      uses: .github/actions/geth
       id: geth
 
     - name: Sleep for 20 seconds
