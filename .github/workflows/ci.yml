@@ -31,22 +31,22 @@ jobs:
         curl -X POST "http://127.0.0.1:8546" --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1}'
       shell: bash
 
-    # - name: Install dependencies
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     pip install web3
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install web3
 
-    # - name: Populate transactions
-    #   run: python .github/scripts/populate_txns.py
-    #   shell: bash
+    - name: Populate transactions
+      run: python .github/scripts/populate_txns.py
+      shell: bash
 
-    # - name: Start Rosetta Server
-    #   run: .github/scripts/setup.sh
-    #   shell: bash
+    - name: Start Rosetta Server
+      run: .github/scripts/setup.sh
+      shell: bash
 
-    # - name: Run Check:data test
-    #   run: .github/scripts/cli.sh
-    #   shell: bash
+    - name: Run Check:data test
+      run: .github/scripts/cli.sh
+      shell: bash
 
   # Test:
   #   runs-on: ubuntu-latest
