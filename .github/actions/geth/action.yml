@@ -26,7 +26,7 @@ runs:
       run: cd ${{ github.action_path }}; cd scripts; ls
       shell: bash
     - id: init
-      run: cd ${{ github.action_path }}; docker-compose run --rm geth scripts/init.sh
+      run: cd ${{ github.action_path }}/scripts; docker-compose run --rm geth ./init.sh
       shell: bash
     - id: run
       run: cd ${{ github.action_path }}; docker-compose up -d
