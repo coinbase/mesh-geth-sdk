@@ -22,7 +22,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - id: test!!
+    - id: test
       run: cd ${{ github.action_path }}; ls
       shell: bash
     - id: init
