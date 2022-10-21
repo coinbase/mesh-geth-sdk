@@ -28,7 +28,7 @@ import (
 
 const (
 	TopicsInErc20Transfer = 3
-	zeroAddress           = "0x0000000000000000000000000000000000000000"
+	zeroAddress           = "0x0000000000000000000000000000000000000000000000000000000000000000"
 )
 
 // FeeOps returns the fee operations for a given transaction
