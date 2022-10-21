@@ -39,5 +39,6 @@ run-geth-testnet:
 run-rosetta:
 	MODE=ONLINE NETWORK=MAINNET PORT=8080 FILTER=false go run *.go
 
-up:
-	docker compose up geth-ethereum-mainnet
+local-geth:
+	cd ../../.github/actions/geth; docker-compose run --rm geth ./scripts/init.sh;
+	cd ../../.github/actions/geth; docker-compose up geth
