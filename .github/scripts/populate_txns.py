@@ -11,15 +11,15 @@ dst1 = Account.create('KEYSMASH FJAFJKLDSKF7JKFDJ 2121')
 dst2 = Account.create('KEYSMASH dassaad 441')
 
 
-for _ in range(5):
+for _ in range(10):
     web3.eth.send_transaction({
         'to': web3.eth.accounts[1],
-        'from': web3.eth.accounts[0],
+        'from': web3.eth.accounts[2],
         'value': 12345
     })
 
     web3.eth.send_transaction({
-        'to': web3.eth.accounts[0],
+        'to': web3.eth.accounts[2],
         'from': web3.eth.accounts[1],
         'value': 54321
     })
