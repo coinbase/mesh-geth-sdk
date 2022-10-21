@@ -27,5 +27,5 @@ services:
     entrypoint: sh
     ports:
       - "8546:8545"
-    command: ./scripts/run.sh
+    command: ./run.sh
 
