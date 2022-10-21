@@ -17,6 +17,6 @@ geth \
     --mine \
     --miner.etherbase '0x4cdBd835fE18BD93ccA39A262Cff72dbAC99E24F' \
     --miner.gasprice 0 \
-    --unlock "0,1" \
+    --unlock "0,1,2" \
     --password /root/config/password.txt \
     --allow-insecure-unlock
