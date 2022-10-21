@@ -23,7 +23,7 @@ runs:
   using: "composite"
   steps:
     - id: init
-      run: cd ${{ github.action_path }}; docker-compose run --rm geth init.sh
+      run: cd ${{ github.action_path }}; docker-compose run --rm geth ./scripts/init.sh
       shell: bash
     - id: run
       run: cd ${{ github.action_path }}; docker-compose up -d

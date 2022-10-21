@@ -18,3 +18,6 @@
 cli-data
 examples/ethereum/.docker/
 examples/ethereum/.ethereum/
+.github/actions/geth/.ethereum/
+
+

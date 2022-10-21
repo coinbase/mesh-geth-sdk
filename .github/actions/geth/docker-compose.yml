@@ -21,11 +21,11 @@ services:
       - DEVMODE=true
     volumes:
       - "./.ethereum:/root/.ethereum"
-      - "./geth/config:/root/config"
-      - "./geth/scripts:/root/scripts"
+      - "./config:/root/config"
+      - "./scripts:/root/scripts"
     working_dir: /root
     entrypoint: sh
     ports:
       - "8546:8545"
-    command: ./run.sh
+    command: ./scripts/run.sh
 
