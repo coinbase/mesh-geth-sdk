@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Start a private ethereum network
-      uses: .github/actions/geth
+      uses: ./.github/actions/geth
       id: geth
 
     - name: Sleep for 20 seconds
