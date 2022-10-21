@@ -17,4 +17,3 @@ make run-geth-testnet
 ```
 make run-rosetta
 ```
-
