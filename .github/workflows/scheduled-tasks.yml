@@ -1,0 +1,48 @@
+name: Scheduled Tasks
+
+on:
+  schedule:
+    - cron:  '0 0 * * *'
+
+env:
+  go_version: 1.16
+  GO111MODULE: on
+  COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+
+jobs:
+  Scheduled-Validation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Start a private ethereum network
+      uses: ./.github/actions/geth
+      id: geth
+
+    - name: Sleep for 25 seconds
+      run: sleep 25s
+      shell: bash
+
+    - name: Get latest block from geth node
+      run: |
+        curl -X POST "http://127.0.0.1:8546" --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1}'
+      shell: bash
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install web3
+
+    - name: Populate transactions
+      run: python .github/scripts/populate_txns.py
+      shell: bash
+
+    - name: Start Rosetta Server
+      run: .github/scripts/setup.sh
+      shell: bash
+
+    - name: Run Check:data test
+      run: .github/scripts/cli.sh
+      shell: bash
+
+  
