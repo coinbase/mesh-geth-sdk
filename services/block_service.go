@@ -120,13 +120,14 @@ func (s *BlockAPIService) PopulateTransaction(
 		receiptLogs = tx.Receipt.Logs
 	}
 	// Compute tx operations via tx.Receipt logs for ERC20 transfers
+	// if Filter == false, we record every ERC20 tokens
 	for _, log := range receiptLogs {
 		// If this isn't an ERC20 transfer, skip
 		if !ContainsTopic(log, encodedTransferMethod) {
 			continue
 		}
-		if s.client.GetRosettaConfig().FilterTokens &&
-			client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String()) {
+		if !s.client.GetRosettaConfig().FilterTokens || (s.client.GetRosettaConfig().FilterTokens &&
+		client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())){
 			switch len(log.Topics) {
 			case TopicsInErc20Transfer:
 				currency, err := s.client.GetContractCurrency(log.Address, true)
@@ -307,7 +308,6 @@ func (s *BlockAPIService) Block(
 		blockIdentifier       *RosettaTypes.BlockIdentifier
 		parentBlockIdentifier *RosettaTypes.BlockIdentifier
 	)
-
 
 	block, loadedTxns, rpcBlock, err := s.GetEthBlock(ctx, request.BlockIdentifier)
 	if errors.Is(err, AssetTypes.ErrClientBlockOrphaned) {

@@ -200,8 +200,8 @@ func (ec *SDKClient) Balance(
 			Args:   []interface{}{account.Address, blockNum},
 			Result: &nonce,
 		},
-		{	Method: "eth_getCode",
-			Args: []interface{}{account.Address, blockNum},
+		{Method: "eth_getCode",
+			Args:   []interface{}{account.Address, blockNum},
 			Result: &code,
 		},
 	}

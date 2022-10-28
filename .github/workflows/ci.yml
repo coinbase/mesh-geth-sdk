@@ -14,6 +14,7 @@ env:
 jobs:
   Rosetta-Validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
 
@@ -34,6 +35,14 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install web3
+
+    - name: deploy erc20 USDC
+      run: .github/scripts/init_erc20.sh
+      shell: bash
+
+    - name: Get erc20 infos
+      run: python .github/scripts/contract_infos.py
+      shell: bash
 
     - name: Populate transactions
       run: python .github/scripts/populate_txns.py
@@ -97,6 +106,3 @@ jobs:
         with:
           version: latest
       - run: make salus
-  
-
-  
