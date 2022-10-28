@@ -1,0 +1,97 @@
+name: Scheduled Tasks
+
+on:
+  push:
+    branches:
+      - scheduled-tasks
+  schedule:
+    - cron:  '0 0 * * *'
+
+env:
+  go_version: 1.16
+  GO111MODULE: on
+  COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+
+jobs:
+  Rosetta-Validation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Start a private ethereum network
+      uses: ./.github/actions/geth
+      id: geth
+
+    - name: Sleep for 20 seconds
+      run: sleep 20s
+      shell: bash
+
+    - name: Get latest block from geth node
+      run: |
+        curl -X POST "http://127.0.0.1:8546" --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1}'
+      shell: bash
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install web3
+
+    - name: Populate transactions
+      run: python .github/scripts/populate_txns.py
+      shell: bash
+
+    - name: Start Rosetta Server
+      run: .github/scripts/setup.sh
+      shell: bash
+
+    - name: Run Check:data for lastest x blocks
+      run: .github/scripts/check_lastest_blocks.sh
+      shell: bash
+
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.go_version }}
+      - run: make test
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.go_version }}
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout 3m
+
+  Check-License:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          version: latest
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.go_version }}
+      - run: make check-license
+
+  Check-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          version: latest
+      - run: make check-format
+
+  Salus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          version: latest
+      - run: make salus
+  
