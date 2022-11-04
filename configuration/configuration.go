@@ -78,19 +78,19 @@ type RosettaConfig struct {
 	Currency *RosettaTypes.Currency
 
 	// TracePrefix is the prefix appended to trace RPC calls
-	TracePrefix     string
+	TracePrefix string
 
 	// IngestionMode indicates if blockchain ingestion mode
-	IngestionMode      string
+	IngestionMode string
 
 	// IndexUnknownTokens determines whether we parse unknown ERC20 tokens
 	IndexUnknownTokens bool
 
 	// FilterToken determines whether we using our token whitelist
-	FilterTokens	bool
+	FilterTokens bool
 
 	// TokenWhiteList is a list of ERC20 tokens we only support
-	TokenWhiteList     []Token
+	TokenWhiteList []Token
 }
 
 type Token struct {

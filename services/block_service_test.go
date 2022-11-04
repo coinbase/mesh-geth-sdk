@@ -276,12 +276,12 @@ func TestBlockService_Online(t *testing.T) {
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: 0,
 				},
-				Type:    AssetTypes.CallOpType,
-				Status:  RosettaTypes.String(AssetTypes.SuccessStatus),
+				Type:   AssetTypes.CallOpType,
+				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
 				Account: &RosettaTypes.AccountIdentifier{
 					Address: mock.Anything,
 				},
-				Amount:  client.Amount(big.NewInt(-1), AssetTypes.Currency),
+				Amount: client.Amount(big.NewInt(-1), AssetTypes.Currency),
 			},
 
 			{
@@ -388,6 +388,18 @@ func TestBlockService_Online(t *testing.T) {
 			Data:    []byte{},
 			TxHash:  common.HexToHash(hsh),
 		}
+		
+		mockClient.On(
+			"GetContractCurrency",
+			mock.Anything,
+			mock.Anything,
+		).Return(
+			&client.ContractCurrency{
+				Symbol:   "USDC",
+				Decimals: 6,
+			},
+			nil,
+		).Once()
 
 		receipt := client.RosettaTxReceipt{
 			TransactionFee: big.NewInt(10000),
@@ -423,12 +435,12 @@ func TestBlockService_Online(t *testing.T) {
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: 0,
 				},
-				Type:    AssetTypes.FeeOpType,
-				Status:  RosettaTypes.String(AssetTypes.SuccessStatus),
+				Type:   AssetTypes.FeeOpType,
+				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
 				Account: &RosettaTypes.AccountIdentifier{
 					Address: "0x0000000000000000000000000000000000001234",
 				},
-				Amount:  client.Amount(big.NewInt(-10000), AssetTypes.Currency),
+				Amount: client.Amount(big.NewInt(-10000), AssetTypes.Currency),
 			},
 
 			{
@@ -472,9 +484,9 @@ func TestBlockService_Online(t *testing.T) {
 			"GetRosettaConfig",
 		).Return(
 			configuration.RosettaConfig{
-				FilterTokens: true,
+				FilterTokens:   true,
 				TokenWhiteList: loadTokenWhiteList(),
-				TracePrefix: "trace",
+				TracePrefix:    "trace",
 			},
 		)
 
@@ -482,7 +494,7 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, blockResp.Block.BlockIdentifier, b.Block.BlockIdentifier)
 		assert.Equal(t, 1, len(b.Block.Transactions))
-		assert.Equal(t, 3, len(b.Block.Transactions[0].Operations))
+		assert.Equal(t, 5, len(b.Block.Transactions[0].Operations))
 		// FEE operation
 		assert.Equal(t, "FEE", b.Block.Transactions[0].Operations[0].Type)
 		assert.Equal(t, "-10000", b.Block.Transactions[0].Operations[0].Amount.Value)

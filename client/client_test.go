@@ -113,7 +113,7 @@ func TestTraceBlockByHash(t *testing.T) {
 		RPCClient:      rpcClient,
 		traceSemaphore: semaphore.NewWeighted(100),
 		rosettaConfig: configuration.RosettaConfig{
-			TraceType: configuration.OpenEthereumTrace,
+			TraceType:   configuration.OpenEthereumTrace,
 			TracePrefix: "eth",
 		},
 	}
@@ -173,7 +173,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		RPCClient:      rpcClient,
 		traceSemaphore: semaphore.NewWeighted(100),
 		rosettaConfig: configuration.RosettaConfig{
-			TraceType: configuration.OpenEthereumTrace,
+			TraceType:   configuration.OpenEthereumTrace,
 			TracePrefix: "eth",
 		},
 	}
