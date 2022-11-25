@@ -131,6 +131,7 @@ type RPCTransaction struct {
 }
 
 type RosettaTxReceipt struct {
+	Type           uint8  `json:"type,omitempty"`
 	GasPrice       *big.Int
 	GasUsed        *big.Int
 	TransactionFee *big.Int
