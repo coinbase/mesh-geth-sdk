@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/coinbase/rosetta-geth-sdk/services"
@@ -30,6 +31,10 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/server"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/neilotoole/errgroup"
+)
+
+const(
+	ReadHeaderTimeout = time.Minute
 )
 
 // BootStrap quickly starts the Rosetta server
@@ -60,6 +65,7 @@ func BootStrap(
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: corsRouter,
+		ReadHeaderTimeout: ReadHeaderTimeout,
 	}
 
 	// Start required services
