@@ -34,7 +34,7 @@ import (
 )
 
 const(
-	readTimeout = 5 * time.Second
+	ReadHeaderTimeout = time.Minute
 )
 
 // BootStrap quickly starts the Rosetta server
@@ -65,7 +65,7 @@ func BootStrap(
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: corsRouter,
-		ReadTimeout: readTimeout,
+		ReadHeaderTimeout: ReadHeaderTimeout,
 	}
 
 	// Start required services
