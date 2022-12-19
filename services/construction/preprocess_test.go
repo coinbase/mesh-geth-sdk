@@ -16,6 +16,7 @@ package construction
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -42,13 +43,14 @@ var (
 	// preprocessGasPriceHex          = hexutil.EncodeUint64(preprocessGasPrice)
 	preprocessGenericData = "0x095ea7b3000000000000000000000000d10a72cf054650931365cc44d912a4fd7525705" +
 		"800000000000000000000000000000000000000000000000000000000000003e8"
+	preprocessRedeemData     = "0xeda1122c2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"
+	redeemMethodSignature    = "redeem(bytes32)"
+	redeemMethodArgs         = []string{"0x2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"}
+	expectedRedeemMethodArgs = []interface{}{"0x2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"}
 )
 
 func TestConstructionPreprocess(t *testing.T) {
 	testingClient := newTestingClient()
-	// if err != nil {
-	//	log.Fatalln("%w: unable to load testing configuration", err)
-	// }
 
 	tests := map[string]struct {
 		operations []*types.Operation
@@ -67,7 +69,7 @@ func TestConstructionPreprocess(t *testing.T) {
 				Options: map[string]interface{}{
 					"from":             testingFromAddress,
 					"to":               testingToAddress, // it will be contract address user need to pass in operation
-					"value":            float64(preprocessTransferValue),
+					"value":            fmt.Sprint(preprocessTransferValue),
 					"contract_address": testingToAddress,
 					"data":             preprocessGenericData,
 					"method_signature": methodSignature,
@@ -79,12 +81,8 @@ func TestConstructionPreprocess(t *testing.T) {
 				},
 			},
 		},
-		"happy path: Generic Contract call with zero transfer value": {
-			operations: templateOperations(
-				preprocessZeroTransferValue,
-				ethereumCurrencyConfig,
-				"CALL",
-			),
+		"happy path: Approve call with zero transfer value": {
+			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
 			metadata: map[string]interface{}{
 				"method_signature": "approve(address,uint256)",
 				"method_args":      []string{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"},
@@ -93,11 +91,65 @@ func TestConstructionPreprocess(t *testing.T) {
 				Options: map[string]interface{}{
 					"from":             testingFromAddress,
 					"to":               testingToAddress, // it will be contract address user need to pass in operation
-					"value":            float64(preprocessZeroTransferValue),
+					"value":            fmt.Sprint(preprocessZeroTransferValue),
 					"contract_address": testingToAddress,
 					"data":             preprocessGenericData,
 					"method_signature": methodSignature,
 					"method_args":      expectedMethodArgs,
+					"currency": map[string]interface{}{
+						"decimals": float64(18),
+						"symbol":   "ETH",
+					},
+				},
+			},
+		},
+		"happy path: Redeem call with zero transfer value": {
+			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
+			metadata: map[string]interface{}{
+				"method_signature": redeemMethodSignature,
+				"method_args":      redeemMethodArgs,
+			},
+			expectedResponse: &types.ConstructionPreprocessResponse{
+				Options: map[string]interface{}{
+					"from":             testingFromAddress,
+					"to":               testingToAddress, // it will be contract address user need to pass in operation
+					"value":            fmt.Sprint(preprocessZeroTransferValue),
+					"contract_address": testingToAddress,
+					"data":             preprocessRedeemData,
+					"method_signature": redeemMethodSignature,
+					"method_args":      expectedRedeemMethodArgs,
+					"currency": map[string]interface{}{
+						"decimals": float64(18),
+						"symbol":   "ETH",
+					},
+				},
+			},
+		},
+		"happy path: Outbound transfer call with zero transfer value": {
+			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
+			metadata: map[string]interface{}{
+				"method_signature": "outboundTransfer(address,address,uint256,bytes)",
+				"method_args": []string{
+					"0x07865c6E87B9F70255377e024ace6630C1Eaa37F", // L1 token
+					"0xb53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f6", // To address
+					"1000000", // Amount
+					"0x",      // Data
+				},
+			},
+			expectedResponse: &types.ConstructionPreprocessResponse{
+				Options: map[string]interface{}{
+					"from":             testingFromAddress,
+					"to":               testingToAddress, // it will be contract address user need to pass in operation
+					"value":            fmt.Sprint(preprocessZeroTransferValue),
+					"contract_address": testingToAddress,
+					"data":             "0x7b3a3c8b00000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000b53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f600000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",
+					"method_signature": "outboundTransfer(address,address,uint256,bytes)",
+					"method_args": []interface{}{
+						"0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
+						"0xb53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f6",
+						"1000000",
+						"0x",
+					},
 					"currency": map[string]interface{}{
 						"decimals": float64(18),
 						"symbol":   "ETH",
@@ -111,7 +163,7 @@ func TestConstructionPreprocess(t *testing.T) {
 				Options: map[string]interface{}{
 					"from":  testingFromAddress,
 					"to":    testingToAddress,
-					"value": float64(preprocessTransferValue),
+					"value": fmt.Sprint(preprocessTransferValue),
 					"currency": map[string]interface{}{
 						"decimals": float64(18),
 						"symbol":   "ETH",
@@ -131,7 +183,7 @@ func TestConstructionPreprocess(t *testing.T) {
 				Options: map[string]interface{}{
 					"from":  testingFromAddress,
 					"to":    testingToAddress,
-					"value": float64(preprocessTransferValue),
+					"value": fmt.Sprint(preprocessTransferValue),
 					"currency": map[string]interface{}{
 						"decimals": float64(6),
 						"symbol":   "USDC",

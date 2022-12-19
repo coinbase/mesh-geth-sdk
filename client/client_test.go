@@ -44,7 +44,7 @@ func TestOpenEthTraceAPI_EmptyTrace(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"eth_replayBlockTransactions",
+		"_replayBlockTransactions",
 		txHash,
 		[]string{"trace"},
 	).Return(
@@ -67,9 +67,6 @@ func TestOpenEthTraceAPI_EmptyTrace(t *testing.T) {
 	}
 	sdkClient := &SDKClient{
 		RPCClient: rpcClient,
-		rosettaConfig: configuration.RosettaConfig{
-			TracePrefix: "eth",
-		},
 	}
 
 	m, err := sdkClient.TraceReplayBlockTransactions(ctx, txHash)
@@ -113,8 +110,7 @@ func TestTraceBlockByHash(t *testing.T) {
 		RPCClient:      rpcClient,
 		traceSemaphore: semaphore.NewWeighted(100),
 		rosettaConfig: configuration.RosettaConfig{
-			TraceType:   configuration.OpenEthereumTrace,
-			TracePrefix: "eth",
+			TraceType: configuration.OpenEthereumTrace,
 		},
 	}
 
@@ -148,7 +144,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"eth_replayBlockTransactions",
+		"_replayBlockTransactions",
 		blkHash,
 		[]string{"trace"},
 	).Return(
@@ -173,8 +169,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		RPCClient:      rpcClient,
 		traceSemaphore: semaphore.NewWeighted(100),
 		rosettaConfig: configuration.RosettaConfig{
-			TraceType:   configuration.OpenEthereumTrace,
-			TracePrefix: "eth",
+			TraceType: configuration.OpenEthereumTrace,
 		},
 	}
 
@@ -201,7 +196,7 @@ func TestOpenEthTraceAPI_MultiTxns(t *testing.T) {
 		"CallContext",
 		ctx,
 		mock.Anything,
-		"eth_replayBlockTransactions",
+		"_replayBlockTransactions",
 		txHash,
 		[]string{"trace"},
 	).Return(
@@ -224,9 +219,6 @@ func TestOpenEthTraceAPI_MultiTxns(t *testing.T) {
 	}
 	sdkClient := &SDKClient{
 		RPCClient: rpcClient,
-		rosettaConfig: configuration.RosettaConfig{
-			TracePrefix: "eth",
-		},
 	}
 
 	m, err := sdkClient.TraceReplayBlockTransactions(ctx, txHash)
@@ -247,9 +239,6 @@ func TestBalance(t *testing.T) {
 	}
 	sdkClient := &SDKClient{
 		RPCClient: rpcClient,
-		rosettaConfig: configuration.RosettaConfig{
-			TracePrefix: "eth",
-		},
 	}
 
 	blockNum := fmt.Sprintf("0x%s", strconv.FormatInt(10992, 16))

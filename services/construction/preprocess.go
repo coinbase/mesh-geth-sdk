@@ -207,7 +207,7 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 	splitSigByComma := strings.Split(splitSigByTrailingParenthesis[0], ",")
 
 	if len(splitSigByComma) != len(methodArgs) {
-		return nil, errors.New("Invalid method arguments")
+		return nil, errors.New("invalid method arguments")
 	}
 
 	for i, v := range splitSigByComma {
