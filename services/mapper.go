@@ -84,6 +84,11 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 		return ops
 	}
 
+	// in internal is 
+	// burntOp := &RosettaTypes.Operation{
+	// 	OperationIdentifier: &RosettaTypes.OperationIdentifier{
+	// 		Index: 0, // nolint:gomnd
+	// 	},
 	idx := len(ops)
 	burntOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{

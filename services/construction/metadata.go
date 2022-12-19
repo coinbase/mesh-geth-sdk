@@ -27,7 +27,6 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 )
-
 // ConstructionMetadata implements /construction/metadata endpoint.
 //
 // Get any information required to construct a transaction for a specific network.
@@ -96,14 +95,18 @@ func (s APIService) ConstructionMetadata( //nolint
 			}
 		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
 			log.Info("Fetching native gas limit")
-			gasLimit, err = s.client.GetNativeTransferGasLimit(ctx, input.To, input.From, input.Value)
+			value := new(big.Int)
+			value.SetString(input.Value, 10)
+			gasLimit, err = s.client.GetNativeTransferGasLimit(ctx, input.To, input.From, value)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrNativeGasLimitError, err)
 			}
 		default:
 			log.Info("Fetching ERC20 gas limit")
-			gasLimit, err = s.client.GetErc20TransferGasLimit(ctx, input.To, input.From, input.Value, input.Currency)
+			value := new(big.Int)
+			value.SetString(input.Value, 10)
+			gasLimit, err = s.client.GetErc20TransferGasLimit(ctx, input.To, input.From, value, input.Currency)
 			if err != nil {
 				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)

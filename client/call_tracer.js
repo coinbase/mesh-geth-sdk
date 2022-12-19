@@ -23,6 +23,8 @@
 	result: function(ctx, db) {
 		// Prepare outer message info
 		var result = {
+			beforeEVMTransfers: ctx.beforeEVMTransfers,
+			afterEVMTransfers: ctx.afterEVMTransfers,
 			type:    ctx.type,
 			from:    toHex(ctx.from),
 			to:      toHex(ctx.to),
@@ -43,11 +45,13 @@
 		if (result.error !== undefined && (result.error !== "execution reverted" || result.output ==="0x")) {
 			delete result.output
 		}
-
+		print(ctx.beforeEVMTransfers.toString())
 		return this.finalize(result)
 	},
 	enter: function(frame) {
 		var call = {
+			beforeEVMTransfers: frame.getBeforeEVMTransfers(),
+			afterEVMTransfers: frame.getAfterEVMTransfers(),
 			type: frame.getType(),
 			from: toHex(frame.getFrom()),
 			to: toHex(frame.getTo()),
@@ -85,6 +89,8 @@
 	// to users who don't interpret it, just display it.
 	finalize: function(call) {
 		var sorted = {
+			beforeEVMTransfers: call.beforeEVMTransfers,
+			afterEVMTransfers: call.afterEVMTransfers,
 			type:    call.type,
 			from:    call.from,
 			to:      call.to,

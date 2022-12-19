@@ -2,11 +2,13 @@ module github.com/coinbase/rosetta-geth-sdk
 
 go 1.16
 
+replace github.com/ethereum/go-ethereum => github.com/OffchainLabs/go-ethereum v0.0.0-20221201033847-e96c82c514d4
+
 require (
 	github.com/coinbase/rosetta-sdk-go v0.7.11
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 )

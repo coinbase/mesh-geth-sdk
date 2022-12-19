@@ -19,6 +19,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
@@ -90,6 +92,7 @@ type Transaction struct {
 	To       string                 `json:"to"`
 	Value    *big.Int               `json:"value"`
 	Data     []byte                 `json:"data"`
+	// ContractData     string          `json:"contractData"`
 	Nonce    uint64                 `json:"nonce"`
 	GasPrice *big.Int               `json:"gas_price"`
 	GasLimit uint64                 `json:"gas"`
@@ -139,6 +142,27 @@ type RosettaTxReceipt struct {
 	RawMessage     json.RawMessage
 }
 
+type FeeSetResult struct {
+	L1Transaction *hexutil.Big `json:"l1Transaction"`
+	L1Calldata    *hexutil.Big `json:"l1Calldata"`
+	L2Storage     *hexutil.Big `json:"l2Storage"`
+	L2Computation *hexutil.Big `json:"l2Computation"`
+}
+
+type FeeStatsResult struct {
+	Prices    *FeeSetResult `json:"prices"`
+	UnitsUsed *FeeSetResult `json:"unitsUsed"`
+	Paid      *FeeSetResult `json:"paid"`
+}
+
+type L1InboxBatchInfo struct {
+	Confirmations *hexutil.Big   `json:"confirmations"`
+	BlockNumber   *hexutil.Big   `json:"blockNumber"`
+	LogAddress    common.Address `json:"logAddress"`
+	LogTopics     []common.Hash  `json:"logTopics"`
+	LogData       hexutil.Bytes  `json:"logData"`
+}
+
 type PayloadsResponse struct {
 	TransferData []byte
 	Address      common.Address
@@ -150,7 +174,7 @@ type Options struct {
 	To                     string                 `json:"to"`
 	TokenAddress           string                 `json:"token_address,omitempty"`
 	ContractAddress        string                 `json:"contract_address,omitempty"`
-	Value                  *big.Int               `json:"value"`
+	Value                  string                 `json:"value"`
 	SuggestedFeeMultiplier *float64               `json:"suggested_fee_multiplier,omitempty"`
 	GasPrice               *big.Int               `json:"gas_price,omitempty"`
 	GasLimit               *big.Int               `json:"gas_limit,omitempty"`
@@ -160,3 +184,30 @@ type Options struct {
 	MethodArgs             []string               `json:"method_args,omitempty"`
 	ContractData           string                 `json:"data,omitempty"`
 }
+
+// Receipt represents the results of a transaction.
+type GetTransactionReceiptResult struct {
+	TransactionHash   common.Hash     `json:"transactionHash"`
+	TransactionIndex  hexutil.Uint64  `json:"transactionIndex"`
+	BlockHash         common.Hash     `json:"blockHash"`
+	BlockNumber       *hexutil.Big    `json:"blockNumber"`
+	From              common.Address  `json:"from"`
+	To                *common.Address `json:"to"`
+	CumulativeGasUsed hexutil.Uint64  `json:"cumulativeGasUsed"`
+	GasUsed           hexutil.Uint64  `json:"gasUsed"`
+	EffectiveGasPrice hexutil.Uint64  `json:"effectiveGasPrice"`
+	ContractAddress   *common.Address `json:"contractAddress"`
+	Logs              []*EthTypes.Log `json:"logs"`
+	LogsBloom         hexutil.Bytes   `json:"logsBloom"`
+	Status            hexutil.Uint64  `json:"status"`
+
+	// Arbitrum Specific Fields
+	ReturnCode       hexutil.Uint64    `json:"returnCode"`
+	ReturnData       hexutil.Bytes     `json:"returnData"`
+	FeeStats         *FeeStatsResult   `json:"feeStats"`
+	L1BlockNumber    *hexutil.Big      `json:"l1BlockNumber"`
+	L1InboxBatchInfo *L1InboxBatchInfo `json:"l1InboxBatchInfo"`
+	Type             string            `json:"type,omitempty"`
+	PostState        []byte            `json:"root"`
+}
+
