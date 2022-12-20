@@ -1,13 +1,6 @@
 [
   {
     "chainId": 421612,
-    "address": "0xd4e9f77192d3611eb509B49d2c96CFF142Bd7E89",
-    "name": "Arbitrum",
-    "symbol": "ARB",
-    "decimals": 18
-  },
-  {
-    "chainId": 421612,
     "address": "0x262282d233280887d4910A20af53e26DC950FDE8",
     "name": "Dai Stablecoin",
     "symbol": "DAI",

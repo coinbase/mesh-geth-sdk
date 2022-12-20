@@ -201,7 +201,7 @@ type GetTransactionReceiptResult struct {
 	LogsBloom         hexutil.Bytes   `json:"logsBloom"`
 	Status            hexutil.Uint64  `json:"status"`
 
-	// Arbitrum Specific Fields
+	// L2 Specific Fields
 	ReturnCode       hexutil.Uint64    `json:"returnCode"`
 	ReturnData       hexutil.Bytes     `json:"returnData"`
 	FeeStats         *FeeStatsResult   `json:"feeStats"`
