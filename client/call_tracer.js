@@ -45,7 +45,6 @@
 		if (result.error !== undefined && (result.error !== "execution reverted" || result.output ==="0x")) {
 			delete result.output
 		}
-		print(ctx.beforeEVMTransfers.toString())
 		return this.finalize(result)
 	},
 	enter: function(frame) {
