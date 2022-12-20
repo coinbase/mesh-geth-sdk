@@ -45,6 +45,7 @@
 		if (result.error !== undefined && (result.error !== "execution reverted" || result.output ==="0x")) {
 			delete result.output
 		}
+
 		return this.finalize(result)
 	},
 	enter: function(frame) {
