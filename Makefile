@@ -25,8 +25,8 @@ mocks:
 	mockery --dir services --all --case underscore --outpkg services --output mocks/services;
 	mockery --dir client --all --case underscore --outpkg client --output mocks/client;
 
-lint:
-	golangci-lint run --timeout 2m0s -v -E ${LINT_SETTINGS},gomnd
+# lint:
+# 	golangci-lint run --timeout 2m0s -v -E ${LINT_SETTINGS},gomnd
 
 format:
 	gofmt -s -w -l .

@@ -570,7 +570,7 @@ func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh strin
 	map[string][]*FlatCall, error,
 ) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayBlockTransactions", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix + "_replayBlockTransactions", hsh, []string{"trace"})
 	if err != nil {
 		return nil, err
 	}
@@ -618,7 +618,7 @@ func (ec *SDKClient) TraceReplayTransaction(
 	hsh string,
 ) (json.RawMessage, []*FlatCall, error) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix + "_replayTransaction", hsh, []string{"trace"})
 	if err != nil {
 		log.Fatalln(err)
 	}

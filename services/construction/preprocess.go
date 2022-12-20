@@ -43,8 +43,7 @@ import (
 // any metadata that is needed for transaction construction given (i.e. account nonce).
 func (s *APIService) ConstructionPreprocess( //nolint
 	ctx context.Context,
-	req *types.ConstructionPreprocessRequest,
-) (*types.ConstructionPreprocessResponse, *types.Error) {
+	req *types.ConstructionPreprocessRequest) (*types.ConstructionPreprocessResponse, *types.Error) {
 	isContractCall := false
 	if _, ok := req.Metadata["method_signature"]; ok {
 		isContractCall = true
@@ -90,7 +89,7 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	preprocessOptions := &client.Options{
 		From:                   checkFrom,
 		To:                     checkTo,
-		Value:                  amount,
+		Value:                  amount.String(),
 		SuggestedFeeMultiplier: req.SuggestedFeeMultiplier,
 		Currency:               fromCurrency,
 	}
@@ -208,7 +207,7 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 	splitSigByComma := strings.Split(splitSigByTrailingParenthesis[0], ",")
 
 	if len(splitSigByComma) != len(methodArgs) {
-		return nil, errors.New("Invalid method arguments")
+		return nil, errors.New("invalid method arguments")
 	}
 
 	for i, v := range splitSigByComma {
@@ -227,6 +226,16 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 			{
 				argData = common.HexToAddress(methodArgs[i])
 			}
+		case v == "bytes32":
+			{
+				value := [32]byte{}
+				bytes, err := hexutil.Decode(methodArgs[i])
+				if err != nil {
+					log.Fatal(err)
+				}
+				copy(value[:], bytes)
+				argData = value
+			}
 		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
 			{
 				value := new(big.Int)
@@ -235,8 +244,14 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 			}
 		case strings.HasPrefix(v, "bytes"):
 			{
-				value := [32]byte{}
-				copy(value[:], methodArgs[i])
+				// No fixed size set as it would make it an "array" instead
+				// of a "slice" when encoding. We want it to be a slice.
+				value := []byte{}
+				bytes, err := hexutil.Decode(methodArgs[i])
+				if err != nil {
+					log.Fatal(err)
+				}
+				copy(value[:], bytes)
 				argData = value
 			}
 		case strings.HasPrefix(v, "string"):
@@ -254,7 +269,12 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 		}
 		argumentsData = append(argumentsData, argData)
 	}
-	abiEncodeData, _ := arguments.PackValues(argumentsData)
+
+	abiEncodeData, err := arguments.PackValues(argumentsData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode arguments: %w", err)
+	}
+
 	data = append(data, abiEncodeData...)
 	return data, nil
 }

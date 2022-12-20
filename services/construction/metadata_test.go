@@ -32,8 +32,8 @@ import (
 )
 
 var (
-	transferValue            = uint64(1)
-	transferContractValue    = uint64(0)
+	transferValue            = "1"
+	transferContractValue    = "0"
 	transferGasPrice         = uint64(5000000000)
 	transferGasLimit         = uint64(21000)
 	transferGasLimitERC20    = uint64(0) // 0 or 21644?

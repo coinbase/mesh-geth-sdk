@@ -50,6 +50,9 @@ const (
 	// Create2OpType is used to represent CREATE2 trace operations.
 	Create2OpType = "CREATE2"
 
+	// InvalidOpType is used to represent operations outside EVM.
+	InvalidOpType = "INVALID"
+
 	// SelfDestructOpType is used to represent SELFDESTRUCT trace operations.
 	SelfDestructOpType = "SELFDESTRUCT"
 

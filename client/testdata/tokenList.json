@@ -1,0 +1,30 @@
+[
+  {
+    "chainId": 421612,
+    "address": "0x262282d233280887d4910A20af53e26DC950FDE8",
+    "name": "Dai Stablecoin",
+    "symbol": "DAI",
+    "decimals": 18
+  },
+  {
+    "chainId": 421612,
+    "address": "0xD66bAF9403584ee81a3cB96b4Cf65A34778a7d5A",
+    "name": "Uniswap",
+    "symbol": "UNI",
+    "decimals": 18
+  },
+  {
+    "chainId": 421612,
+    "address": "0xE79346d0738D66Fa0608d4291F808Ed5e488348F",
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "decimals": 6
+  },
+  {
+    "chainId": 421612,
+    "address": "0x8FF8CAD0DE9a9d5b721087c76642b40e1e39CCfB",
+    "name": "Wrapped Ether",
+    "symbol": "WETH",
+    "decimals": 18
+  }
+]

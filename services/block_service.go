@@ -106,8 +106,10 @@ func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
 ) (*RosettaTypes.Transaction, error) {
+	// var ops []*RosettaTypes.Operation
 
 	// Compute fee operations
+
 	ops, err := s.client.ParseOps(tx)
 	if err != nil {
 		return nil, err
@@ -127,7 +129,7 @@ func (s *BlockAPIService) PopulateTransaction(
 			continue
 		}
 		if !s.client.GetRosettaConfig().FilterTokens || (s.client.GetRosettaConfig().FilterTokens &&
-		client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())){
+			client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
 			switch len(log.Topics) {
 			case TopicsInErc20Transfer:
 				currency, err := s.client.GetContractCurrency(log.Address, true)
@@ -319,6 +321,7 @@ func (s *BlockAPIService) Block(
 	}
 
 	var baseFee *big.Int
+	// in internal is len(loadedTxns) > 1
 	if len(loadedTxns) > 0 {
 		baseFee = loadedTxns[0].BaseFee
 	}
@@ -327,6 +330,7 @@ func (s *BlockAPIService) Block(
 		formtErr := fmt.Errorf("%w: could not get receipts for %x", err, rpcBlock.Hash[:])
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, formtErr)
 	}
+	// var receipts *[]client.RosettaTxReceipt = nil
 
 	for i, tx := range loadedTxns {
 		if receipts != nil {
