@@ -155,7 +155,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 	if tx.FeeBurned == nil {
 		return ops
 	}
-
+	
 	burntOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
 			Index: 0, // nolint:gomnd
@@ -176,7 +176,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 func TraceOps(
 	calls []*evmClient.FlatCall,
 	startIndex int,
-	) []*RosettaTypes.Operation { // nolint: gocognit
+) []*RosettaTypes.Operation { // nolint: gocognit
 	var ops []*RosettaTypes.Operation
 	if len(calls) == 0 {
 		return ops
@@ -342,7 +342,7 @@ func Erc20Ops(
 	transferLog *EthTypes.Log,
 	currency *evmClient.ContractCurrency,
 	opsLen int64,
-	) []*RosettaTypes.Operation {
+) []*RosettaTypes.Operation {
 	ops := []*RosettaTypes.Operation{}
 
 	contractAddress := transferLog.Address
