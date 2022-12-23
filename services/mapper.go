@@ -31,6 +31,7 @@ const (
 	zeroAddress           = "0x0000000000000000000000000000000000000000000000000000000000000000"
 )
 
+// parseTransferOps return a slice of *RosettaTypes.Operation
 func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer) []*RosettaTypes.Operation {
 	count := startIndex
 	var ops []*RosettaTypes.Operation
@@ -92,6 +93,8 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer) []*Ros
 	return ops
 }
 
+// TransferOps return a slice of *RosettaTypes.Operation
+// which support whitelist
 func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaTypes.Operation {
 	var ops []*RosettaTypes.Operation
 	for _, trace := range tx.Trace {
@@ -103,7 +106,7 @@ func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaType
 	return ops
 }
 
-
+// FeeOps returns the fee operations for a given transaction
 func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 	var minerEarnedAmount *big.Int
 	if tx.FeeBurned == nil {
