@@ -73,11 +73,17 @@ func (s *APIService) ConstructionPreprocess( //nolint
 
 	checkFrom, ok := client.ChecksumAddress(fromAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address", fromAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidAddress,
+			fmt.Errorf("%s is not a valid address", fromAddress),
+		)
 	}
 	checkTo, ok := client.ChecksumAddress(toAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address", toAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidAddress,
+			fmt.Errorf("%s is not a valid address", toAddress),
+		)
 	}
 
 	preprocessOptions := &client.Options{
@@ -91,33 +97,51 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	if v, ok := req.Metadata["gas_price"]; ok {
 		stringObj, ok := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas price string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas price string", v),
+			)
 		}
 		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas price", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas price", v),
+			)
 		}
 		preprocessOptions.GasPrice = bigObj
 	}
 	if v, ok := req.Metadata["gas_limit"]; ok {
 		stringObj, ok := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas limit string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas limit string", v),
+			)
 		}
 		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid gas limit", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid gas limit", v),
+			)
 		}
 		preprocessOptions.GasLimit = bigObj
 	}
 	if v, ok := req.Metadata["nonce"]; ok {
 		stringObj, ok := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid nonce string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid nonce string", v),
+			)
 		}
 		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid nonce", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid nonce", v),
+			)
 		}
 		preprocessOptions.Nonce = bigObj
 	}
@@ -125,7 +149,10 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	if v, ok := req.Metadata["method_signature"]; ok {
 		methodSigStringObj := v.(string)
 		if !ok {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid method signature string", v))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("%s is not a valid method signature string", v),
+			)
 		}
 		var methodArgs []string
 		if v, ok := req.Metadata["method_args"]; ok {

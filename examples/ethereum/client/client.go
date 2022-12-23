@@ -90,6 +90,7 @@ func (c *EthereumClient) GetBlockReceipts(
 		feeAmount := new(big.Int).Mul(gasUsed, gasPrice)
 
 		receipt := &evmClient.RosettaTxReceipt{
+			Type:           ethReceipts[i].Type,
 			GasPrice:       gasPrice,
 			GasUsed:        gasUsed,
 			Logs:           ethReceipts[i].Logs,

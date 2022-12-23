@@ -85,12 +85,18 @@ func (s *APIService) ConstructionPayloads(
 
 	checkFrom, ok := client.ChecksumAddress(fromAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", fromAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("%s is not a valid address", fromAddress),
+		)
 	}
 
 	checkTo, ok := client.ChecksumAddress(toAddress)
 	if !ok {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", toAddress))
+		return nil, sdkTypes.WrapErr(
+			sdkTypes.ErrInvalidInput,
+			fmt.Errorf("%s is not a valid address", toAddress),
+		)
 	}
 	var transferData []byte
 	var sendToAddress common.Address
@@ -108,7 +114,10 @@ func (s *APIService) ConstructionPayloads(
 		}
 		res := bytes.Compare(data, contractData)
 		if res != 0 {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("invalid conctract data"))
+			return nil, sdkTypes.WrapErr(
+				sdkTypes.ErrInvalidInput,
+				fmt.Errorf("invalid conctract data"),
+			)
 		}
 		transferData = contractData
 		sendToAddress = common.HexToAddress(checkTo)
@@ -121,7 +130,11 @@ func (s *APIService) ConstructionPayloads(
 		if !ok {
 			return nil, sdkTypes.WrapErr(
 				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s currency doesn't have a contract address in Metadata", fromCurrency.Symbol))
+				fmt.Errorf(
+					"%s currency doesn't have a contract address in Metadata",
+					fromCurrency.Symbol,
+				),
+			)
 		}
 
 		transferData = client.GenerateErc20TransferData(toAddress, amount)

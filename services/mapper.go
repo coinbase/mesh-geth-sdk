@@ -173,7 +173,10 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 
 // TraceOps returns all *RosettaTypes.Operation for a given
 // array of flattened traces.
-func TraceOps(calls []*evmClient.FlatCall, startIndex int) []*RosettaTypes.Operation { // nolint: gocognit
+func TraceOps(
+		calls []*evmClient.FlatCall, 
+		startIndex int,
+	) []*RosettaTypes.Operation { // nolint: gocognit
 	var ops []*RosettaTypes.Operation
 	if len(calls) == 0 {
 		return ops
@@ -334,7 +337,11 @@ func TraceOps(calls []*evmClient.FlatCall, startIndex int) []*RosettaTypes.Opera
 	return ops
 }
 
-func Erc20Ops(transferLog *EthTypes.Log, currency *evmClient.ContractCurrency, opsLen int64) []*RosettaTypes.Operation {
+func Erc20Ops(
+		transferLog *EthTypes.Log, 
+		currency *evmClient.ContractCurrency, 
+		opsLen int64,
+	) []*RosettaTypes.Operation {
 	ops := []*RosettaTypes.Operation{}
 
 	contractAddress := transferLog.Address
