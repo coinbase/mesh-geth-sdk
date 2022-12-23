@@ -95,19 +95,13 @@ func (s *APIService) ConstructionParse(
 	// Ensure valid from address
 	checkFrom, ok := client.ChecksumAddress(tx.From)
 	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidAddress,
-			fmt.Errorf("%s is not a valid address", tx.From),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address", tx.From))
 	}
 
 	// Ensure valid to address
 	checkTo, ok := client.ChecksumAddress(toAddressHex)
 	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidAddress,
-			fmt.Errorf("%s is not a valid address", tx.To),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address", tx.To))
 	}
 
 	ops := []*types.Operation{

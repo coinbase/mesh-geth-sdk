@@ -39,10 +39,7 @@ func (s *APIService) ConstructionSubmit(
 	}
 
 	if len(req.SignedTransaction) == 0 {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("signed Transaction value is not provided"),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("signed Transaction value is not provided"))
 	}
 
 	var wrappedTx client.SignedTransactionWrapper

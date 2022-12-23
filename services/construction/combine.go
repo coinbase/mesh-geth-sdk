@@ -38,16 +38,10 @@ func (s *APIService) ConstructionCombine(
 	req *types.ConstructionCombineRequest,
 ) (*types.ConstructionCombineResponse, *types.Error) {
 	if len(req.UnsignedTransaction) == 0 {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("transaction data is not provided"),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("transaction data is not provided"))
 	}
 	if len(req.Signatures) == 0 {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("signature is not provided"),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("signature is not provided"))
 	}
 
 	var unsignedTx client.Transaction
@@ -75,10 +69,7 @@ func (s *APIService) ConstructionCombine(
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInternalError, err)
 	}
 
-	wrappedSignedTx := client.SignedTransactionWrapper{
-		SignedTransaction: signedTxJSON,
-		Currency:          unsignedTx.Currency,
-	}
+	wrappedSignedTx := client.SignedTransactionWrapper{SignedTransaction: signedTxJSON, Currency: unsignedTx.Currency}
 
 	wrappedSignedTxJSON, err := json.Marshal(wrappedSignedTx)
 	if err != nil {
