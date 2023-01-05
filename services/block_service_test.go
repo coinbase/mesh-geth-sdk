@@ -43,6 +43,7 @@ const (
   hsh = "0xd83b1dcf7d47c4115d78ce0361587604e8157591b118bd64ada02e86c9d5ca7e"
 )
 
+// nolint:unused
 func loadTransfers(transferFile string) []*client.EVMTransfer {
 	content, err := ioutil.ReadFile("testdata/" + transferFile + ".json")
 	if err != nil {

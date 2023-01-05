@@ -251,7 +251,7 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 				if err != nil {
 					log.Fatal(err)
 				}
-				copy(value[:], bytes)
+				copy(value[:], bytes) // nolint:gocritic
 				argData = value
 			}
 		case strings.HasPrefix(v, "string"):

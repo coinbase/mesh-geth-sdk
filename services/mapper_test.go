@@ -22,9 +22,7 @@ import (
     "testing"
     )
 
-
 func TestParseTransferOps(t *testing.T) {
-
     a1 := common.HexToAddress("0xdd4b76b0316dcafa98862a12a92791ac9426a0e2")
     a2 := common.HexToAddress("0xdff384f754e854890e311e3280b767f80797291e")
     a3 := common.HexToAddress("0xd345e41ae2cb00311956aa7109fc801ae8c81a52")

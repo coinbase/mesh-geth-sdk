@@ -369,6 +369,7 @@ func (ec *SDKClient) blockHeader(
 	return header, nil
 }
 
+// nolint:staticcheck
 func (ec *SDKClient) BlockAuthor(ctx context.Context, blockIndex int64) (string, error) {
 	return "", errors.New("BlockAuthor not implemented")
 }
@@ -917,6 +918,7 @@ func (ec *SDKClient) GetTransactionReceipt(
 	return nil, errors.New("GetTransactionReceipt not implemented")
 }
 
+// nolint:staticcheck
 func (ec *SDKClient) GetLoadedTransaction(
 	ctx context.Context,
 	request *RosettaTypes.BlockTransactionRequest,
