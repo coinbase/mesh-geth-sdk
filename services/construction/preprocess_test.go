@@ -207,7 +207,7 @@ func TestConstructionPreprocess(t *testing.T) {
 			expectedResponse: nil,
 			expectedError: templateError(
 				AssetTypes.ErrInvalidInput,
-				"unable to find match for operation: at index 1",
+				"at index 1: unable to find match for operation",
 			),
 		},
 		"error: missing currency": {
