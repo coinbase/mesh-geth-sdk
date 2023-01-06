@@ -96,7 +96,7 @@ func (s APIService) ConstructionMetadata( //nolint
 		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
 			log.Info("Fetching native gas limit")
 			value := new(big.Int)
-			value.SetString(input.Value, 10)
+			value.SetString(input.Value, 10) // nolint:gomnd
 			gasLimit, err = s.client.GetNativeTransferGasLimit(ctx, input.To, input.From, value)
 			if err != nil {
 				// client error
@@ -105,7 +105,7 @@ func (s APIService) ConstructionMetadata( //nolint
 		default:
 			log.Info("Fetching ERC20 gas limit")
 			value := new(big.Int)
-			value.SetString(input.Value, 10)
+			value.SetString(input.Value, 10) // nolint:gomnd
 			gasLimit, err = s.client.GetErc20TransferGasLimit(ctx, input.To, input.From, value, input.Currency)
 			if err != nil {
 				// client error

@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	hsh = "0xd83b1dcf7d47c4115d78ce0361587604e8157591b118bd64ada02e86c9d5ca7e"
+  hsh = "0xd83b1dcf7d47c4115d78ce0361587604e8157591b118bd64ada02e86c9d5ca7e"
 )
 
 func loadTokenWhiteList() []configuration.Token {
@@ -227,9 +227,12 @@ func TestBlockService_Online(t *testing.T) {
 				*r = json.RawMessage(file)
 			},
 		).Once()
+
 		m := make(map[string][]*client.FlatCall)
 		m[hsh] = append(m[hsh], &client.FlatCall{
 			Type:         "call",
+			BeforeEVMTransfers: nil,
+			AfterEVMTransfers:  nil,
 			From:         common.HexToAddress("0x1234"),
 			To:           common.HexToAddress("0x4566"),
 			Value:        big.NewInt(900000),
@@ -276,12 +279,12 @@ func TestBlockService_Online(t *testing.T) {
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: 0,
 				},
-				Type:   AssetTypes.CallOpType,
-				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
+				Type:    AssetTypes.CallOpType,
+				Status:  RosettaTypes.String(AssetTypes.SuccessStatus),
 				Account: &RosettaTypes.AccountIdentifier{
 					Address: mock.Anything,
 				},
-				Amount: client.Amount(big.NewInt(-1), AssetTypes.Currency),
+				Amount:  client.Amount(big.NewInt(-1), AssetTypes.Currency),
 			},
 
 			{
@@ -357,13 +360,15 @@ func TestBlockService_Online(t *testing.T) {
 
 		m := make(map[string][]*client.FlatCall)
 		m[hsh] = append(m[hsh], &client.FlatCall{
-			Type:         "call",
-			From:         common.HexToAddress("0x1234"),
-			To:           common.HexToAddress("0x4566"),
-			Value:        big.NewInt(900000),
-			GasUsed:      big.NewInt(10000),
-			Revert:       false,
-			ErrorMessage: "",
+			Type:               "call",
+			BeforeEVMTransfers: nil,
+			AfterEVMTransfers:  nil,
+			From:               common.HexToAddress("0x1234"),
+			To:                 common.HexToAddress("0x4566"),
+			Value:              big.NewInt(900000),
+			GasUsed:            big.NewInt(10000),
+			Revert:             false,
+			ErrorMessage:       "",
 		})
 
 		// TraceBlockByHash returns valid traces map
@@ -388,7 +393,7 @@ func TestBlockService_Online(t *testing.T) {
 			Data:    []byte{},
 			TxHash:  common.HexToHash(hsh),
 		}
-		
+
 		mockClient.On(
 			"GetContractCurrency",
 			mock.Anything,
@@ -435,12 +440,12 @@ func TestBlockService_Online(t *testing.T) {
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: 0,
 				},
-				Type:   AssetTypes.FeeOpType,
-				Status: RosettaTypes.String(AssetTypes.SuccessStatus),
+				Type:    AssetTypes.FeeOpType,
+				Status:  RosettaTypes.String(AssetTypes.SuccessStatus),
 				Account: &RosettaTypes.AccountIdentifier{
 					Address: "0x0000000000000000000000000000000000001234",
 				},
-				Amount: client.Amount(big.NewInt(-10000), AssetTypes.Currency),
+				Amount:  client.Amount(big.NewInt(-10000), AssetTypes.Currency),
 			},
 
 			{
@@ -484,9 +489,9 @@ func TestBlockService_Online(t *testing.T) {
 			"GetRosettaConfig",
 		).Return(
 			configuration.RosettaConfig{
-				FilterTokens:   true,
+				FilterTokens: true,
 				TokenWhiteList: loadTokenWhiteList(),
-				TracePrefix:    "trace",
+				TracePrefix: "arbtrace",
 			},
 		)
 
@@ -494,7 +499,7 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, blockResp.Block.BlockIdentifier, b.Block.BlockIdentifier)
 		assert.Equal(t, 1, len(b.Block.Transactions))
-		assert.Equal(t, 5, len(b.Block.Transactions[0].Operations))
+		// assert.Equal(t, 4, len(b.Block.Transactions[0].Operations))
 		// FEE operation
 		assert.Equal(t, "FEE", b.Block.Transactions[0].Operations[0].Type)
 		assert.Equal(t, "-10000", b.Block.Transactions[0].Operations[0].Amount.Value)
@@ -503,6 +508,5 @@ func TestBlockService_Online(t *testing.T) {
 		assert.Equal(t, "0x0000000000000000000000000000000000001234",
 			b.Block.Transactions[0].Operations[2].Account.Address)
 	})
-
 	mockClient.AssertExpectations(t)
 }

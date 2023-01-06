@@ -31,7 +31,106 @@ const (
 	zeroAddress           = "0x0000000000000000000000000000000000000000000000000000000000000000"
 )
 
-// FeeOps returns the fee operations for a given transaction
+func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs map[string]*RosettaTypes.Operation) (
+	[]*RosettaTypes.Operation, map[string]*RosettaTypes.Operation) {
+	count := startIndex
+	var ops []*RosettaTypes.Operation
+	for i, transfer := range transfers {
+		var address string
+		var key string
+		amount := transfer.Value
+		if amount.Uint64() == 0 {
+			continue
+		}
+		shouldAdd := true
+		if transfer.From == nil {
+			address = transfer.To.String()
+			shouldAdd = false
+			key = address
+		} else if transfer.To == nil {
+			address = transfer.From.String()
+			amount = new(big.Int).Neg(transfer.Value)
+			shouldAdd = false
+			key = address
+		}
+
+		if shouldAdd {
+			address = transfer.From.String()
+			amount = new(big.Int).Neg(transfer.Value)
+			key = transfer.From.String() + transfer.To.String()
+		}
+
+		val, exists := addrs[key]
+		if exists {
+			amt := new(big.Int)
+			amt, ok := amt.SetString(val.Amount.Value, 10)// nolint: gomnd
+			if !ok {
+				log.Println("error consolidating transfer data")
+				return nil, nil
+			}
+			newAmt := amt.Add(amt, amount)
+			addrs[key].Amount.Value = newAmt.String()
+			if shouldAdd {
+				addrs[transfer.To.String()+transfer.From.String()].Amount.Value = new(big.Int).Neg(newAmt).String()
+			}
+			continue
+		}
+
+		singleOp := &RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: int64(count),
+			},
+			Type:   sdkTypes.FeeOpType,
+			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
+			Account: &RosettaTypes.AccountIdentifier{
+				Address: address,
+			},
+			Amount: evmClient.Amount(amount, sdkTypes.Currency),
+		}
+		addrs[key] = singleOp
+		ops = append(ops, singleOp)
+
+		if shouldAdd {
+			doubleOp := &RosettaTypes.Operation{
+				OperationIdentifier: &RosettaTypes.OperationIdentifier{
+					Index: int64(count + 1),
+				},
+				RelatedOperations: []*RosettaTypes.OperationIdentifier{
+					{
+						Index: int64(count),
+					},
+				},
+				Type:   sdkTypes.FeeOpType,
+				Status: RosettaTypes.String(sdkTypes.SuccessStatus),
+				Account: &RosettaTypes.AccountIdentifier{
+					Address: transfer.To.String(),
+				},
+				Amount: evmClient.Amount(transfer.Value, sdkTypes.Currency),
+			}
+			doubleKey := transfer.To.String() + transfer.From.String()
+			addrs[doubleKey] = doubleOp
+			ops = append(ops, doubleOp)
+			count++
+		}
+		if i != 0 {
+			count++
+		}
+	}
+	return ops, addrs
+}
+
+func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaTypes.Operation {
+	var ops []*RosettaTypes.Operation
+	addrMap := make(map[string]*RosettaTypes.Operation)
+	for _, trace := range tx.Trace {
+		beforeOps, addrMap := parseTransferOps(startIndex + len(ops), trace.BeforeEVMTransfers, addrMap)
+		ops = append(ops, beforeOps...)
+		afterOps, _ := parseTransferOps(startIndex + len(ops), trace.AfterEVMTransfers, addrMap)
+		ops = append(ops, afterOps...)
+	}
+	return ops
+}
+
 func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 	var minerEarnedAmount *big.Int
 	if tx.FeeBurned == nil {
@@ -54,12 +153,12 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: 0,
 			},
-			Type:   sdkTypes.FeeOpType,
-			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.FeeOpType,
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 		},
 
 		{
@@ -84,15 +183,9 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 		return ops
 	}
 
-	// in internal is 
-	// burntOp := &RosettaTypes.Operation{
-	// 	OperationIdentifier: &RosettaTypes.OperationIdentifier{
-	// 		Index: 0, // nolint:gomnd
-	// 	},
-	idx := len(ops)
 	burntOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
-			Index: int64(idx), // nolint:gomnd
+			Index: 0, // nolint:gomnd
 		},
 		Type:    sdkTypes.FeeOpType,
 		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
@@ -107,6 +200,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 
 // TraceOps returns all *RosettaTypes.Operation for a given
 // array of flattened traces.
+// nolint:gocognit
 func TraceOps(
 	calls []*evmClient.FlatCall,
 	startIndex int,
@@ -277,7 +371,7 @@ func Erc20Ops(
 	currency *evmClient.ContractCurrency,
 	opsLen int64,
 ) []*RosettaTypes.Operation {
-	var ops []*RosettaTypes.Operation
+	ops := []*RosettaTypes.Operation{}
 
 	contractAddress := transferLog.Address
 	addressFrom := transferLog.Topics[1]

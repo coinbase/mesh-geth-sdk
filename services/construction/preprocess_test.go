@@ -142,7 +142,7 @@ func TestConstructionPreprocess(t *testing.T) {
 					"to":               testingToAddress, // it will be contract address user need to pass in operation
 					"value":            fmt.Sprint(preprocessZeroTransferValue),
 					"contract_address": testingToAddress,
-					"data":             "0x7b3a3c8b00000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000b53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f600000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",
+					"data":             "0x7b3a3c8b00000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000b53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f600000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",// nolint:lll
 					"method_signature": "outboundTransfer(address,address,uint256,bytes)",
 					"method_args": []interface{}{
 						"0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
@@ -207,7 +207,7 @@ func TestConstructionPreprocess(t *testing.T) {
 			expectedResponse: nil,
 			expectedError: templateError(
 				AssetTypes.ErrInvalidInput,
-				"unable to find match for operation: at index 1",
+				"at index 1: unable to find match for operation",
 			),
 		},
 		"error: missing currency": {
