@@ -43,21 +43,6 @@ const (
   hsh = "0xd83b1dcf7d47c4115d78ce0361587604e8157591b118bd64ada02e86c9d5ca7e"
 )
 
-// nolint:unused
-func loadTransfers(transferFile string) []*client.EVMTransfer {
-	content, err := ioutil.ReadFile("testdata/" + transferFile + ".json")
-	if err != nil {
-		log.Fatal("Error when opening file: ", err)
-	}
-
-	var transfers []*client.EVMTransfer
-	err = json.Unmarshal(content, &transfers)
-	if err != nil {
-		log.Fatal("Error during Unmarshal(): ", err)
-	}
-	return transfers
-}
-
 func loadTokenWhiteList() []configuration.Token {
 	content, err := ioutil.ReadFile("testdata/tokenList.json")
 	if err != nil {
