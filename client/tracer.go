@@ -110,11 +110,11 @@ func (t *EVMTransfer) UnmarshalJSON(input []byte) error {
 type Call struct {
 	BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers"`
 	AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers"`
-	Type         string         `json:"type"`
-	From         common.Address `json:"from"`
-	To           common.Address `json:"to"`
-	Value        *big.Int       `json:"value"`
-	GasUsed      *big.Int       `json:"gasUsed"`
+	Type         string         `json:"type.omitempty"`
+	From         common.Address `json:"from.omitempty"`
+	To           common.Address `json:"to.omitempty"`
+	Value        *big.Int       `json:"value.omitempty"`
+	GasUsed      *big.Int       `json:"gasUsed.omitempty"`
 	Revert       bool
 	ErrorMessage string  `json:"error"`
 	Calls        []*Call `json:"calls"`

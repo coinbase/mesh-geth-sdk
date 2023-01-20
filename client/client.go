@@ -537,6 +537,9 @@ func (ec *SDKClient) TraceBlockByHash(
 	}
 	m := make(map[string][]*FlatCall)
 	for i, tx := range calls {
+		if tx.Result == nil || tx.Result.Type == "" {
+			continue
+		}
 		flatCalls := FlattenTraces(tx.Result, []*FlatCall{})
 		// Ethereum native traces are guaranteed to return all transactions
 		txHash := txs[i].TxExtraInfo.TxHash.Hex()
