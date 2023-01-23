@@ -534,15 +534,17 @@ func (ec *SDKClient) TraceBlockByHash(
 		return nil, err
 	}
 	if err := json.Unmarshal(raw, &calls); err != nil {
+		// ignore empty address error
 		if strings.Contains(err.Error(), "hex string has length 0, want 40 for common.Address") {
 			log.Printf("block: %s, %s",blockHash.String(), err.Error() )
-		}else {
+		} else {
 			return nil, err
 		}
 	}
 	m := make(map[string][]*FlatCall)
 	for i, tx := range calls {
-		if tx.Result.Type == "" && tx.Result.From.String() == "0x0000000000000000000000000000000000000000"{
+		// ignore empty tx, an empty address will be transfer to "0x0000000000000000000000000000000000000000"
+		if tx.Result.Type == "" && tx.Result.From.String() == "0x0000000000000000000000000000000000000000" {
 			continue
 		}
 		flatCalls := FlattenTraces(tx.Result, []*FlatCall{})
