@@ -21,3 +21,4 @@ examples/ethereum/.ethereum/
 .github/actions/geth/.ethereum/
 
 
+/.idea/
