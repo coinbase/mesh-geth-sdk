@@ -22,6 +22,7 @@ import (
 	"log"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -533,11 +534,15 @@ func (ec *SDKClient) TraceBlockByHash(
 		return nil, err
 	}
 	if err := json.Unmarshal(raw, &calls); err != nil {
-		return nil, err
+		if strings.Contains(err.Error(), "hex string has length 0, want 40 for common.Address") {
+			log.Printf("block: %s, %s",blockHash.String(), err.Error() )
+		}else {
+			return nil, err
+		}
 	}
 	m := make(map[string][]*FlatCall)
 	for i, tx := range calls {
-		if tx.Result == nil || tx.Result.Type == "" {
+		if tx.Result.Type == "" && tx.Result.From.String() == "0x0000000000000000000000000000000000000000"{
 			continue
 		}
 		flatCalls := FlattenTraces(tx.Result, []*FlatCall{})

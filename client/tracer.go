@@ -108,13 +108,13 @@ func (t *EVMTransfer) UnmarshalJSON(input []byte) error {
 
 // Call is an Ethereum debug trace.
 type Call struct {
-	BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers.omitempty"`
-	AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers.omitempty"`
-	Type         string         `json:"type.omitempty"`
-	From         common.Address `json:"from.omitempty"`
-	To           common.Address `json:"to.omitempty"`
-	Value        *big.Int       `json:"value.omitempty"`
-	GasUsed      *big.Int       `json:"gasUsed.omitempty"`
+	BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers"`
+	AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers"`
+	Type         string         `json:"type"`
+	From         common.Address `json:"from"`
+	To           common.Address `json:"to"`
+	Value        *big.Int       `json:"value"`
+	GasUsed      *big.Int       `json:"gasUsed"`
 	Revert       bool
 	ErrorMessage string  `json:"error"`
 	Calls        []*Call `json:"calls"`
