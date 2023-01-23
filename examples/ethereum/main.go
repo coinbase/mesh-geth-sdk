@@ -35,7 +35,7 @@ func main() {
 	errors := sdkTypes.Errors
 
 	// Create a new ethereum client by leveraging SDK functionalities
-	client, err := client.NewEthereumClient()
+	client, err := client.NewEthereumClient(cfg)
 	if err != nil {
 		log.Fatalln("%w: cannot initialize client", err)
 	}

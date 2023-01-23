@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/coinbase/rosetta-geth-sdk/services"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 
@@ -28,7 +29,6 @@ import (
 	"math/big"
 
 	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
-	"github.com/coinbase/rosetta-geth-sdk/examples/ethereum/config"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -161,12 +161,7 @@ func (c *EthereumClient) GetNativeTransferGasLimit(ctx context.Context, toAddres
 
 // NewEthereumClient creates a eth client that can interact with
 // Ethereum network.
-func NewEthereumClient() (*EthereumClient, error) {
-	cfg, err := config.LoadConfiguration()
-	if err != nil {
-		log.Fatalln("%w: unable to load configuration", err)
-	}
-
+func NewEthereumClient(cfg *configuration.Configuration) (*EthereumClient, error) {
 	// Use SDK to quickly create a client that support JSON RPC calls
 	evmClient, err := evmClient.NewClient(cfg, nil)
 
