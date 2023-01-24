@@ -152,7 +152,7 @@ func (t *Call) UnmarshalJSON(input []byte) error {
 		BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers"`
 		AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers"`
 		Type         string         `json:"type"`
-		From         common.Address `json:"from"`
+		From         string         `json:"from"`
 		To           common.Address `json:"to"`
 		Value        *hexutil.Big   `json:"value"`
 		GasUsed      *hexutil.Big   `json:"gasUsed"`
@@ -168,7 +168,7 @@ func (t *Call) UnmarshalJSON(input []byte) error {
 	t.BeforeEVMTransfers = dec.BeforeEVMTransfers
 	t.AfterEVMTransfers = dec.AfterEVMTransfers
 	t.Type = dec.Type
-	t.From = dec.From
+	t.From = common.HexToAddress(dec.From)
 	t.To = dec.To
 	if dec.Value != nil {
 		t.Value = (*big.Int)(dec.Value)
