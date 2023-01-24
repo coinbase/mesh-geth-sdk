@@ -35,7 +35,7 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs 
 	[]*RosettaTypes.Operation, map[string]*RosettaTypes.Operation) {
 	count := startIndex
 	var ops []*RosettaTypes.Operation
-	for i, transfer := range transfers {
+	for _, transfer := range transfers {
 		var address string
 		var key string
 		amount := transfer.Value
@@ -63,7 +63,7 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs 
 		val, exists := addrs[key]
 		if exists {
 			amt := new(big.Int)
-			amt, ok := amt.SetString(val.Amount.Value, 10)// nolint: gomnd
+			amt, ok := amt.SetString(val.Amount.Value, 10)// nolint:gomnd
 			if !ok {
 				log.Println("error consolidating transfer data")
 				return nil, nil
@@ -112,9 +112,7 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs 
 			ops = append(ops, doubleOp)
 			count++
 		}
-		if i != 0 {
-			count++
-		}
+		count++
 	}
 	return ops, addrs
 }
