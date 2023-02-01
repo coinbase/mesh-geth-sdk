@@ -47,6 +47,21 @@ var (
 	redeemMethodSignature    = "redeem(bytes32)"
 	redeemMethodArgs         = []string{"0x2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"}
 	expectedRedeemMethodArgs = []interface{}{"0x2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"}
+	// bridge withdraw params
+	bridgeWithdrawMethodSig  = "withdraw(address,uint256,uint32,bytes)"
+	bridgeWithdrawMethodArgs = []string{
+		"0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+		"23535",
+		"0",
+		"0x",
+	}
+	bridgeWithdrawRedeemData         = "0x32b7006d000000000000000000000000deaddeaddeaddeaddeaddeaddeaddeaddead00000000000000000000000000000000000000000000000000000000000000005bef000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000"
+	expectedBridgeWithdrawMethodArgs = []interface{}{
+		"0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+		"23535",
+		"0",
+		"0x",
+	}
 )
 
 func TestConstructionPreprocess(t *testing.T) {
@@ -125,6 +140,28 @@ func TestConstructionPreprocess(t *testing.T) {
 				},
 			},
 		},
+		"happy path: Bridge Withdraw": {
+			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
+			metadata: map[string]interface{}{
+				"method_signature": bridgeWithdrawMethodSig,
+				"method_args":      bridgeWithdrawMethodArgs,
+			},
+			expectedResponse: &types.ConstructionPreprocessResponse{
+				Options: map[string]interface{}{
+					"from":             testingFromAddress,
+					"to":               testingToAddress, // it will be contract address user need to pass in operation
+					"value":            fmt.Sprint(preprocessZeroTransferValue),
+					"contract_address": testingToAddress,
+					"data":             bridgeWithdrawRedeemData,
+					"method_signature": bridgeWithdrawMethodSig,
+					"method_args":      expectedBridgeWithdrawMethodArgs,
+					"currency": map[string]interface{}{
+						"decimals": float64(18),
+						"symbol":   "ETH",
+					},
+				},
+			},
+		},
 		"happy path: Outbound transfer call with zero transfer value": {
 			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
 			metadata: map[string]interface{}{
@@ -142,7 +179,7 @@ func TestConstructionPreprocess(t *testing.T) {
 					"to":               testingToAddress, // it will be contract address user need to pass in operation
 					"value":            fmt.Sprint(preprocessZeroTransferValue),
 					"contract_address": testingToAddress,
-					"data":             "0x7b3a3c8b00000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000b53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f600000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000",// nolint:lll
+					"data":             "0x7b3a3c8b00000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000b53c4cda2de7becd6ad0fe3f0ded29fc6b0aa6f600000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000", // nolint:lll
 					"method_signature": "outboundTransfer(address,address,uint256,bytes)",
 					"method_args": []interface{}{
 						"0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
