@@ -226,6 +226,20 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 			{
 				argData = common.HexToAddress(methodArgs[i])
 			}
+		case v == "uint32":
+			{
+				u64, err := strconv.ParseUint(methodArgs[i], 10, 32)
+				if err != nil {
+					log.Fatal(err)
+				}
+				argData = uint32(u64)
+			}
+		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
+			{
+				value := new(big.Int)
+				value.SetString(methodArgs[i], base)
+				argData = value
+			}
 		case v == "bytes32":
 			{
 				value := [32]byte{}
@@ -234,12 +248,6 @@ func constructContractCallData(methodSig string, methodArgs []string) ([]byte, e
 					log.Fatal(err)
 				}
 				copy(value[:], bytes)
-				argData = value
-			}
-		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
-			{
-				value := new(big.Int)
-				value.SetString(methodArgs[i], base)
 				argData = value
 			}
 		case strings.HasPrefix(v, "bytes"):
