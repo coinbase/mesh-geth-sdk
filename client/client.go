@@ -54,6 +54,8 @@ type SDKClient struct {
 	traceSemaphore *semaphore.Weighted
 
 	skipAdminCalls bool
+
+	maxBatchSize int
 }
 
 // NewClient creates a client that connects to the network.
@@ -85,7 +87,33 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 		RPCClient:      c,
 		EthClient:      ec,
 		traceSemaphore: semaphore.NewWeighted(maxTraceConcurrency),
+		maxBatchSize:   cfg.MaxBatchSize,
 	}, nil
+}
+
+// MaxBatchSize returns the maximum number of requests to batch together.
+func (ec *SDKClient) MaxBatchSize() int {
+	return ec.maxBatchSize
+}
+
+// BatchCallContext executes a batch of RPC calls.
+// Overrides the [RPCClient] BatchCallContext method to limit the number of batched requests.
+func (ec *SDKClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem) error {
+	if ec.maxBatchSize == 0 {
+		return ec.RPCClient.BatchCallContext(ctx, b)
+	}
+	for i := 0; i < len(b); i += ec.maxBatchSize {
+		if i+ec.maxBatchSize < len(b) {
+			if err := ec.RPCClient.BatchCallContext(ctx, b[i:i+ec.maxBatchSize]); err != nil {
+				return err
+			}
+		} else {
+			if err := ec.RPCClient.BatchCallContext(ctx, b[i:]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (ec *SDKClient) ParseOps(
@@ -575,7 +603,7 @@ func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh strin
 	map[string][]*FlatCall, error,
 ) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix + "_replayBlockTransactions", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayBlockTransactions", hsh, []string{"trace"})
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +651,7 @@ func (ec *SDKClient) TraceReplayTransaction(
 	hsh string,
 ) (json.RawMessage, []*FlatCall, error) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix + "_replayTransaction", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", hsh, []string{"trace"})
 	if err != nil {
 		log.Fatalln(err)
 	}

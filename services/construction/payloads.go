@@ -43,7 +43,6 @@ import (
 // which is sufficient for construction. For this reason, parsing the corresponding
 // Transaction in the Data API (when it lands on chain) will contain a superset of
 // whatever operations were provided during construction.
-//
 func (s *APIService) ConstructionPayloads(
 	ctx context.Context,
 	req *types.ConstructionPayloadsRequest) (*types.ConstructionPayloadsResponse, *types.Error) {

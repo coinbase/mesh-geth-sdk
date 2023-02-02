@@ -63,7 +63,7 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs 
 		val, exists := addrs[key]
 		if exists {
 			amt := new(big.Int)
-			amt, ok := amt.SetString(val.Amount.Value, 10)// nolint:gomnd
+			amt, ok := amt.SetString(val.Amount.Value, 10) // nolint:gomnd
 			if !ok {
 				log.Println("error consolidating transfer data")
 				return nil, nil
@@ -121,9 +121,9 @@ func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaType
 	var ops []*RosettaTypes.Operation
 	addrMap := make(map[string]*RosettaTypes.Operation)
 	for _, trace := range tx.Trace {
-		beforeOps, addrMap := parseTransferOps(startIndex + len(ops), trace.BeforeEVMTransfers, addrMap)
+		beforeOps, addrMap := parseTransferOps(startIndex+len(ops), trace.BeforeEVMTransfers, addrMap)
 		ops = append(ops, beforeOps...)
-		afterOps, _ := parseTransferOps(startIndex + len(ops), trace.AfterEVMTransfers, addrMap)
+		afterOps, _ := parseTransferOps(startIndex+len(ops), trace.AfterEVMTransfers, addrMap)
 		ops = append(ops, afterOps...)
 	}
 	return ops
@@ -151,12 +151,12 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: 0,
 			},
-			Type:    sdkTypes.FeeOpType,
-			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:   sdkTypes.FeeOpType,
+			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 		},
 
 		{

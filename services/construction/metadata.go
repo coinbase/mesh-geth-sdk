@@ -27,13 +27,13 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 )
+
 // ConstructionMetadata implements /construction/metadata endpoint.
 //
 // Get any information required to construct a transaction for a specific network.
 // Metadata returned here could be a recent hash to use, an account sequence number,
 // or even arbitrary chain state. The request used when calling this endpoint
 // is created by calling /construction/preprocess in an offline environment.
-//
 func (s APIService) ConstructionMetadata( //nolint
 	ctx context.Context,
 	req *types.ConstructionMetadataRequest,

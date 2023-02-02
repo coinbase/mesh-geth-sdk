@@ -15,12 +15,13 @@
 package services
 
 import (
-    evmClient "github.com/coinbase/rosetta-geth-sdk/client"
-    "github.com/ethereum/go-ethereum/common"
-    "github.com/stretchr/testify/assert"
-    "math/big"
-    "testing"
-    )
+	"math/big"
+	"testing"
+
+	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestParseTransferOps(t *testing.T) {
 	a1 := common.HexToAddress("0xdd4b76b0316dcafa98862a12a92791ac9426a0e2")
@@ -31,19 +32,19 @@ func TestParseTransferOps(t *testing.T) {
 	m := &evmClient.FlatCall{
 		Type: "call",
 		BeforeEVMTransfers: []*evmClient.EVMTransfer{
-			&evmClient.EVMTransfer{
+			{
 				From:    &a1,
 				Purpose: "escrow",
 				To:      &a2,
 				Value:   big.NewInt(0),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    nil,
 				Purpose: "prepaid",
 				To:      &a2,
 				Value:   big.NewInt(20000000000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a2,
 				Purpose: "feePayment",
 				To:      nil,
@@ -51,43 +52,43 @@ func TestParseTransferOps(t *testing.T) {
 			},
 		},
 		AfterEVMTransfers: []*evmClient.EVMTransfer{
-			&evmClient.EVMTransfer{
+			{
 				From:    nil,
 				Purpose: "gasRefund",
 				To:      &a2,
 				Value:   big.NewInt(11379900000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a2,
 				Purpose: "undoRefund",
 				To:      nil,
 				Value:   big.NewInt(11379900000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a3,
 				Purpose: "refund",
 				To:      &a4,
 				Value:   big.NewInt(41880898787024),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a3,
 				Purpose: "refund",
 				To:      &a2,
 				Value:   big.NewInt(0),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a3,
 				Purpose: "refund",
 				To:      &a4,
 				Value:   big.NewInt(11379900000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a3,
 				Purpose: "refund",
 				To:      &a2,
 				Value:   big.NewInt(0),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a1,
 				Purpose: "escrow",
 				To:      &a4,
@@ -132,19 +133,19 @@ func TestParseTransferOpsFirstIndexRelatedOps(t *testing.T) {
 	m := &evmClient.FlatCall{
 		Type: "call",
 		BeforeEVMTransfers: []*evmClient.EVMTransfer{
-			&evmClient.EVMTransfer{
+			{
 				From:    &a3,
 				Purpose: "escrow",
 				To:      &a1,
 				Value:   big.NewInt(560000000000000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    nil,
 				Purpose: "prepaid",
 				To:      &a1,
 				Value:   big.NewInt(15621500000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a1,
 				Purpose: "feePayment",
 				To:      nil,
@@ -152,43 +153,43 @@ func TestParseTransferOpsFirstIndexRelatedOps(t *testing.T) {
 			},
 		},
 		AfterEVMTransfers: []*evmClient.EVMTransfer{
-			&evmClient.EVMTransfer{
+			{
 				From:    nil,
 				Purpose: "gasRefund",
 				To:      &a1,
 				Value:   big.NewInt(7441300000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a1,
 				Purpose: "undoRefund",
 				To:      nil,
 				Value:   big.NewInt(7441300000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a2,
 				Purpose: "refund",
 				To:      &a4,
 				Value:   big.NewInt(43441788314320),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a2,
 				Purpose: "refund",
 				To:      &a1,
 				Value:   big.NewInt(0),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a2,
 				Purpose: "refund",
 				To:      &a4,
-				Value:   big.NewInt( 7441300000000),
+				Value:   big.NewInt(7441300000000),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a2,
 				Purpose: "refund",
 				To:      &a1,
 				Value:   big.NewInt(0),
 			},
-			&evmClient.EVMTransfer{
+			{
 				From:    &a3,
 				Purpose: "escrow",
 				To:      &a5,

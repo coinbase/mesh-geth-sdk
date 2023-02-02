@@ -32,7 +32,6 @@ import (
 // Combine creates a network-specific Transaction from an unsigned Transaction
 // and an array of provided signatures. The signed Transaction returned from
 // this method will be sent to the /construction/submit endpoint by the caller.
-//
 func (s *APIService) ConstructionCombine(
 	ctx context.Context,
 	req *types.ConstructionCombineRequest,

@@ -211,7 +211,6 @@ func (s *APIService) CreateOperationDescriptionERC20(
 // ConstructionHash implements /construction/hash endpoint.
 //
 // TransactionHash returns the network-specific Transaction hash for a signed Transaction.
-//
 func (s *APIService) ConstructionHash(
 	ctx context.Context,
 	req *types.ConstructionHashRequest,

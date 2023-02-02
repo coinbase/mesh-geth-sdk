@@ -33,7 +33,7 @@ import (
 	"github.com/neilotoole/errgroup"
 )
 
-const(
+const (
 	ReadHeaderTimeout = time.Minute
 )
 
@@ -63,8 +63,8 @@ func BootStrap(
 	loggedRouter := server.LoggerMiddleware(router)
 	corsRouter := server.CorsMiddleware(loggedRouter)
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: corsRouter,
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           corsRouter,
 		ReadHeaderTimeout: ReadHeaderTimeout,
 	}
 

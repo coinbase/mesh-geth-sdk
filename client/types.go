@@ -88,10 +88,10 @@ type ParseMetadata struct {
 }
 
 type Transaction struct {
-	From     string                 `json:"from"`
-	To       string                 `json:"to"`
-	Value    *big.Int               `json:"value"`
-	Data     []byte                 `json:"data"`
+	From  string   `json:"from"`
+	To    string   `json:"to"`
+	Value *big.Int `json:"value"`
+	Data  []byte   `json:"data"`
 	// ContractData     string          `json:"contractData"`
 	Nonce    uint64                 `json:"nonce"`
 	GasPrice *big.Int               `json:"gas_price"`
@@ -134,7 +134,7 @@ type RPCTransaction struct {
 }
 
 type RosettaTxReceipt struct {
-	Type           uint8  `json:"type,omitempty"`
+	Type           uint8 `json:"type,omitempty"`
 	GasPrice       *big.Int
 	GasUsed        *big.Int
 	TransactionFee *big.Int
@@ -210,4 +210,3 @@ type GetTransactionReceiptResult struct {
 	Type             string            `json:"type,omitempty"`
 	PostState        []byte            `json:"root"`
 }
-

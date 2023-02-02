@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"fmt"
+
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/coinbase/rosetta-geth-sdk/services"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
@@ -74,9 +75,20 @@ func (c *EthereumClient) GetBlockReceipts(
 			Result: &ethReceipts[i],
 		}
 	}
-	if err := c.BatchCallContext(ctx, reqs); err != nil {
-		return nil, err
+
+	// Set a batch size limit to avoid hitting the max request size
+	for i := 0; i < len(txs); i += 25 {
+		if i+25 < len(txs) {
+			if err := c.BatchCallContext(ctx, reqs[i:i+25]); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := c.BatchCallContext(ctx, reqs[i:]); err != nil {
+				return nil, err
+			}
+		}
 	}
+
 	for i := range reqs {
 		if reqs[i].Error != nil {
 			return nil, reqs[i].Error

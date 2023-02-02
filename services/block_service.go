@@ -330,7 +330,6 @@ func (s *BlockAPIService) Block(
 		formtErr := fmt.Errorf("%w: could not get receipts for %x", err, rpcBlock.Hash[:])
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, formtErr)
 	}
-	// var receipts *[]client.RosettaTxReceipt = nil
 
 	for i, tx := range loadedTxns {
 		if receipts != nil {

@@ -53,6 +53,9 @@ type Configuration struct {
 
 	// RosettaCfg defines the config that used to implement Rosetta APIs
 	RosettaCfg RosettaConfig
+
+	// MaxBatchSize is the maximum amount of batch requests we can handle
+	MaxBatchSize int
 }
 
 type RosettaConfig struct {

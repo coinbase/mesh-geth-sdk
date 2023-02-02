@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"strconv"
 	"testing"
 
@@ -362,6 +363,127 @@ func TestBalance(t *testing.T) {
 			"nonce": int64(0),
 		},
 	}, resp)
+	assert.NoError(t, err)
+
+	mockJSONRPC.AssertExpectations(t)
+}
+
+// TestBatchCallContext tests the BatchCallContext method for the SDKClient override.
+func TestBatchCallContext(t *testing.T) {
+	ctx := context.Background()
+
+	// Construct the mock clients
+	mockJSONRPC := &mocks.JSONRPC{}
+	rpcClient := &RPCClient{
+		JSONRPC: mockJSONRPC,
+	}
+	sdkClient := &SDKClient{
+		RPCClient:    rpcClient,
+		maxBatchSize: 1,
+	}
+
+	account := "0x97158A00a4D227Ec7fe3234B52f21e5608FeE3d1"
+	blockNum := fmt.Sprintf("0x%s", strconv.FormatInt(10992, 16))
+
+	elements := []rpc.BatchElem{
+		{
+			Method: "eth_getBalance",
+			Args: []interface{}{
+				account,
+				blockNum,
+			},
+			Result: new(big.Int),
+		},
+		{
+			Method: "eth_getBalance",
+			Args: []interface{}{
+				account,
+				blockNum,
+			},
+			Result: new(big.Int),
+		},
+	}
+
+	balanceA := hexutil.MustDecodeBig("0x2324c0d180077fe7000")
+	balanceB := hexutil.MustDecodeBig("0x2324c0d180077fe7001")
+	mockJSONRPC.On("BatchCallContext", ctx, []rpc.BatchElem{elements[0]}).Return(nil).Run(
+		func(args mock.Arguments) {
+			r := args.Get(1).([]rpc.BatchElem)
+			*(r[0].Result.(*big.Int)) = *balanceA
+		},
+	)
+	mockJSONRPC.On("BatchCallContext", ctx, []rpc.BatchElem{elements[1]}).Return(nil).Run(
+		func(args mock.Arguments) {
+			r := args.Get(1).([]rpc.BatchElem)
+			*(r[0].Result.(*big.Int)) = *balanceB
+		},
+	)
+
+	// Execute two getBalance calls in a batch
+	err := sdkClient.BatchCallContext(
+		ctx,
+		elements,
+	)
+	assert.Equal(t, balanceA, elements[0].Result)
+	assert.Equal(t, balanceB, elements[1].Result)
+	assert.NoError(t, err)
+
+	mockJSONRPC.AssertExpectations(t)
+}
+
+// TestBatchCallContextNoLimit tests the BatchCallContext method for the SDKClient override.
+// Tests without setting a maxBatchSize.
+func TestBatchCallContextNoLimit(t *testing.T) {
+	ctx := context.Background()
+
+	// Construct the mock clients
+	mockJSONRPC := &mocks.JSONRPC{}
+	rpcClient := &RPCClient{
+		JSONRPC: mockJSONRPC,
+	}
+	sdkClient := &SDKClient{
+		RPCClient: rpcClient,
+	}
+
+	account := "0x97158A00a4D227Ec7fe3234B52f21e5608FeE3d1"
+	blockNum := fmt.Sprintf("0x%s", strconv.FormatInt(10992, 16))
+
+	elements := []rpc.BatchElem{
+		{
+			Method: "eth_getBalance",
+			Args: []interface{}{
+				account,
+				blockNum,
+			},
+			Result: new(big.Int),
+		},
+		{
+			Method: "eth_getBalance",
+			Args: []interface{}{
+				account,
+				blockNum,
+			},
+			Result: new(big.Int),
+		},
+	}
+
+	balanceA := hexutil.MustDecodeBig("0x2324c0d180077fe7000")
+	balanceB := hexutil.MustDecodeBig("0x2324c0d180077fe7001")
+	mockJSONRPC.On("BatchCallContext", ctx, elements).Return(nil).Run(
+		func(args mock.Arguments) {
+			r := args.Get(1).([]rpc.BatchElem)
+			*(r[0].Result.(*big.Int)) = *balanceA
+			*(r[1].Result.(*big.Int)) = *balanceB
+		},
+	)
+
+	// Execute two getBalance calls in a batch
+	err := sdkClient.BatchCallContext(
+		ctx,
+		elements,
+	)
+	assert.Equal(t, balanceA, elements[0].Result)
+	assert.Equal(t, balanceB, elements[1].Result)
 	assert.NoError(t, err)
 
 	mockJSONRPC.AssertExpectations(t)
