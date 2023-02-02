@@ -47,6 +47,21 @@ var (
 	redeemMethodSignature    = "redeem(bytes32)"
 	redeemMethodArgs         = []string{"0x2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"}
 	expectedRedeemMethodArgs = []interface{}{"0x2b65269ff5a2a05ba8d589d6fb068d095c50d296c0abb17bd3e98430d8d89a36"}
+	// bridge withdraw params
+	bridgeWithdrawMethodSig  = "withdraw(address,uint256,uint32,bytes)"
+	bridgeWithdrawMethodArgs = []string{
+		"0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+		"23535",
+		"0",
+		"0x",
+	}
+	bridgeWithdrawRedeemData         = "0x32b7006d000000000000000000000000deaddeaddeaddeaddeaddeaddeaddeaddead00000000000000000000000000000000000000000000000000000000000000005bef000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000"
+	expectedBridgeWithdrawMethodArgs = []interface{}{
+		"0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+		"23535",
+		"0",
+		"0x",
+	}
 )
 
 func TestConstructionPreprocess(t *testing.T) {
@@ -118,6 +133,28 @@ func TestConstructionPreprocess(t *testing.T) {
 					"data":             preprocessRedeemData,
 					"method_signature": redeemMethodSignature,
 					"method_args":      expectedRedeemMethodArgs,
+					"currency": map[string]interface{}{
+						"decimals": float64(18),
+						"symbol":   "ETH",
+					},
+				},
+			},
+		},
+		"happy path: Bridge Withdraw": {
+			operations: templateOperations(preprocessZeroTransferValue, ethereumCurrencyConfig, "CALL"),
+			metadata: map[string]interface{}{
+				"method_signature": bridgeWithdrawMethodSig,
+				"method_args":      bridgeWithdrawMethodArgs,
+			},
+			expectedResponse: &types.ConstructionPreprocessResponse{
+				Options: map[string]interface{}{
+					"from":             testingFromAddress,
+					"to":               testingToAddress, // it will be contract address user need to pass in operation
+					"value":            fmt.Sprint(preprocessZeroTransferValue),
+					"contract_address": testingToAddress,
+					"data":             bridgeWithdrawRedeemData,
+					"method_signature": bridgeWithdrawMethodSig,
+					"method_args":      expectedBridgeWithdrawMethodArgs,
 					"currency": map[string]interface{}{
 						"decimals": float64(18),
 						"symbol":   "ETH",
