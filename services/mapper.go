@@ -15,13 +15,14 @@
 package services
 
 import (
+	"strings"
+
 	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"log"
 	"math/big"
-	"strings"
 
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 )
@@ -63,7 +64,7 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs 
 		val, exists := addrs[key]
 		if exists {
 			amt := new(big.Int)
-			amt, ok := amt.SetString(val.Amount.Value, 10)// nolint:gomnd
+			amt, ok := amt.SetString(val.Amount.Value, 10) // nolint:gomnd
 			if !ok {
 				log.Println("error consolidating transfer data")
 				return nil, nil
@@ -121,9 +122,9 @@ func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaType
 	var ops []*RosettaTypes.Operation
 	addrMap := make(map[string]*RosettaTypes.Operation)
 	for _, trace := range tx.Trace {
-		beforeOps, addrMap := parseTransferOps(startIndex + len(ops), trace.BeforeEVMTransfers, addrMap)
+		beforeOps, addrMap := parseTransferOps(startIndex+len(ops), trace.BeforeEVMTransfers, addrMap)
 		ops = append(ops, beforeOps...)
-		afterOps, _ := parseTransferOps(startIndex + len(ops), trace.AfterEVMTransfers, addrMap)
+		afterOps, _ := parseTransferOps(startIndex+len(ops), trace.AfterEVMTransfers, addrMap)
 		ops = append(ops, afterOps...)
 	}
 	return ops
@@ -151,12 +152,12 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: 0,
 			},
-			Type:    sdkTypes.FeeOpType,
-			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:   sdkTypes.FeeOpType,
+			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 		},
 
 		{
@@ -196,9 +197,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 	return ops
 }
 
-// TraceOps returns all *RosettaTypes.Operation for a given
-// array of flattened traces.
-// nolint:gocognit
+// TraceOps returns all *RosettaTypes.Operation for a given array of flattened traces.
 func TraceOps(
 	calls []*evmClient.FlatCall,
 	startIndex int,
@@ -208,140 +207,92 @@ func TraceOps(
 		return ops
 	}
 
-	destroyedAccounts := map[string]*big.Int{}
-	for _, trace := range calls {
-		// Handle partial transaction success
+	destroyedAccountBalance := make(map[string]*big.Int)
+	for _, call := range calls {
+		opType := strings.ToUpper(call.Type)
+		from := evmClient.MustChecksum(call.From.String())
+		to := evmClient.MustChecksum(call.To.String())
+		value := call.Value
 		metadata := map[string]interface{}{}
+
+		// Handle the case where not all operation statuses are successful
 		opStatus := sdkTypes.SuccessStatus
-		if trace.Revert {
+		if call.Revert {
 			opStatus = sdkTypes.FailureStatus
-			metadata["error"] = trace.ErrorMessage
+			metadata["error"] = call.ErrorMessage
 		}
 
-		var zeroValue bool
-		if trace.Value.Sign() == 0 {
-			zeroValue = true
+		fromOp := &RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: int64(len(ops) + startIndex),
+			},
+			Type:   opType,
+			Status: RosettaTypes.String(opStatus),
+			Account: &RosettaTypes.AccountIdentifier{
+				Address: from,
+			},
+			Amount: &RosettaTypes.Amount{
+				Value:    new(big.Int).Neg(value).String(),
+				Currency: sdkTypes.Currency,
+			},
+			Metadata: metadata,
 		}
-
-		// Skip all 0 value CallType operations (TODO: make optional to include)
-		//
-		// We can't continue here because we may need to adjust our destroyed
-		// accounts map if a CallTYpe operation resurrects an account.
-		shouldAdd := true
-		traceType := strings.ToUpper(trace.Type)
-		if zeroValue && sdkTypes.CallType(trace.Type) {
-			shouldAdd = false
+		if _, ok := destroyedAccountBalance[from]; ok && opStatus == sdkTypes.SuccessStatus {
+			destroyedAccountBalance[from] = new(big.Int).Sub(destroyedAccountBalance[from], value)
 		}
+		ops = append(ops, fromOp)
 
-		// Checksum addresses
-		from := evmClient.MustChecksum(trace.From.String())
-		to := evmClient.MustChecksum(trace.To.String())
+		// Add to the destroyed account balance if SELFDESTRUCT, and overwrite existing balance.
+		if opType == sdkTypes.SelfDestructOpType {
+			destroyedAccountBalance[from] = new(big.Int)
 
-		if shouldAdd {
-			fromOp := &RosettaTypes.Operation{
-				OperationIdentifier: &RosettaTypes.OperationIdentifier{
-					Index: int64(len(ops) + startIndex),
-				},
-				Type:   traceType,
-				Status: RosettaTypes.String(opStatus),
-				Account: &RosettaTypes.AccountIdentifier{
-					Address: from,
-				},
-				Amount: &RosettaTypes.Amount{
-					Value:    new(big.Int).Neg(trace.Value).String(),
-					Currency: sdkTypes.Currency,
-				},
-				Metadata: metadata,
-			}
-			if zeroValue {
-				fromOp.Amount = nil
-			} else {
-				_, destroyed := destroyedAccounts[from]
-				if destroyed && opStatus == sdkTypes.SuccessStatus {
-					destroyedAccounts[from] = new(big.Int).Sub(destroyedAccounts[from], trace.Value)
-				}
-			}
-
-			ops = append(ops, fromOp)
-		}
-
-		// Add to destroyed accounts if SELFDESTRUCT
-		// and overwrite existing balance.
-		if traceType == sdkTypes.SelfDestructOpType {
-			destroyedAccounts[from] = new(big.Int)
-
-			// If destination of of SELFDESTRUCT is self,
-			// we should skip. In the EVM, the balance is reset
-			// after the balance is increased on the destination
-			// so this is a no-op.
+			// If destination of of SELFDESTRUCT is self, we should skip.
+			// In the EVM, the balance is reset after the balance is increased on the destination, so this is a no-op.
 			if from == to {
 				continue
 			}
 		}
 
-		// Skip empty to addresses (this may not
-		// actually occur but leaving it as a
-		// sanity check)
-		if len(trace.To.String()) == 0 {
-			continue
+		// If the account is resurrected, we remove it from the destroyed account balance map.
+		if sdkTypes.CreateType(opType) {
+			delete(destroyedAccountBalance, to)
 		}
 
-		// If the account is resurrected, we remove it from
-		// the destroyed accounts map.
-		if sdkTypes.CreateType(traceType) {
-			delete(destroyedAccounts, to)
+		lastOpIndex := ops[len(ops)-1].OperationIdentifier.Index
+		toOp := &RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: lastOpIndex + 1,
+			},
+			RelatedOperations: []*RosettaTypes.OperationIdentifier{
+				{
+					Index: lastOpIndex,
+				},
+			},
+			Type:   opType,
+			Status: RosettaTypes.String(opStatus),
+			Account: &RosettaTypes.AccountIdentifier{
+				Address: to,
+			},
+			Amount: &RosettaTypes.Amount{
+				Value:    new(big.Int).Abs(value).String(),
+				Currency: sdkTypes.Currency,
+			},
+			Metadata: metadata,
 		}
-
-		if shouldAdd {
-			lastOpIndex := ops[len(ops)-1].OperationIdentifier.Index
-			toOp := &RosettaTypes.Operation{
-				OperationIdentifier: &RosettaTypes.OperationIdentifier{
-					Index: lastOpIndex + 1,
-				},
-				RelatedOperations: []*RosettaTypes.OperationIdentifier{
-					{
-						Index: lastOpIndex,
-					},
-				},
-				Type:   traceType,
-				Status: RosettaTypes.String(opStatus),
-				Account: &RosettaTypes.AccountIdentifier{
-					Address: to,
-				},
-				Amount: &RosettaTypes.Amount{
-					Value:    trace.Value.String(),
-					Currency: sdkTypes.Currency,
-				},
-				Metadata: metadata,
-			}
-
-			if zeroValue {
-				toOp.Amount = nil
-			} else {
-				_, destroyed := destroyedAccounts[to]
-				if destroyed && opStatus == sdkTypes.SuccessStatus {
-					destroyedAccounts[to] = new(big.Int).Add(destroyedAccounts[to], trace.Value)
-				}
-			}
-
-			ops = append(ops, toOp)
+		if _, ok := destroyedAccountBalance[to]; ok && opStatus == sdkTypes.SuccessStatus {
+			destroyedAccountBalance[to] = new(big.Int).Add(destroyedAccountBalance[to], value)
 		}
+		ops = append(ops, toOp)
 	}
 
-	// Zero-out all destroyed accounts that are removed
-	// during transaction finalization.
-	for acct, val := range destroyedAccounts {
-		_, ok := evmClient.ChecksumAddress(acct)
-		if !ok {
+	// Zero-out all destroyed accounts that are removed during transaction finalization.
+	for acct, balance := range destroyedAccountBalance {
+		if _, ok := evmClient.ChecksumAddress(acct); !ok || balance.Sign() == 0 {
 			continue
 		}
 
-		if val.Sign() == 0 {
-			continue
-		}
-
-		if val.Sign() < 0 {
-			log.Fatalf("negative balance for suicided account %s: %s\n", acct, val.String())
+		if balance.Sign() < 0 {
+			log.Fatalf("negative balance for suicided account %s: %s\n", acct, balance.String())
 		}
 
 		ops = append(ops, &RosettaTypes.Operation{
@@ -354,7 +305,7 @@ func TraceOps(
 				Address: acct,
 			},
 			Amount: &RosettaTypes.Amount{
-				Value:    new(big.Int).Neg(val).String(),
+				Value:    new(big.Int).Neg(balance).String(),
 				Currency: sdkTypes.Currency,
 			},
 		})
