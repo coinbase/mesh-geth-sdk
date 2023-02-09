@@ -125,9 +125,6 @@ func decodeHexData(data string) (*big.Int, error) {
 	const base = 16
 	decoded, ok := new(big.Int).SetString(data[2:], base)
 	if !ok {
-		if(data == "0x") {
-			return 0
-		}
 		return nil, fmt.Errorf("could not extract data from %s", data)
 	}
 	return decoded, nil
