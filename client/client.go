@@ -125,6 +125,9 @@ func decodeHexData(data string) (*big.Int, error) {
 	const base = 16
 	decoded, ok := new(big.Int).SetString(data[2:], base)
 	if !ok {
+		if(data == "0x") {
+			return 0
+		}
 		return nil, fmt.Errorf("could not extract data from %s", data)
 	}
 	return decoded, nil
@@ -255,7 +258,13 @@ func (ec *SDKClient) Balance(
 		}
 		balance, err := decodeHexData(resp)
 		if err != nil {
-			return nil, err
+			if resp == "0x" {
+				log.Printf("eth_call return 0x at block %d, for account %s, with token symbol: %s and contract address: %s", *block.Index, account.Address, currency.Symbol, value.(string))
+				balance = big.NewInt(0)
+			} else  {
+				return nil, err
+			}
+			
 		}
 
 		amount := Erc20Amount(
