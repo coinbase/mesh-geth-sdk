@@ -122,8 +122,12 @@ func toBlockNumArg(number *big.Int) string {
 
 // decodeHexData accepts a fully formed hex string (including the 0x prefix) and returns a big.Int
 func decodeHexData(data string) (*big.Int, error) {
+	rawData := data[2:]
+	if rawData == "" {
+		return big.NewInt(0), nil
+	}
 	const base = 16
-	decoded, ok := new(big.Int).SetString(data[2:], base)
+	decoded, ok := new(big.Int).SetString(rawData, base)
 	if !ok {
 		return nil, fmt.Errorf("could not extract data from %s", data)
 	}
