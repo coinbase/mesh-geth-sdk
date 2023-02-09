@@ -255,8 +255,10 @@ func (ec *SDKClient) Balance(
 		}
 		balance, err := decodeHexData(resp)
 		if err != nil {
+			// if the erc20 token dose exist we will get 0x 
 			if resp == "0x" {
 				log.Printf("eth_call return 0x at block %d, for account %s, with token symbol: %s and contract address: %s", *block.Index, account.Address, currency.Symbol, value.(string))
+				// return 0 as balance
 				balance = big.NewInt(0)
 			} else  {
 				return nil, err
