@@ -262,8 +262,6 @@ func (ec *SDKClient) Balance(
 		if err != nil {
 			return nil, err
 		}
-			
-		}
 
 		amount := Erc20Amount(
 			balance.Bytes(),
