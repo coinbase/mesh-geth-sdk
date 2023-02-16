@@ -123,7 +123,7 @@ func (s *APIService) CreateOperationDescriptionContractCall() []*parser.Operatio
 		Amount: &parser.AmountDescription{
 			Exists:   true,
 			Sign:     parser.AnyAmountSign,
-			Currency: s.config.RosettaCfg.Currency,
+			// Currency: s.config.RosettaCfg.Currency,
 		},
 	}
 	nativeReceive := parser.OperationDescription{
@@ -134,7 +134,7 @@ func (s *APIService) CreateOperationDescriptionContractCall() []*parser.Operatio
 		Amount: &parser.AmountDescription{
 			Exists:   true,
 			Sign:     parser.AnyAmountSign,
-			Currency: s.config.RosettaCfg.Currency,
+			// Currency: s.config.RosettaCfg.Currency,
 		},
 	}
 
