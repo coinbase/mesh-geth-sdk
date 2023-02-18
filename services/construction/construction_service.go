@@ -89,7 +89,6 @@ func (s *APIService) CreateOperationDescription(
 				return nil, fmt.Errorf("for generic call both values should be zero")
 			}
 		}
-
 		return s.CreateOperationDescriptionContractCall(), nil
 	}
 
