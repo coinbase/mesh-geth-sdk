@@ -85,6 +85,20 @@ func templateOperations(
 	)
 }
 
+func bigAmountTemplateOperations(
+	amount *big.Int,
+	currency *types.Currency,
+	operationType string,
+) []*types.Operation {
+	return rosettaOperations(
+		testingFromAddress,
+		testingToAddress,
+		amount,
+		currency,
+		operationType,
+	)
+}
+
 func rosettaOperations(
 	fromAddress string,
 	toAddress string,

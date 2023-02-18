@@ -17,6 +17,7 @@ package construction
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"testing"
 
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -66,6 +67,8 @@ var (
 
 func TestConstructionPreprocess(t *testing.T) {
 	testingClient := newTestingClient()
+
+	preprocessNoZeroTransferValue, _ := big.NewInt(0).SetString("-23946292673190280600", 10)
 
 	tests := map[string]struct {
 		operations []*types.Operation
@@ -330,6 +333,28 @@ func TestConstructionPreprocess(t *testing.T) {
 				AssetTypes.ErrInvalidInput,
 				"non-native currency must have contractAddress in Metadata",
 			),
+		},
+		"error: reject call with non-zero transfer value": { 
+			operations: bigAmountTemplateOperations(preprocessNoZeroTransferValue, ethereumCurrencyConfig, "CALL"),
+			metadata: map[string]interface{}{
+				"method_signature": "approve(address,uint256)",
+				"method_args":      []string{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"},
+			},
+			expectedResponse:  &types.ConstructionPreprocessResponse{
+				Options: map[string]interface{}{
+					"from":             testingFromAddress,
+					"to":               testingToAddress, // it will be contract address user need to pass in operation
+					"value":            fmt.Sprint(preprocessNoZeroTransferValue),
+					"contract_address": testingToAddress,
+					"data":             preprocessGenericData,
+					"method_signature": methodSignature,
+					"method_args":      expectedMethodArgs,
+					"currency": map[string]interface{}{
+						"decimals": float64(18),
+						"symbol":   "ETH",
+					},
+				},
+			},
 		},
 	}
 

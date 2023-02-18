@@ -18,8 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
-	"strconv"
+	"math/big"
 
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
@@ -78,22 +77,19 @@ func (s *APIService) CreateOperationDescription(
 		return nil, fmt.Errorf("currency info doesn't match between the operations")
 	}
 
-	const base = 10
-	const bitSize = 64
 	if isContractCall {
-		valueOne, err := strconv.ParseInt(operations[0].Amount.Value, base, bitSize)
-		if err != nil {
-			log.Fatal(err)
-		}
-		valueTwo, err := strconv.ParseInt(operations[1].Amount.Value, base, bitSize)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if isContractCall && valueOne == 0 {
-			if valueOne != valueTwo {
+		const base = 10
+		i := new(big.Int)
+		i.SetString(operations[0].Amount.Value, base)
+		j := new(big.Int)
+		j.SetString(operations[1].Amount.Value, base)
+
+		if i.Cmp(big.NewInt(0)) == 0 {
+			if j.Cmp(big.NewInt(0)) != 0 {
 				return nil, fmt.Errorf("for generic call both values should be zero")
 			}
 		}
+
 		return s.CreateOperationDescriptionContractCall(), nil
 	}
 
@@ -123,6 +119,7 @@ func (s *APIService) CreateOperationDescriptionContractCall() []*parser.Operatio
 		Amount: &parser.AmountDescription{
 			Exists:   true,
 			Sign:     parser.AnyAmountSign,
+			Currency: s.config.RosettaCfg.Currency,
 		},
 	}
 	nativeReceive := parser.OperationDescription{
@@ -133,6 +130,7 @@ func (s *APIService) CreateOperationDescriptionContractCall() []*parser.Operatio
 		Amount: &parser.AmountDescription{
 			Exists:   true,
 			Sign:     parser.AnyAmountSign,
+			Currency: s.config.RosettaCfg.Currency,
 		},
 	}
 
