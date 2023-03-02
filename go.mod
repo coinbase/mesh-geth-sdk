@@ -18,6 +18,8 @@ require (
 	github.com/go-ole/go-ole v1.2.6-0.20210915003542-8b1f7f90f6b1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/glog v1.0.0 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -31,9 +33,10 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/sync v0.1.0
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
-	google.golang.org/grpc v1.52.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8 // indirect
-	gopkg.in/DataDog/dd-trace-go.v1 v1.48.0
+	gopkg.in/DataDog/dd-trace-go.v1 v1.43.1
 )

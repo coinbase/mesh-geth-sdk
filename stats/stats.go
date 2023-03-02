@@ -37,11 +37,11 @@ func NewTimer(s *statsd.Client, name string, tags ...string) *Timer {
 }
 
 func (t *Timer) Emit() {
-	t.statsdClient.Timing(t.name, time.Since(t.startTime), makeTagsSlice(baseTags, t.tags), 1)
+	_ = t.statsdClient.Timing(t.name, time.Since(t.startTime), makeTagsSlice(baseTags, t.tags), 1)
 }
 
 func Incr(s *statsd.Client, name string, tags ...string) {
-	s.Incr(name, makeTagsSlice(baseTags, getTags(tags...)), 1)
+	_ = s.Incr(name, makeTagsSlice(baseTags, getTags(tags...)), 1)
 }
 
 // Equivalent to time.Duration.Milliseconds except uses float division
