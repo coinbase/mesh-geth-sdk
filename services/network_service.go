@@ -109,8 +109,8 @@ func (s *NetworkAPIService) NetworkStatus(
 	response, err := s.networkStatus(ctx, request)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.NetworkStatusKey, "ErrGetNetworkStatus")
-		stats.LogError(s.logger, err.Message, stats.NetworkStatusKey, AssetTypes.ErrGetNetworkStatus)
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrGetNetworkStatus, err)
+		stats.LogError(s.logger, err.Message, stats.NetworkStatusKey, err)
+		return nil, err
 	}
 
 	return response, nil

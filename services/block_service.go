@@ -323,8 +323,8 @@ func (s *BlockAPIService) Block(
 	response, err := s.block(ctx, request)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.BlockKey, "ErrGetBlock")
-		stats.LogError(s.logger, err.Message, stats.BlockKey, AssetTypes.ErrGetBlock)
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrGetBlock, err)
+		stats.LogError(s.logger, err.Message, stats.BlockKey, err)
+		return nil, err
 	}
 
 	return response, nil

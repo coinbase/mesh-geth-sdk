@@ -42,8 +42,8 @@ func (s *APIService) ConstructionSubmit(
 	response, err := s.constructionSubmit(ctx, req)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionSubmitKey, "ErrConstructionSubmit")
-		stats.LogError(s.logger, err.Message, stats.ConstructionSubmitKey, sdkTypes.ErrConstructionSubmit)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionSubmit, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionSubmitKey, err)
+		return nil, err
 	}
 
 	return response, nil

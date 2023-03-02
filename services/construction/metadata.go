@@ -48,8 +48,8 @@ func (s APIService) ConstructionMetadata( //nolint
 	response, err := s.constructionMetadata(ctx, req)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionMetadataKey, "ErrConstructionMetadata")
-		stats.LogError(s.logger, err.Message, stats.ConstructionMetadataKey, sdkTypes.ErrConstructionMetadata)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionMetadata, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionMetadataKey, err)
+		return nil, err
 	}
 
 	return response, nil

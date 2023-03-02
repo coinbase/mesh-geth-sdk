@@ -227,8 +227,8 @@ func (s *APIService) ConstructionHash(
 	response, err := s.constructionHash(ctx, req)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionHashKey, "ErrConstructionHash")
-		stats.LogError(s.logger, err.Message, stats.ConstructionHashKey, sdkTypes.ErrConstructionHash)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionHash, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionHashKey, err)
+		return nil, err
 	}
 
 	return response, nil

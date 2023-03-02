@@ -53,8 +53,8 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	response, err := s.constructionPreprocess(ctx, req)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionPreprocessKey, "ErrConstructionPreprocess")
-		stats.LogError(s.logger, err.Message, stats.ConstructionPreprocessKey, sdkTypes.ErrConstructionPreprocess)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionPreprocess, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionPreprocessKey, err)
+		return nil, err
 	}
 
 	return response, nil

@@ -55,8 +55,8 @@ func (s *APIService) ConstructionPayloads(
 	response, err := s.constructionPayloads(ctx, req)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionPayloadsKey, "ErrConstructionPayloads")
-		stats.LogError(s.logger, err.Message, stats.ConstructionPayloadsKey, sdkTypes.ErrConstructionPayloads)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionPayloads, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionPayloadsKey, err)
+		return nil, err
 	}
 
 	return response, nil

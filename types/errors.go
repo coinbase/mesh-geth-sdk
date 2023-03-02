@@ -44,17 +44,6 @@ var (
 		ErrGasPriceError,
 		ErrNativeGasLimitError,
 		ErrERC20GasLimitError,
-		ErrGetNetworkStatus,
-		ErrGetAccountBalance,
-		ErrGetBlock,
-		ErrConstructionDerive,
-		ErrConstructionPreprocess,
-		ErrConstructionMetadata,
-		ErrConstructionPayloads,
-		ErrConstructionCombine,
-		ErrConstructionHash,
-		ErrConstructionParse,
-		ErrConstructionSubmit,
 	}
 
 	// ErrUnimplemented is returned when an endpoint
@@ -203,71 +192,6 @@ var (
 	ErrERC20GasLimitError = &types.Error{
 		Code:    19, //nolint
 		Message: "error getting gas limit for erc20 transfer",
-	}
-
-	ErrGetNetworkStatus = &types.Error{
-		Code:      20, //nolint
-		Message:   "unable to get network status",
-		Retriable: true,
-	}
-
-	ErrGetAccountBalance = &types.Error{
-		Code:      21, //nolint
-		Message:   "unable to get account balance",
-		Retriable: true,
-	}
-
-	ErrGetBlock = &types.Error{
-		Code:      22, //nolint
-		Message:   "unable to get block",
-		Retriable: true,
-	}
-
-	ErrConstructionDerive = &types.Error{
-		Code:    23, //nolint
-		Message: "unable to get derive address",
-	}
-
-	ErrConstructionPreprocess = &types.Error{
-		Code:      24, //nolint
-		Message:   "unable to get preprocess request",
-		Retriable: true,
-	}
-
-	ErrConstructionMetadata = &types.Error{
-		Code:      25, //nolint
-		Message:   "unable to get construction metadata",
-		Retriable: true,
-	}
-
-	ErrConstructionPayloads = &types.Error{
-		Code:      26, //nolint
-		Message:   "unable to get construction payloads",
-		Retriable: true,
-	}
-
-	ErrConstructionCombine = &types.Error{
-		Code:      27, //nolint
-		Message:   "unable to combine transaction",
-		Retriable: true,
-	}
-
-	ErrConstructionHash = &types.Error{
-		Code:      28, //nolint
-		Message:   "unable to get hash transaction",
-		Retriable: true,
-	}
-
-	ErrConstructionParse = &types.Error{
-		Code:      29, //nolint
-		Message:   "unable to parse transaction",
-		Retriable: true,
-	}
-
-	ErrConstructionSubmit = &types.Error{
-		Code:      30, //nolint
-		Message:   "unable to submit transaction",
-		Retriable: true,
 	}
 
 	ErrClientBlockOrphaned         = errors.New("block orphaned")

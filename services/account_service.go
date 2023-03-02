@@ -72,8 +72,8 @@ func (s *AccountAPIService) AccountBalance(
 	response, err := s.accountBalance(ctx, request)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.AccountBalanceKey, "ErrGetAccountBalance")
-		stats.LogError(s.logger, err.Message, stats.AccountBalanceKey, AssetTypes.ErrGetAccountBalance)
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrGetAccountBalance, err)
+		stats.LogError(s.logger, err.Message, stats.AccountBalanceKey, err)
+		return nil, err
 	}
 
 	return response, nil

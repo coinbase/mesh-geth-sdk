@@ -45,8 +45,8 @@ func (s *APIService) ConstructionCombine(
 	response, err := s.constructionCombine(ctx, req)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionCombineKey, "ErrConstructionCombine")
-		stats.LogError(s.logger, err.Message, stats.ConstructionCombineKey, sdkTypes.ErrConstructionCombine)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionCombine, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionCombineKey, err)
+		return nil, err
 	}
 
 	return response, nil

@@ -42,7 +42,9 @@ import (
 )
 
 const (
-	hsh = "0xd83b1dcf7d47c4115d78ce0361587604e8157591b118bd64ada02e86c9d5ca7e"
+	hsh        = "0xd83b1dcf7d47c4115d78ce0361587604e8157591b118bd64ada02e86c9d5ca7e"
+	blockchain = "test_blockchain"
+	network    = "test_network"
 )
 
 func loadTokenWhiteList() []configuration.Token {
@@ -62,6 +64,10 @@ func loadTokenWhiteList() []configuration.Token {
 func TestBlockService_Offline(t *testing.T) {
 	cfg := &configuration.Configuration{
 		Mode: configuration.ModeOffline,
+		Network: &RosettaTypes.NetworkIdentifier{
+			Blockchain: blockchain,
+			Network:    network,
+		},
 	}
 	mockClient := &mockedServices.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)
@@ -85,6 +91,10 @@ func TestBlockService_Offline(t *testing.T) {
 func TestBlockService_Online(t *testing.T) {
 	cfg := &configuration.Configuration{
 		Mode: configuration.ModeOnline,
+		Network: &RosettaTypes.NetworkIdentifier{
+			Blockchain: blockchain,
+			Network:    network,
+		},
 	}
 	mockClient := &mockedServices.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)

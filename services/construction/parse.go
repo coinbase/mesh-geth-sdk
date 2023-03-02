@@ -44,8 +44,8 @@ func (s *APIService) ConstructionParse(
 	response, err := s.constructionParse(ctx, request)
 	if err != nil {
 		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionParseKey, "ErrConstructionParse")
-		stats.LogError(s.logger, err.Message, stats.ConstructionParseKey, sdkTypes.ErrConstructionParse)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionParse, err)
+		stats.LogError(s.logger, err.Message, stats.ConstructionParseKey, err)
+		return nil, err
 	}
 
 	return response, nil
