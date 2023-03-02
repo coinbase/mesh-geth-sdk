@@ -4,7 +4,8 @@ go 1.18
 
 require (
 	github.com/DataDog/datadog-go v4.8.3+incompatible
-	github.com/coinbase/rosetta-sdk-go v0.8.2
+	github.com/coinbase/rosetta-sdk-go v0.8.3
+	github.com/coinbase/rosetta-sdk-go/types v1.0.0
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.1
