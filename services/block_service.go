@@ -28,7 +28,6 @@ import (
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
 
-	"github.com/coinbase/rosetta-sdk-go/types"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -388,7 +387,7 @@ func (s *BlockAPIService) BlockTransaction(
 	}, nil
 }
 
-func (s *BlockAPIService) block(ctx context.Context, request *types.BlockRequest) (*types.BlockResponse, *types.Error) {
+func (s *BlockAPIService) block(ctx context.Context, request *RosettaTypes.BlockRequest) (*RosettaTypes.BlockResponse, *RosettaTypes.Error) {
 	var (
 		blockIdentifier       *RosettaTypes.BlockIdentifier
 		parentBlockIdentifier *RosettaTypes.BlockIdentifier
