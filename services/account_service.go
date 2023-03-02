@@ -22,14 +22,20 @@ import (
 
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
 	"github.com/coinbase/rosetta-sdk-go/types"
+
+	"github.com/DataDog/datadog-go/statsd"
+	"github.com/coinbase/rosetta-geth-sdk/stats"
+	"go.uber.org/zap"
 )
 
 // AccountAPIService implements the server.AccountAPIServicer interface.
 type AccountAPIService struct {
-	config *configuration.Configuration
-	types  *AssetTypes.Types
-	errors []*types.Error
-	client construction.Client
+	config       *configuration.Configuration
+	types        *AssetTypes.Types
+	errors       []*types.Error
+	client       construction.Client
+	logger       *zap.Logger
+	statsdClient *statsd.Client
 }
 
 // NewAccountAPIService returns a new *AccountAPIService.
@@ -38,12 +44,16 @@ func NewAccountAPIService(
 	types *AssetTypes.Types,
 	errors []*types.Error,
 	client construction.Client,
+	logger *zap.Logger,
+	statsdClient *statsd.Client,
 ) *AccountAPIService {
 	return &AccountAPIService{
-		config: cfg,
-		types:  types,
-		errors: errors,
-		client: client,
+		config:       cfg,
+		types:        types,
+		errors:       errors,
+		client:       client,
+		logger:       logger,
+		statsdClient: statsdClient,
 	}
 }
 
@@ -56,6 +66,28 @@ func (s *AccountAPIService) AccountBalance(
 	// 	return nil, AssetTypes.ErrUnavailableOffline
 	// }
 
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.AccountBalanceKey)
+	defer timer.Emit()
+
+	response, err := s.accountBalance(ctx, request)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.AccountBalanceKey, "ErrGetAccountBalance")
+		stats.LogError(s.logger, err.Message, stats.AccountBalanceKey, AssetTypes.ErrGetAccountBalance)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrGetAccountBalance, err)
+	}
+
+	return response, nil
+}
+
+// AccountCoins implements /account/coins.
+func (s *AccountAPIService) AccountCoins(
+	ctx context.Context,
+	request *types.AccountCoinsRequest,
+) (*types.AccountCoinsResponse, *types.Error) {
+	return nil, AssetTypes.WrapErr(AssetTypes.ErrUnimplemented, nil)
+}
+
+func (s *AccountAPIService) accountBalance(ctx context.Context, request *types.AccountBalanceRequest) (*types.AccountBalanceResponse, *types.Error) {
 	if request.AccountIdentifier == nil {
 		return nil, AssetTypes.ErrInvalidInput
 	}
@@ -71,12 +103,4 @@ func (s *AccountAPIService) AccountBalance(
 	}
 
 	return balanceResponse, nil
-}
-
-// AccountCoins implements /account/coins.
-func (s *AccountAPIService) AccountCoins(
-	ctx context.Context,
-	request *types.AccountCoinsRequest,
-) (*types.AccountCoinsResponse, *types.Error) {
-	return nil, AssetTypes.WrapErr(AssetTypes.ErrUnimplemented, nil)
 }

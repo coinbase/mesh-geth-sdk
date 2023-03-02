@@ -17,10 +17,11 @@ package construction
 import (
 	"context"
 
-	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
-
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
+	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 )
 
 // ConstructionDerive implements the /construction/derive endpoint.
@@ -28,12 +29,17 @@ func (s *APIService) ConstructionDerive(
 	ctx context.Context, req *types.ConstructionDeriveRequest,
 ) (*types.ConstructionDeriveResponse, *types.Error) {
 	if req.PublicKey == nil {
-		return nil, sdkTypes.ErrInvalidInput
+		stats.LogError(s.logger, "public key is not provided", stats.ConstructionDeriveKey, AssetTypes.ErrInvalidInput)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInvalidInput, "public key is not provided")
 	}
+
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionDeriveKey)
+	defer timer.Emit()
 
 	key, err := crypto.DecompressPubkey(req.PublicKey.Bytes) // hex_bytes
 	if err != nil {
-		return nil, sdkTypes.ErrInvalidInput
+		stats.LogError(s.logger, err.Error(), stats.ConstructionDeriveKey, AssetTypes.ErrConstructionDerive)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrConstructionDerive, err.Error())
 	}
 
 	return &types.ConstructionDeriveResponse{

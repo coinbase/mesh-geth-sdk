@@ -39,6 +39,22 @@ var (
 		ErrInvalidAddress,
 		ErrGethNotReady,
 		ErrInvalidInput,
+		ErrInternalError,
+		ErrNonceError,
+		ErrGasPriceError,
+		ErrNativeGasLimitError,
+		ErrERC20GasLimitError,
+		ErrGetNetworkStatus,
+		ErrGetAccountBalance,
+		ErrGetBlock,
+		ErrConstructionDerive,
+		ErrConstructionPreprocess,
+		ErrConstructionMetadata,
+		ErrConstructionPayloads,
+		ErrConstructionCombine,
+		ErrConstructionHash,
+		ErrConstructionParse,
+		ErrConstructionSubmit,
 	}
 
 	// ErrUnimplemented is returned when an endpoint
@@ -164,29 +180,94 @@ var (
 
 	// ErrNonceError is returned when we are unable to get nonce
 	ErrNonceError = &types.Error{
-		Code:    15, //nolint
+		Code:    16, //nolint
 		Message: "error getting nonce",
 	}
 
 	// ErrGasPriceError is returned when we have an
 	// error to get gas price
 	ErrGasPriceError = &types.Error{
-		Code:    15, //nolint
+		Code:    17, //nolint
 		Message: "error getting gas price",
 	}
 
 	// ErrNativeGasLimitError is returned when we have an
 	// error to get native gas limit
 	ErrNativeGasLimitError = &types.Error{
-		Code:    15, //nolint
+		Code:    18, //nolint
 		Message: "error getting gas limit for native transfer",
 	}
 
 	// ErrERC20GasLimitError is returned when we have an
 	// error to get ERC20 gas limit
 	ErrERC20GasLimitError = &types.Error{
-		Code:    15, //nolint
+		Code:    19, //nolint
 		Message: "error getting gas limit for erc20 transfer",
+	}
+
+	ErrGetNetworkStatus = &types.Error{
+		Code:      20, //nolint
+		Message:   "unable to get network status",
+		Retriable: true,
+	}
+
+	ErrGetAccountBalance = &types.Error{
+		Code:      21, //nolint
+		Message:   "unable to get account balance",
+		Retriable: true,
+	}
+
+	ErrGetBlock = &types.Error{
+		Code:      22, //nolint
+		Message:   "unable to get block",
+		Retriable: true,
+	}
+
+	ErrConstructionDerive = &types.Error{
+		Code:    23, //nolint
+		Message: "unable to get derive address",
+	}
+
+	ErrConstructionPreprocess = &types.Error{
+		Code:      24, //nolint
+		Message:   "unable to get preprocess request",
+		Retriable: true,
+	}
+
+	ErrConstructionMetadata = &types.Error{
+		Code:      25, //nolint
+		Message:   "unable to get construction metadata",
+		Retriable: true,
+	}
+
+	ErrConstructionPayloads = &types.Error{
+		Code:      26, //nolint
+		Message:   "unable to get construction payloads",
+		Retriable: true,
+	}
+
+	ErrConstructionCombine = &types.Error{
+		Code:      27, //nolint
+		Message:   "unable to combine transaction",
+		Retriable: true,
+	}
+
+	ErrConstructionHash = &types.Error{
+		Code:      28, //nolint
+		Message:   "unable to get hash transaction",
+		Retriable: true,
+	}
+
+	ErrConstructionParse = &types.Error{
+		Code:      29, //nolint
+		Message:   "unable to parse transaction",
+		Retriable: true,
+	}
+
+	ErrConstructionSubmit = &types.Error{
+		Code:      30, //nolint
+		Message:   "unable to submit transaction",
+		Retriable: true,
 	}
 
 	ErrClientBlockOrphaned         = errors.New("block orphaned")
@@ -196,18 +277,29 @@ var (
 )
 
 // wrapErr adds details to the types.Error provided. We use a function
-// to do this so that we don't accidentially overrwrite the standard
+// to do this so that we don't accidentally override the standard
 // errors.
-func WrapErr(rErr *types.Error, err error) *types.Error {
+func WrapErr(rErr *types.Error, err interface{}) *types.Error {
 	newErr := &types.Error{
 		Code:      rErr.Code,
 		Message:   rErr.Message,
 		Retriable: rErr.Retriable,
+		Details:   map[string]interface{}{},
 	}
-	if err != nil {
-		newErr.Details = map[string]interface{}{
-			"context": err.Error(),
-		}
+
+	if rErr.Description != nil {
+		newErr.Description = rErr.Description
+	}
+
+	for k, v := range rErr.Details {
+		newErr.Details[k] = v
+	}
+
+	switch t := err.(type) {
+	case error:
+		newErr.Details["context"] = t.Error()
+	default:
+		newErr.Details["context"] = t
 	}
 
 	return newErr

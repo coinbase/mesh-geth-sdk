@@ -30,6 +30,8 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 // ConstructionPayloads implements /construction/payloads endpoint
@@ -47,6 +49,20 @@ import (
 func (s *APIService) ConstructionPayloads(
 	ctx context.Context,
 	req *types.ConstructionPayloadsRequest) (*types.ConstructionPayloadsResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionPayloadsKey)
+	defer timer.Emit()
+
+	response, err := s.constructionPayloads(ctx, req)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionPayloadsKey, "ErrConstructionPayloads")
+		stats.LogError(s.logger, err.Message, stats.ConstructionPayloadsKey, sdkTypes.ErrConstructionPayloads)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionPayloads, err)
+	}
+
+	return response, nil
+}
+
+func (s *APIService) constructionPayloads(ctx context.Context, req *types.ConstructionPayloadsRequest) (*types.ConstructionPayloadsResponse, *types.Error) {
 	isContractCall := false
 	if _, ok := req.Metadata["method_signature"]; ok {
 		isContractCall = true

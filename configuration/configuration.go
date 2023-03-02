@@ -15,6 +15,8 @@
 package configuration
 
 import (
+	"errors"
+
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -53,6 +55,11 @@ type Configuration struct {
 
 	// RosettaCfg defines the config that used to implement Rosetta APIs
 	RosettaCfg RosettaConfig
+
+	// Stats configuration
+	StatsdAddress      string
+	StatsdTraceAddress string
+	StatsdBufferSize   int
 }
 
 type RosettaConfig struct {
@@ -145,4 +152,25 @@ func (c Configuration) IsAnalyticsMode() bool {
 // IsTokenListEmpty returns true if the token addresses list is empty
 func (c Configuration) IsTokenListEmpty() bool {
 	return len(c.RosettaCfg.TokenWhiteList) == 0
+}
+
+func (c *Configuration) Validate() error {
+
+	if c.Network.Blockchain == "" {
+		return errors.New("blockchain must be populated in configuration")
+	}
+
+	if c.Network.Network == "" {
+		return errors.New("network must be populated in configuration")
+	}
+
+	if c.Port == 0 {
+		return errors.New("port must be populated")
+	}
+
+	if c.StatsdAddress == "" {
+		return errors.New("statsd address must be populated")
+	}
+
+	return nil
 }

@@ -24,6 +24,8 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 // ConstructionSubmit implements /construction/submit endpoint.
@@ -34,6 +36,20 @@ func (s *APIService) ConstructionSubmit(
 	ctx context.Context,
 	req *types.ConstructionSubmitRequest,
 ) (*types.TransactionIdentifierResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionSubmitKey)
+	defer timer.Emit()
+
+	response, err := s.constructionSubmit(ctx, req)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionSubmitKey, "ErrConstructionSubmit")
+		stats.LogError(s.logger, err.Message, stats.ConstructionSubmitKey, sdkTypes.ErrConstructionSubmit)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionSubmit, err)
+	}
+
+	return response, nil
+}
+
+func (s *APIService) constructionSubmit(ctx context.Context, req *types.ConstructionSubmitRequest) (*types.TransactionIdentifierResponse, *types.Error) {
 	if s.config.Mode != sdkTypes.Online {
 		return nil, sdkTypes.ErrUnavailableOffline
 	}

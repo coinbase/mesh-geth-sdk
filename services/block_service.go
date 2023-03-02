@@ -28,6 +28,7 @@ import (
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
 
+	"github.com/coinbase/rosetta-sdk-go/types"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 
@@ -35,6 +36,10 @@ import (
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/utils"
+
+	"github.com/DataDog/datadog-go/statsd"
+	"github.com/coinbase/rosetta-geth-sdk/stats"
+	"go.uber.org/zap"
 )
 
 const (
@@ -43,18 +48,24 @@ const (
 
 // BlockAPIService implements the server.BlockAPIServicer interface.
 type BlockAPIService struct {
-	config *configuration.Configuration
-	client construction.Client
+	config       *configuration.Configuration
+	client       construction.Client
+	logger       *zap.Logger
+	statsdClient *statsd.Client
 }
 
 // NewBlockAPIService creates a new instance of a BlockAPIService.
 func NewBlockAPIService(
 	cfg *configuration.Configuration,
 	client construction.Client,
+	logger *zap.Logger,
+	statsdClient *statsd.Client,
 ) *BlockAPIService {
 	return &BlockAPIService{
-		config: cfg,
-		client: client,
+		config:       cfg,
+		client:       client,
+		logger:       logger,
+		statsdClient: statsdClient,
 	}
 }
 
@@ -306,6 +317,78 @@ func (s *BlockAPIService) Block(
 		return nil, AssetTypes.ErrUnavailableOffline
 	}
 
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.BlockKey)
+	defer timer.Emit()
+
+	response, err := s.block(ctx, request)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.BlockKey, "ErrGetBlock")
+		stats.LogError(s.logger, err.Message, stats.BlockKey, AssetTypes.ErrGetBlock)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrGetBlock, err)
+	}
+
+	return response, nil
+}
+
+// BlockTransaction implements the /block/transaction endpoint.
+func (s *BlockAPIService) BlockTransaction(
+	ctx context.Context,
+	request *RosettaTypes.BlockTransactionRequest,
+) (*RosettaTypes.BlockTransactionResponse, *RosettaTypes.Error) {
+	if s.config.IsOfflineMode() {
+		return nil, AssetTypes.ErrUnavailableOffline
+	}
+
+	if request.BlockIdentifier == nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInvalidInput, fmt.Errorf("block identifier is not provided"))
+	}
+
+	loadedTx, err := s.client.GetLoadedTransaction(ctx, request)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get loaded tx", err))
+	}
+	var (
+		raw       json.RawMessage
+		flattened []*client.FlatCall
+		traceErr  error
+	)
+
+	if s.client.GetRosettaConfig().TraceType == configuration.OpenEthereumTrace {
+		raw, flattened, traceErr = s.client.TraceReplayTransaction(ctx, loadedTx.TxHash.String())
+	} else {
+		raw, flattened, traceErr = s.client.TraceTransaction(ctx, *loadedTx.TxHash)
+	}
+	if traceErr != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx trace", traceErr))
+	}
+	loadedTx.RawTrace = raw
+	loadedTx.Trace = flattened
+
+	receipt, err := s.client.GetTransactionReceipt(ctx, loadedTx)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx receipt", err))
+	}
+	loadedTx.Receipt = receipt
+
+	loadedTx.FeeAmount = receipt.TransactionFee
+
+	if loadedTx.BaseFee != nil { // EIP-1559
+		loadedTx.FeeBurned = new(big.Int).Mul(receipt.GasUsed, loadedTx.BaseFee)
+	} else {
+		loadedTx.FeeBurned = nil
+	}
+
+	transaction, err := s.PopulateTransaction(ctx, loadedTx)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to populate tx", err))
+	}
+
+	return &RosettaTypes.BlockTransactionResponse{
+		Transaction: transaction,
+	}, nil
+}
+
+func (s *BlockAPIService) block(ctx context.Context, request *types.BlockRequest) (*types.BlockResponse, *types.Error) {
 	var (
 		blockIdentifier       *RosettaTypes.BlockIdentifier
 		parentBlockIdentifier *RosettaTypes.BlockIdentifier
@@ -386,63 +469,5 @@ func (s *BlockAPIService) Block(
 			Transactions:          append(transactions, crossTxns...),
 			Metadata:              nil,
 		},
-	}, nil
-}
-
-// BlockTransaction implements the /block/transaction endpoint.
-func (s *BlockAPIService) BlockTransaction(
-	ctx context.Context,
-	request *RosettaTypes.BlockTransactionRequest,
-) (*RosettaTypes.BlockTransactionResponse, *RosettaTypes.Error) {
-	if s.config.IsOfflineMode() {
-		return nil, AssetTypes.ErrUnavailableOffline
-	}
-
-	if request.BlockIdentifier == nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInvalidInput, fmt.Errorf("block identifier is not provided"))
-	}
-
-	loadedTx, err := s.client.GetLoadedTransaction(ctx, request)
-	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get loaded tx", err))
-	}
-	var (
-		raw       json.RawMessage
-		flattened []*client.FlatCall
-		traceErr  error
-	)
-
-	if s.client.GetRosettaConfig().TraceType == configuration.OpenEthereumTrace {
-		raw, flattened, traceErr = s.client.TraceReplayTransaction(ctx, loadedTx.TxHash.String())
-	} else {
-		raw, flattened, traceErr = s.client.TraceTransaction(ctx, *loadedTx.TxHash)
-	}
-	if traceErr != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx trace", traceErr))
-	}
-	loadedTx.RawTrace = raw
-	loadedTx.Trace = flattened
-
-	receipt, err := s.client.GetTransactionReceipt(ctx, loadedTx)
-	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx receipt", err))
-	}
-	loadedTx.Receipt = receipt
-
-	loadedTx.FeeAmount = receipt.TransactionFee
-
-	if loadedTx.BaseFee != nil { // EIP-1559
-		loadedTx.FeeBurned = new(big.Int).Mul(receipt.GasUsed, loadedTx.BaseFee)
-	} else {
-		loadedTx.FeeBurned = nil
-	}
-
-	transaction, err := s.PopulateTransaction(ctx, loadedTx)
-	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to populate tx", err))
-	}
-
-	return &RosettaTypes.BlockTransactionResponse{
-		Transaction: transaction,
 	}, nil
 }

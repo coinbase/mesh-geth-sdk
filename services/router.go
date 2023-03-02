@@ -24,6 +24,9 @@ import (
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
 	"github.com/coinbase/rosetta-sdk-go/asserter"
 	"github.com/coinbase/rosetta-sdk-go/server"
+
+	"github.com/DataDog/datadog-go/statsd"
+	"go.uber.org/zap"
 )
 
 // NewBlockchainRouter creates a Mux http.Handler from a collection
@@ -33,28 +36,29 @@ func NewBlockchainRouter(
 	types *AssetTypes.Types,
 	errors []*types.Error,
 	client construction.Client,
-
 	asserter *asserter.Asserter,
+	logger *zap.Logger,
+	statsdClient *statsd.Client,
 ) http.Handler {
-	networkAPIService := NewNetworkAPIService(config, types, errors, client)
+	networkAPIService := NewNetworkAPIService(config, types, errors, client, logger, statsdClient)
 	networkAPIController := server.NewNetworkAPIController(
 		networkAPIService,
 		asserter,
 	)
 
-	accountAPIService := NewAccountAPIService(config, types, errors, client)
+	accountAPIService := NewAccountAPIService(config, types, errors, client, logger, statsdClient)
 	accountAPIController := server.NewAccountAPIController(
 		accountAPIService,
 		asserter,
 	)
 
-	blockAPIService := NewBlockAPIService(config, client)
+	blockAPIService := NewBlockAPIService(config, client, logger, statsdClient)
 	blockAPIController := server.NewBlockAPIController(
 		blockAPIService,
 		asserter,
 	)
 
-	constructionAPIService := construction.NewAPIService(config, types, errors, client)
+	constructionAPIService := construction.NewAPIService(config, types, errors, client, logger, statsdClient)
 	constructionAPIController := server.NewConstructionAPIController(
 		constructionAPIService,
 		asserter,

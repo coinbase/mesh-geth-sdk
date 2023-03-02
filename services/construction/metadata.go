@@ -17,8 +17,9 @@ package construction
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -26,7 +27,10 @@ import (
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
+
 // ConstructionMetadata implements /construction/metadata endpoint.
 //
 // Get any information required to construct a transaction for a specific network.
@@ -38,6 +42,20 @@ func (s APIService) ConstructionMetadata( //nolint
 	ctx context.Context,
 	req *types.ConstructionMetadataRequest,
 ) (*types.ConstructionMetadataResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionMetadataKey)
+	defer timer.Emit()
+
+	response, err := s.constructionMetadata(ctx, req)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionMetadataKey, "ErrConstructionMetadata")
+		stats.LogError(s.logger, err.Message, stats.ConstructionMetadataKey, sdkTypes.ErrConstructionMetadata)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionMetadata, err)
+	}
+
+	return response, nil
+}
+
+func (s APIService) constructionMetadata(ctx context.Context, req *types.ConstructionMetadataRequest) (*types.ConstructionMetadataResponse, *types.Error) {
 	if s.config.Mode != sdkTypes.Online {
 		return nil, sdkTypes.ErrUnavailableOffline
 	}

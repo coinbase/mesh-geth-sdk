@@ -29,6 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 // ConstructionParse implements the /construction/parse endpoint.
@@ -36,6 +38,61 @@ func (s *APIService) ConstructionParse(
 	ctx context.Context,
 	request *types.ConstructionParseRequest,
 ) (*types.ConstructionParseResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionParseKey)
+	defer timer.Emit()
+
+	response, err := s.constructionParse(ctx, request)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionParseKey, "ErrConstructionParse")
+		stats.LogError(s.logger, err.Message, stats.ConstructionParseKey, sdkTypes.ErrConstructionParse)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionParse, err)
+	}
+
+	return response, nil
+}
+
+// erc20TransferMethodID calculates the first 4 bytes of the method
+// signature for transfer on an ERC20 contract
+func erc20TransferMethodID() ([]byte, error) {
+	transferFnSignature := []byte("transfer(address,uint256)")
+	hash := sha3.NewLegacyKeccak256()
+	if _, err := hash.Write(transferFnSignature); err != nil {
+		return nil, err
+	}
+
+	return hash.Sum(nil)[:4], nil
+}
+
+func parseErc20TransferData(data []byte) (*common.Address, *big.Int, error) {
+	if len(data) != client.GenericTransferBytesLength {
+		return nil, nil, fmt.Errorf("incorrect length for data array")
+	}
+	methodID := getTransferMethodID()
+	if hexutil.Encode(data[:4]) != hexutil.Encode(methodID) {
+		return nil, nil, fmt.Errorf("incorrect methodID signature")
+	}
+
+	address := common.BytesToAddress(data[5:36])
+	amount := new(big.Int).SetBytes(data[37:])
+	return &address, amount, nil
+}
+
+func getTransferMethodID() []byte {
+	transferSignature := []byte(client.TransferFnSignature) // do not include spaces in the string
+	hash := sha3.NewLegacyKeccak256()
+	hash.Write(transferSignature)
+	methodID := hash.Sum(nil)[:4]
+	return methodID
+}
+
+func hasERC20TransferData(data []byte) bool {
+	methodID := data[:4]
+	expectedMethodID, _ := erc20TransferMethodID()
+	res := bytes.Compare(methodID, expectedMethodID)
+	return res == 0
+}
+
+func (s *APIService) constructionParse(ctx context.Context, request *types.ConstructionParseRequest) (*types.ConstructionParseResponse, *types.Error) {
 	var tx client.Transaction
 	// var sender common.Address
 
@@ -188,45 +245,4 @@ func (s *APIService) ConstructionParse(
 		}
 	}
 	return resp, nil
-}
-
-// erc20TransferMethodID calculates the first 4 bytes of the method
-// signature for transfer on an ERC20 contract
-func erc20TransferMethodID() ([]byte, error) {
-	transferFnSignature := []byte("transfer(address,uint256)")
-	hash := sha3.NewLegacyKeccak256()
-	if _, err := hash.Write(transferFnSignature); err != nil {
-		return nil, err
-	}
-
-	return hash.Sum(nil)[:4], nil
-}
-
-func parseErc20TransferData(data []byte) (*common.Address, *big.Int, error) {
-	if len(data) != client.GenericTransferBytesLength {
-		return nil, nil, fmt.Errorf("incorrect length for data array")
-	}
-	methodID := getTransferMethodID()
-	if hexutil.Encode(data[:4]) != hexutil.Encode(methodID) {
-		return nil, nil, fmt.Errorf("incorrect methodID signature")
-	}
-
-	address := common.BytesToAddress(data[5:36])
-	amount := new(big.Int).SetBytes(data[37:])
-	return &address, amount, nil
-}
-
-func getTransferMethodID() []byte {
-	transferSignature := []byte(client.TransferFnSignature) // do not include spaces in the string
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write(transferSignature)
-	methodID := hash.Sum(nil)[:4]
-	return methodID
-}
-
-func hasERC20TransferData(data []byte) bool {
-	methodID := data[:4]
-	expectedMethodID, _ := erc20TransferMethodID()
-	res := bytes.Compare(methodID, expectedMethodID)
-	return res == 0
 }

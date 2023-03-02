@@ -22,6 +22,8 @@ import (
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/params"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 var (
@@ -57,11 +59,15 @@ func newTestingClient() *testingClient {
 		ChainConfig: &params.ChainConfig{ChainID: big.NewInt(int64(ethRopstenChainID))},
 	}
 	mockClient := &services.Client{}
+	mockLogger, _, _ := stats.InitLogger(cfg)
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg, "c3/rosetta-api")
 	servicer := NewAPIService(
 		cfg,
 		AssetTypes.LoadTypes(),
 		AssetTypes.Errors,
 		mockClient,
+		mockLogger,
+		mockStats,
 	)
 
 	return &testingClient{

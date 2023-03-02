@@ -29,6 +29,10 @@ import (
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
+
+	"github.com/DataDog/datadog-go/statsd"
+	"github.com/coinbase/rosetta-geth-sdk/stats"
+	"go.uber.org/zap"
 )
 
 const (
@@ -37,10 +41,12 @@ const (
 
 // APIService implements /construction/* endpoints
 type APIService struct {
-	config *configuration.Configuration
-	types  *sdkTypes.Types
-	errors []*types.Error
-	client Client
+	config       *configuration.Configuration
+	types        *sdkTypes.Types
+	errors       []*types.Error
+	client       Client
+	logger       *zap.Logger
+	statsdClient *statsd.Client
 }
 
 // NewAPIService creates a new instance of a APIService.
@@ -49,12 +55,16 @@ func NewAPIService(
 	types *sdkTypes.Types,
 	errors []*types.Error,
 	client Client,
+	logger *zap.Logger,
+	statsdClient *statsd.Client,
 ) *APIService {
 	return &APIService{
-		config: cfg,
-		types:  types,
-		errors: errors,
-		client: client,
+		config:       cfg,
+		types:        types,
+		errors:       errors,
+		client:       client,
+		logger:       logger,
+		statsdClient: statsdClient,
 	}
 }
 
@@ -211,6 +221,20 @@ func (s *APIService) ConstructionHash(
 	ctx context.Context,
 	req *types.ConstructionHashRequest,
 ) (*types.TransactionIdentifierResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionHashKey)
+	defer timer.Emit()
+
+	response, err := s.constructionHash(ctx, req)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionHashKey, "ErrConstructionHash")
+		stats.LogError(s.logger, err.Message, stats.ConstructionHashKey, sdkTypes.ErrConstructionHash)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionHash, err)
+	}
+
+	return response, nil
+}
+
+func (s *APIService) constructionHash(ctx context.Context, req *types.ConstructionHashRequest) (*types.TransactionIdentifierResponse, *types.Error) {
 	if len(req.SignedTransaction) == 0 {
 		return nil, sdkTypes.WrapErr(
 			sdkTypes.ErrInvalidInput,

@@ -17,13 +17,13 @@ package utils
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/coinbase/rosetta-geth-sdk/services"
 	"github.com/coinbase/rosetta-geth-sdk/services/construction"
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
@@ -33,7 +33,7 @@ import (
 	"github.com/neilotoole/errgroup"
 )
 
-const(
+const (
 	ReadHeaderTimeout = time.Minute
 )
 
@@ -45,6 +45,23 @@ func BootStrap(
 	errors []*RosettaTypes.Error,
 	client construction.Client,
 ) error {
+	err := cfg.Validate()
+	if err != nil {
+		return err
+	}
+
+	logger, syncFn, err := stats.InitLogger(cfg)
+	if err != nil {
+		return err
+	}
+	defer syncFn()
+
+	statsdClient, done, err := stats.InitStatsd(logger, cfg, "c3/rosetta-api")
+	if err != nil {
+		return err
+	}
+	defer done()
+
 	// The asserter automatically rejects incorrectly formatted
 	// requests.
 	asserter, err := asserter.NewServer(
@@ -56,15 +73,16 @@ func BootStrap(
 		"",
 	)
 	if err != nil {
+		logger.Sugar().Errorf("could not initialize server asserter with error %#v", err)
 		return fmt.Errorf("%w: could not initialize server asserter", err)
 	}
-	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter)
+	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter, logger, statsdClient)
 
 	loggedRouter := server.LoggerMiddleware(router)
 	corsRouter := server.CorsMiddleware(loggedRouter)
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: corsRouter,
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           corsRouter,
 		ReadHeaderTimeout: ReadHeaderTimeout,
 	}
 
@@ -73,7 +91,7 @@ func BootStrap(
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		log.Printf("server listening on port %d", cfg.Port)
+		logger.Sugar().Infof("server listening on port %d", cfg.Port)
 		return server.ListenAndServe()
 	})
 

@@ -35,6 +35,8 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/parser"
 	"github.com/coinbase/rosetta-sdk-go/types"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 // ConstructionPreprocess implements /construction/preprocess endpoint.
@@ -44,6 +46,139 @@ import (
 func (s *APIService) ConstructionPreprocess( //nolint
 	ctx context.Context,
 	req *types.ConstructionPreprocessRequest) (*types.ConstructionPreprocessResponse, *types.Error) {
+
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionPreprocessKey)
+	defer timer.Emit()
+
+	response, err := s.constructionPreprocess(ctx, req)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionPreprocessKey, "ErrConstructionPreprocess")
+		stats.LogError(s.logger, err.Message, stats.ConstructionPreprocessKey, sdkTypes.ErrConstructionPreprocess)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionPreprocess, err)
+	}
+
+	return response, nil
+}
+
+// constructContractCallData constructs the data field of a transaction
+func constructContractCallData(methodSig string, methodArgs []string) ([]byte, error) {
+	arguments := abi.Arguments{}
+	argumentsData := []interface{}{}
+
+	methodID, err := contractCallMethodID(methodSig)
+	if err != nil {
+		return nil, err
+	}
+
+	var data []byte
+	data = append(data, methodID...)
+
+	const split = 2
+	splitSigByLeadingParenthesis := strings.Split(methodSig, "(")
+	if len(splitSigByLeadingParenthesis) < split {
+		return data, nil
+	}
+	splitSigByTrailingParenthesis := strings.Split(splitSigByLeadingParenthesis[1], ")")
+	if len(splitSigByTrailingParenthesis) < 1 {
+		return data, nil
+	}
+	splitSigByComma := strings.Split(splitSigByTrailingParenthesis[0], ",")
+
+	if len(splitSigByComma) != len(methodArgs) {
+		return nil, errors.New("invalid method arguments")
+	}
+
+	for i, v := range splitSigByComma {
+		typed, _ := abi.NewType(v, v, nil)
+		argument := abi.Arguments{
+			{
+				Type: typed,
+			},
+		}
+
+		arguments = append(arguments, argument...)
+		var argData interface{}
+		const base = 10
+		switch {
+		case v == "address":
+			{
+				argData = common.HexToAddress(methodArgs[i])
+			}
+		case v == "uint32":
+			{
+				u64, err := strconv.ParseUint(methodArgs[i], 10, 32)
+				if err != nil {
+					log.Fatal(err)
+				}
+				argData = uint32(u64)
+			}
+		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
+			{
+				value := new(big.Int)
+				value.SetString(methodArgs[i], base)
+				argData = value
+			}
+		case v == "bytes32":
+			{
+				value := [32]byte{}
+				bytes, err := hexutil.Decode(methodArgs[i])
+				if err != nil {
+					log.Fatal(err)
+				}
+				copy(value[:], bytes)
+				argData = value
+			}
+		case strings.HasPrefix(v, "bytes"):
+			{
+				// No fixed size set as it would make it an "array" instead
+				// of a "slice" when encoding. We want it to be a slice.
+				value := []byte{}
+				bytes, err := hexutil.Decode(methodArgs[i])
+				if err != nil {
+					log.Fatal(err)
+				}
+				copy(value[:], bytes) // nolint:gocritic
+				argData = value
+			}
+		case strings.HasPrefix(v, "string"):
+			{
+				argData = methodArgs[i]
+			}
+		case strings.HasPrefix(v, "bool"):
+			{
+				value, err := strconv.ParseBool(methodArgs[i])
+				if err != nil {
+					log.Fatal(err)
+				}
+				argData = value
+			}
+		}
+		argumentsData = append(argumentsData, argData)
+	}
+
+	abiEncodeData, err := arguments.PackValues(argumentsData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode arguments: %w", err)
+	}
+
+	data = append(data, abiEncodeData...)
+	return data, nil
+}
+
+// contractCallMethodID calculates the first 4 bytes of the method
+// signature for function call on contract
+func contractCallMethodID(methodSig string) ([]byte, error) {
+	fnSignature := []byte(methodSig)
+	hash := sha3.NewLegacyKeccak256()
+	if _, err := hash.Write(fnSignature); err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return hash.Sum(nil)[:4], nil
+}
+
+func (s *APIService) constructionPreprocess(ctx context.Context, req *types.ConstructionPreprocessRequest) (*types.ConstructionPreprocessResponse, *types.Error) {
 	isContractCall := false
 	if _, ok := req.Metadata["method_signature"]; ok {
 		isContractCall = true
@@ -180,122 +315,4 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	return &types.ConstructionPreprocessResponse{
 		Options: marshaled,
 	}, nil
-}
-
-// constructContractCallData constructs the data field of a transaction
-func constructContractCallData(methodSig string, methodArgs []string) ([]byte, error) {
-	arguments := abi.Arguments{}
-	argumentsData := []interface{}{}
-
-	methodID, err := contractCallMethodID(methodSig)
-	if err != nil {
-		return nil, err
-	}
-
-	var data []byte
-	data = append(data, methodID...)
-
-	const split = 2
-	splitSigByLeadingParenthesis := strings.Split(methodSig, "(")
-	if len(splitSigByLeadingParenthesis) < split {
-		return data, nil
-	}
-	splitSigByTrailingParenthesis := strings.Split(splitSigByLeadingParenthesis[1], ")")
-	if len(splitSigByTrailingParenthesis) < 1 {
-		return data, nil
-	}
-	splitSigByComma := strings.Split(splitSigByTrailingParenthesis[0], ",")
-
-	if len(splitSigByComma) != len(methodArgs) {
-		return nil, errors.New("invalid method arguments")
-	}
-
-	for i, v := range splitSigByComma {
-		typed, _ := abi.NewType(v, v, nil)
-		argument := abi.Arguments{
-			{
-				Type: typed,
-			},
-		}
-
-		arguments = append(arguments, argument...)
-		var argData interface{}
-		const base = 10
-		switch {
-		case v == "address":
-			{
-				argData = common.HexToAddress(methodArgs[i])
-			}
-		case v == "uint32":
-			{
-				u64, err := strconv.ParseUint(methodArgs[i], 10, 32)
-				if err != nil {
-					log.Fatal(err)
-				}
-				argData = uint32(u64)
-			}
-		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
-			{
-				value := new(big.Int)
-				value.SetString(methodArgs[i], base)
-				argData = value
-			}
-		case v == "bytes32":
-			{
-				value := [32]byte{}
-				bytes, err := hexutil.Decode(methodArgs[i])
-				if err != nil {
-					log.Fatal(err)
-				}
-				copy(value[:], bytes)
-				argData = value
-			}
-		case strings.HasPrefix(v, "bytes"):
-			{
-				// No fixed size set as it would make it an "array" instead
-				// of a "slice" when encoding. We want it to be a slice.
-				value := []byte{}
-				bytes, err := hexutil.Decode(methodArgs[i])
-				if err != nil {
-					log.Fatal(err)
-				}
-				copy(value[:], bytes) // nolint:gocritic
-				argData = value
-			}
-		case strings.HasPrefix(v, "string"):
-			{
-				argData = methodArgs[i]
-			}
-		case strings.HasPrefix(v, "bool"):
-			{
-				value, err := strconv.ParseBool(methodArgs[i])
-				if err != nil {
-					log.Fatal(err)
-				}
-				argData = value
-			}
-		}
-		argumentsData = append(argumentsData, argData)
-	}
-
-	abiEncodeData, err := arguments.PackValues(argumentsData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode arguments: %w", err)
-	}
-
-	data = append(data, abiEncodeData...)
-	return data, nil
-}
-
-// contractCallMethodID calculates the first 4 bytes of the method
-// signature for function call on contract
-func contractCallMethodID(methodSig string) ([]byte, error) {
-	fnSignature := []byte(methodSig)
-	hash := sha3.NewLegacyKeccak256()
-	if _, err := hash.Write(fnSignature); err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-
-	return hash.Sum(nil)[:4], nil
 }

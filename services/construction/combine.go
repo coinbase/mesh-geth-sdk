@@ -25,6 +25,8 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 // ConstructionCombine implements /construction/combine endpoint.
@@ -37,6 +39,20 @@ func (s *APIService) ConstructionCombine(
 	ctx context.Context,
 	req *types.ConstructionCombineRequest,
 ) (*types.ConstructionCombineResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.ConstructionCombineKey)
+	defer timer.Emit()
+
+	response, err := s.constructionCombine(ctx, req)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.ConstructionCombineKey, "ErrConstructionCombine")
+		stats.LogError(s.logger, err.Message, stats.ConstructionCombineKey, sdkTypes.ErrConstructionCombine)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrConstructionCombine, err)
+	}
+
+	return response, nil
+}
+
+func (s *APIService) constructionCombine(ctx context.Context, req *types.ConstructionCombineRequest) (*types.ConstructionCombineResponse, *types.Error) {
 	if len(req.UnsignedTransaction) == 0 {
 		return nil, sdkTypes.WrapErr(
 			sdkTypes.ErrInvalidInput,

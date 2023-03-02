@@ -23,14 +23,20 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/asserter"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
+
+	"github.com/DataDog/datadog-go/statsd"
+	"github.com/coinbase/rosetta-geth-sdk/stats"
+	"go.uber.org/zap"
 )
 
 // NetworkAPIService implements the server.NetworkAPIServicer interface.
 type NetworkAPIService struct {
-	config *configuration.Configuration
-	types  *AssetTypes.Types
-	errors []*types.Error
-	client construction.Client
+	config       *configuration.Configuration
+	types        *AssetTypes.Types
+	errors       []*types.Error
+	client       construction.Client
+	logger       *zap.Logger
+	statsdClient *statsd.Client
 }
 
 // NewNetworkAPIService creates a new instance of a NetworkAPIService.
@@ -39,12 +45,16 @@ func NewNetworkAPIService(
 	types *AssetTypes.Types,
 	errors []*types.Error,
 	client construction.Client,
+	logger *zap.Logger,
+	statsdClient *statsd.Client,
 ) *NetworkAPIService {
 	return &NetworkAPIService{
-		config: cfg,
-		types:  types,
-		errors: errors,
-		client: client,
+		config:       cfg,
+		types:        types,
+		errors:       errors,
+		client:       client,
+		logger:       logger,
+		statsdClient: statsdClient,
 	}
 }
 
@@ -53,6 +63,9 @@ func (s *NetworkAPIService) NetworkList(
 	ctx context.Context,
 	request *types.MetadataRequest,
 ) (*types.NetworkListResponse, *types.Error) {
+	time := stats.InitBlockchainClientTimer(s.statsdClient, stats.NetworkListKey)
+	defer time.Emit()
+
 	return &types.NetworkListResponse{
 		NetworkIdentifiers: []*types.NetworkIdentifier{s.config.Network},
 	}, nil
@@ -63,6 +76,9 @@ func (s *NetworkAPIService) NetworkOptions(
 	ctx context.Context,
 	request *types.NetworkRequest,
 ) (*types.NetworkOptionsResponse, *types.Error) {
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.NetworkOptionsKey)
+	defer timer.Emit()
+
 	return &types.NetworkOptionsResponse{
 		Version: &types.Version{
 			NodeVersion:    s.types.NodeVersion,
@@ -87,6 +103,20 @@ func (s *NetworkAPIService) NetworkStatus(
 		return nil, AssetTypes.ErrUnavailableOffline
 	}
 
+	timer := stats.InitBlockchainClientTimer(s.statsdClient, stats.NetworkStatusKey)
+	defer timer.Emit()
+
+	response, err := s.networkStatus(ctx, request)
+	if err != nil {
+		stats.IncrementErrorCount(s.statsdClient, stats.NetworkStatusKey, "ErrGetNetworkStatus")
+		stats.LogError(s.logger, err.Message, stats.NetworkStatusKey, AssetTypes.ErrGetNetworkStatus)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrGetNetworkStatus, err)
+	}
+
+	return response, nil
+}
+
+func (s *NetworkAPIService) networkStatus(ctx context.Context, request *types.NetworkRequest) (*types.NetworkStatusResponse, *types.Error) {
 	currentBlock, currentTime, syncStatus, peers, err := s.client.Status(ctx)
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
