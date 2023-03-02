@@ -127,6 +127,11 @@ const (
 
 	// GenesisBlockIndex is the index of the genesis block.
 	GenesisBlockIndex = int64(0)
+
+	// Stats configuration
+	StatsdAddress      = "STATSD_ADDRESS"
+	StatsdTraceAddress = "STATSD_TRACE_ADDRESS"
+	StatsdBufferSize   = "STATSD_BUFFER_SIZE"
 )
 
 var (
@@ -272,6 +277,18 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		TracePrefix:    "",
 		FilterTokens:   tokenFilterValue,
 		TokenWhiteList: payload,
+	}
+
+	// Stats configuration
+	config.StatsdAddress = os.Getenv(StatsdAddress)
+	config.StatsdTraceAddress = os.Getenv(StatsdTraceAddress)
+	statsBufferSizeValue := os.Getenv(StatsdBufferSize)
+	if statsBufferSizeValue != "" {
+		statsBufferSize, err := strconv.Atoi(statsBufferSizeValue)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse stats buffer size %s: %w", statsBufferSizeValue, err)
+		}
+		config.StatsdBufferSize = statsBufferSize
 	}
 
 	return config, nil
