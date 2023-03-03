@@ -24,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
-	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 )
 
 // Mode is the setting that determines if
@@ -270,7 +269,7 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	config.RosettaCfg = configuration.RosettaConfig{
 		SupportRewardTx: true,
 		TraceType:       configuration.GethNativeTrace,
-		Currency: &RosettaTypes.Currency{
+		Currency: &types.Currency{
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
