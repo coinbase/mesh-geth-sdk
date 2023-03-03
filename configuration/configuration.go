@@ -123,10 +123,12 @@ const (
 	GethJsTrace       = iota // == 1
 	OpenEthereumTrace = iota // == 2
 
-	ModeOffline        = "OFFLINE"
-	ModeOnline         = "ONLINE"
-	StandardIngestion  = "standard"
-	AnalyticsIngestion = "analytics"
+	ModeOffline               = "OFFLINE"
+	ModeOnline                = "ONLINE"
+	StandardIngestion         = "standard"
+	AnalyticsIngestion        = "analytics"
+	DefaultStatsdAddress      = "localhost:8125"
+	DefaultStatsdTraceAddress = "localhost:8126"
 )
 
 // IsOfflineMode returns true if running in offline mode
@@ -169,7 +171,11 @@ func (c *Configuration) Validate() error {
 	}
 
 	if c.StatsdAddress == "" {
-		return errors.New("statsd address must be populated")
+		c.StatsdAddress = DefaultStatsdAddress
+	}
+
+	if c.StatsdTraceAddress == "" {
+		c.StatsdTraceAddress = DefaultStatsdTraceAddress
 	}
 
 	return nil
