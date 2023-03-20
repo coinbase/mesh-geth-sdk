@@ -25,4 +25,3 @@ for _ in range(10):
     })
 
 print("latest block", web3.eth.block_number)
-print("chainID is ", web3.eth.chainId)
