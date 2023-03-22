@@ -57,10 +57,11 @@ func newTestingClient() *testingClient {
 			Currency: ethereumCurrencyConfig,
 		},
 		ChainConfig: &params.ChainConfig{ChainID: big.NewInt(int64(ethRopstenChainID))},
+		ServiceName: configuration.DefaultServiceName,
 	}
 	mockClient := &services.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)
-	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg, "c3/rosetta-api")
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewAPIService(
 		cfg,
 		AssetTypes.LoadTypes(),

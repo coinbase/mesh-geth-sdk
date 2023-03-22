@@ -86,11 +86,11 @@ func InitLogger(cfg *configuration.Configuration, fields ...zap.Field) (*zap.Log
 }
 
 // InitStatsd configures the statsd client, starts tracing, and starts profiling.
-func InitStatsd(log *zap.Logger, cfg *configuration.Configuration, serviceName string) (*statsd.Client, func(), error) {
+func InitStatsd(log *zap.Logger, cfg *configuration.Configuration) (*statsd.Client, func(), error) {
 	// add default tags to all metrics
 	serviceTags := map[string]string{
 		"blockchain": cfg.Network.Blockchain,
-		"service":    serviceName,
+		"service":    cfg.ServiceName,
 		"network":    cfg.Network.Network,
 	}
 	defaultTags := generateDefaultTagsMap()
@@ -106,18 +106,18 @@ func InitStatsd(log *zap.Logger, cfg *configuration.Configuration, serviceName s
 	// Configure tracer
 	tracer.Start(
 		tracer.WithAgentAddr(cfg.StatsdTraceAddress),
-		tracer.WithServiceName(serviceName),
+		tracer.WithServiceName(cfg.ServiceName),
 		tracer.WithGlobalTag("blockchain", cfg.Network.Blockchain),
 		tracer.WithGlobalTag("network", cfg.Network.Network),
 	)
 
 	// Configure profiler
 	err = profiler.Start(
-		profiler.WithService(serviceName),
+		profiler.WithService(cfg.ServiceName),
 		profiler.WithTags(
 			"blockchain:"+cfg.Network.Blockchain,
 			"network:"+cfg.Network.Network,
-			"servicename:"+serviceName,
+			"servicename:"+cfg.ServiceName,
 		),
 	)
 	if err != nil {

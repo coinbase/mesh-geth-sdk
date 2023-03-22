@@ -68,10 +68,11 @@ func TestBlockService_Offline(t *testing.T) {
 			Blockchain: blockchain,
 			Network:    network,
 		},
+		ServiceName: configuration.DefaultServiceName,
 	}
 	mockClient := &mockedServices.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)
-	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg, "c3/rosetta-api")
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewBlockAPIService(cfg, mockClient, mockLogger, mockStats)
 	ctx := context.Background()
 
@@ -95,10 +96,11 @@ func TestBlockService_Online(t *testing.T) {
 			Blockchain: blockchain,
 			Network:    network,
 		},
+		ServiceName: configuration.DefaultServiceName,
 	}
 	mockClient := &mockedServices.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)
-	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg, "c3/rosetta-api")
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewBlockAPIService(cfg, mockClient, mockLogger, mockStats)
 	ctx := context.Background()
 

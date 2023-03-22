@@ -62,12 +62,13 @@ var (
 
 func TestNetworkEndpoints_Offline(t *testing.T) {
 	cfg := &configuration.Configuration{
-		Mode:    configuration.ModeOffline,
-		Network: networkIdentifier,
+		Mode:        configuration.ModeOffline,
+		Network:     networkIdentifier,
+		ServiceName: configuration.DefaultServiceName,
 	}
 	mockClient := &mockedServices.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)
-	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg, "c3/rosetta-api")
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewNetworkAPIService(
 		cfg,
 		loadedTypes,
@@ -101,10 +102,11 @@ func TestNetworkEndpoints_Online(t *testing.T) {
 		Mode:                   configuration.ModeOnline,
 		Network:                networkIdentifier,
 		GenesisBlockIdentifier: TestnetGenesisBlockIdentifier,
+		ServiceName:            configuration.DefaultServiceName,
 	}
 	mockClient := &mockedServices.Client{}
 	mockLogger, _, _ := stats.InitLogger(cfg)
-	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg, "c3/rosetta-api")
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewNetworkAPIService(
 		cfg,
 		loadedTypes,

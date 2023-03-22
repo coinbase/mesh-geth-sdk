@@ -57,6 +57,7 @@ type Configuration struct {
 	RosettaCfg RosettaConfig
 
 	// Stats configuration
+	ServiceName        string
 	StatsdAddress      string
 	StatsdTraceAddress string
 	StatsdBufferSize   int
@@ -129,6 +130,7 @@ const (
 	AnalyticsIngestion        = "analytics"
 	DefaultStatsdAddress      = "localhost:8125"
 	DefaultStatsdTraceAddress = "localhost:8126"
+	DefaultServiceName        = "rosetta-api"
 )
 
 // IsOfflineMode returns true if running in offline mode
@@ -168,6 +170,10 @@ func (c *Configuration) Validate() error {
 
 	if c.Port == 0 {
 		return errors.New("port must be populated")
+	}
+
+	if c.ServiceName == "" {
+		return errors.New("service name must be populated in configuration")
 	}
 
 	if c.StatsdAddress == "" {

@@ -56,7 +56,7 @@ func BootStrap(
 	}
 	defer syncFn()
 
-	statsdClient, done, err := stats.InitStatsd(logger, cfg, "c3/rosetta-api")
+	statsdClient, done, err := stats.InitStatsd(logger, cfg)
 	if err != nil {
 		return err
 	}
