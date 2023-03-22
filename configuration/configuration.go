@@ -15,6 +15,8 @@
 package configuration
 
 import (
+	"errors"
+
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -53,6 +55,12 @@ type Configuration struct {
 
 	// RosettaCfg defines the config that used to implement Rosetta APIs
 	RosettaCfg RosettaConfig
+
+	// Stats configuration
+	ServiceName        string
+	StatsdAddress      string
+	StatsdTraceAddress string
+	StatsdBufferSize   int
 }
 
 type RosettaConfig struct {
@@ -116,10 +124,13 @@ const (
 	GethJsTrace       = iota // == 1
 	OpenEthereumTrace = iota // == 2
 
-	ModeOffline        = "OFFLINE"
-	ModeOnline         = "ONLINE"
-	StandardIngestion  = "standard"
-	AnalyticsIngestion = "analytics"
+	ModeOffline               = "OFFLINE"
+	ModeOnline                = "ONLINE"
+	StandardIngestion         = "standard"
+	AnalyticsIngestion        = "analytics"
+	DefaultStatsdAddress      = "localhost:8125"
+	DefaultStatsdTraceAddress = "localhost:8126"
+	DefaultServiceName        = "rosetta-api"
 )
 
 // IsOfflineMode returns true if running in offline mode
@@ -145,4 +156,33 @@ func (c Configuration) IsAnalyticsMode() bool {
 // IsTokenListEmpty returns true if the token addresses list is empty
 func (c Configuration) IsTokenListEmpty() bool {
 	return len(c.RosettaCfg.TokenWhiteList) == 0
+}
+
+func (c *Configuration) Validate() error {
+
+	if c.Network.Blockchain == "" {
+		return errors.New("blockchain must be populated in configuration")
+	}
+
+	if c.Network.Network == "" {
+		return errors.New("network must be populated in configuration")
+	}
+
+	if c.Port == 0 {
+		return errors.New("port must be populated")
+	}
+
+	if c.ServiceName == "" {
+		return errors.New("service name must be populated in configuration")
+	}
+
+	if c.StatsdAddress == "" {
+		c.StatsdAddress = DefaultStatsdAddress
+	}
+
+	if c.StatsdTraceAddress == "" {
+		c.StatsdTraceAddress = DefaultStatsdTraceAddress
+	}
+
+	return nil
 }

@@ -24,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
-	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 )
 
 // Mode is the setting that determines if
@@ -127,6 +126,11 @@ const (
 
 	// GenesisBlockIndex is the index of the genesis block.
 	GenesisBlockIndex = int64(0)
+
+	// Stats configuration
+	StatsdAddress      = "STATSD_ADDRESS"
+	StatsdTraceAddress = "STATSD_TRACE_ADDRESS"
+	StatsdBufferSize   = "STATSD_BUFFER_SIZE"
 )
 
 var (
@@ -265,13 +269,26 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	config.RosettaCfg = configuration.RosettaConfig{
 		SupportRewardTx: true,
 		TraceType:       configuration.GethNativeTrace,
-		Currency: &RosettaTypes.Currency{
+		Currency: &types.Currency{
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
 		TracePrefix:    "",
 		FilterTokens:   tokenFilterValue,
 		TokenWhiteList: payload,
+	}
+
+	// Stats configuration
+	config.ServiceName = configuration.DefaultServiceName
+	config.StatsdAddress = os.Getenv(StatsdAddress)
+	config.StatsdTraceAddress = os.Getenv(StatsdTraceAddress)
+	statsBufferSizeValue := os.Getenv(StatsdBufferSize)
+	if statsBufferSizeValue != "" {
+		statsBufferSize, err := strconv.Atoi(statsBufferSizeValue)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse stats buffer size %s: %w", statsBufferSizeValue, err)
+		}
+		config.StatsdBufferSize = statsBufferSize
 	}
 
 	return config, nil

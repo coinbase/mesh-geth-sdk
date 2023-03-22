@@ -26,6 +26,8 @@ import (
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/coinbase/rosetta-geth-sdk/stats"
 )
 
 var (
@@ -60,15 +62,20 @@ var (
 
 func TestNetworkEndpoints_Offline(t *testing.T) {
 	cfg := &configuration.Configuration{
-		Mode:    configuration.ModeOffline,
-		Network: networkIdentifier,
+		Mode:        configuration.ModeOffline,
+		Network:     networkIdentifier,
+		ServiceName: configuration.DefaultServiceName,
 	}
 	mockClient := &mockedServices.Client{}
+	mockLogger, _, _ := stats.InitLogger(cfg)
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewNetworkAPIService(
 		cfg,
 		loadedTypes,
 		AssetTypes.Errors,
 		mockClient,
+		mockLogger,
+		mockStats,
 	)
 	ctx := context.Background()
 
@@ -95,13 +102,18 @@ func TestNetworkEndpoints_Online(t *testing.T) {
 		Mode:                   configuration.ModeOnline,
 		Network:                networkIdentifier,
 		GenesisBlockIdentifier: TestnetGenesisBlockIdentifier,
+		ServiceName:            configuration.DefaultServiceName,
 	}
 	mockClient := &mockedServices.Client{}
+	mockLogger, _, _ := stats.InitLogger(cfg)
+	mockStats, _, _ := stats.InitStatsd(mockLogger, cfg)
 	servicer := NewNetworkAPIService(
 		cfg,
 		loadedTypes,
 		AssetTypes.Errors,
 		mockClient,
+		mockLogger,
+		mockStats,
 	)
 	ctx := context.Background()
 
