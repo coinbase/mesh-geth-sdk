@@ -279,6 +279,7 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	}
 
 	// Stats configuration
+	config.ServiceName = configuration.DefaultServiceName
 	config.StatsdAddress = os.Getenv(StatsdAddress)
 	config.StatsdTraceAddress = os.Getenv(StatsdTraceAddress)
 	statsBufferSizeValue := os.Getenv(StatsdBufferSize)
