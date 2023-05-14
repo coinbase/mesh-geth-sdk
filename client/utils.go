@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"strings"
+	"log"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 
@@ -177,4 +178,21 @@ func GenerateErc20TransferData(toAddress string, value *big.Int) []byte {
 	data = append(data, paddedAddress...)
 	data = append(data, paddedAmount...)
 	return data
+}
+
+func (tx *LoadedTransaction) GetMint() *big.Int {
+	if  tx.Mint == "" {
+		return big.NewInt(0)
+	}
+	hexString := tx.Mint[2:]
+	bigInt := new(big.Int)
+	// 16 for hexadecimal base
+	_, ok := bigInt.SetString(hexString, 16)
+
+	if !ok {
+		log.Printf("Could not convert mint to big int for %s", tx.TxHash.String())
+		return big.NewInt(0)
+	}
+
+	return bigInt
 }
