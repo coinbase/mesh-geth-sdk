@@ -70,6 +70,7 @@ type TxExtraInfo struct {
 	BlockHash   *common.Hash    `json:"blockHash,omitempty"`
 	From        *common.Address `json:"from,omitempty"`
 	TxHash      *common.Hash    `json:"hash,omitempty"`
+	Mint        string          `json:"mint,omitempty"`
 }
 
 type Metadata struct {
@@ -118,6 +119,8 @@ type LoadedTransaction struct {
 
 	BaseFee      *big.Int
 	IsBridgedTxn bool
+
+	Mint string
 }
 
 type SignedTransactionWrapper struct {

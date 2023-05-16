@@ -5,7 +5,7 @@ nohup make run-rosetta > /dev/null 2>&1 &
 
 nohup make run-rosetta-offline > /dev/null 2>&1 &
 
-sleep 60
+sleep 120
 
 curl -s --location --request POST 'http://localhost:8080/network/list' \
 --header 'Content-Type: application/json' \

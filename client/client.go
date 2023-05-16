@@ -506,6 +506,7 @@ func (tx *RPCTransaction) LoadedTransaction() *LoadedTransaction {
 		BlockNumber: tx.TxExtraInfo.BlockNumber,
 		BlockHash:   tx.TxExtraInfo.BlockHash,
 		TxHash:      tx.TxExtraInfo.TxHash,
+		Mint:        tx.TxExtraInfo.Mint,
 	}
 	return ethTx
 }
