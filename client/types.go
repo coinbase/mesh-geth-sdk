@@ -34,15 +34,13 @@ const (
 	maxTraceConcurrency  = int64(16) // nolint:gomnd
 	semaphoreTraceWeight = int64(1)  // nolint:gomnd
 
-	// ERC20 Standard Definition for the Transfer Event Logs Topics
-	Erc20TransferEventLogTopics = "Transfer(address,address,uint256)"
+	// Interesting ERC20 log topics
+	Erc20TransferLogTopic   = "Transfer(address,address,uint256)"
+	Erc20DepositLogTopic    = "Deposit(address,uint256)"
+	Erc20WithdrawalLogTopic = "Withdrawal(address,uint256)"
 
-	// While parsing ERC20 ops, we will ignore any event logs that we think are an ERC20 transfer
-	// that do not contain 3 topics and who's `data` field is not a single 32 byte hex string
-	// representing the amount of the transfer
-	NumTopicsERC20Transfer = 3
-	UnknownERC20Symbol     = "ERC20_UNKNOWN"
-	UnknownERC20Decimals   = 0
+	UnknownERC20Symbol   = "ERC20_UNKNOWN"
+	UnknownERC20Decimals = 0
 
 	UnknownERC721Symbol   = "ERC721_UNKNOWN"
 	UnknownERC721Decimals = 0
@@ -52,6 +50,15 @@ const (
 	eip1559TxType = 2
 
 	ContractAddressMetadata = "contractAddress"
+)
+
+var (
+	// Mapping log topic to its hash and hex format
+	Erc20LogTopicMap = map[string]string{
+		Erc20TransferLogTopic:   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+		Erc20DepositLogTopic:    "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c",
+		Erc20WithdrawalLogTopic: "7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65",
+	}
 )
 
 type ContractCurrency struct {

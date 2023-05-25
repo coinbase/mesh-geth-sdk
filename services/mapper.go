@@ -15,6 +15,7 @@
 package services
 
 import (
+	"github.com/coinbase/rosetta-geth-sdk/client"
 	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
@@ -27,8 +28,9 @@ import (
 )
 
 const (
-	TopicsInErc20Transfer = 3
-	zeroAddress           = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	TopicsInErc20DepositOrWithdrawal = 2
+	TopicsInErc20Transfer            = 3
+	zeroAddress                      = "0x0000000000000000000000000000000000000000000000000000000000000000"
 )
 
 func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs map[string]*RosettaTypes.Operation) (
@@ -63,7 +65,7 @@ func parseTransferOps(startIndex int, transfers []*evmClient.EVMTransfer, addrs 
 		val, exists := addrs[key]
 		if exists {
 			amt := new(big.Int)
-			amt, ok := amt.SetString(val.Amount.Value, 10)// nolint:gomnd
+			amt, ok := amt.SetString(val.Amount.Value, 10) // nolint:gomnd
 			if !ok {
 				log.Println("error consolidating transfer data")
 				return nil, nil
@@ -121,9 +123,9 @@ func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaType
 	var ops []*RosettaTypes.Operation
 	addrMap := make(map[string]*RosettaTypes.Operation)
 	for _, trace := range tx.Trace {
-		beforeOps, addrMap := parseTransferOps(startIndex + len(ops), trace.BeforeEVMTransfers, addrMap)
+		beforeOps, addrMap := parseTransferOps(startIndex+len(ops), trace.BeforeEVMTransfers, addrMap)
 		ops = append(ops, beforeOps...)
-		afterOps, _ := parseTransferOps(startIndex + len(ops), trace.AfterEVMTransfers, addrMap)
+		afterOps, _ := parseTransferOps(startIndex+len(ops), trace.AfterEVMTransfers, addrMap)
 		ops = append(ops, afterOps...)
 	}
 	return ops
@@ -151,12 +153,12 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: 0,
 			},
-			Type:    sdkTypes.FeeOpType,
-			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:   sdkTypes.FeeOpType,
+			Status: RosettaTypes.String(sdkTypes.SuccessStatus),
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount:  evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
 		},
 
 		{
@@ -372,6 +374,36 @@ func Erc20Ops(
 	ops := []*RosettaTypes.Operation{}
 
 	contractAddress := transferLog.Address
+	event := transferLog.Topics[0]
+
+	if event.Hex() == client.Erc20LogTopicMap[client.Erc20DepositLogTopic] {
+		mintOp := RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: opsLen,
+			},
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.OpErc20Mint,
+			Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, false),
+			Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&transferLog.Topics[1])),
+		}
+		ops = append(ops, &mintOp)
+		return ops
+	}
+
+	if event.Hex() == client.Erc20LogTopicMap[client.Erc20WithdrawalLogTopic] {
+		burnOp := RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: opsLen,
+			},
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.OpErc20Burn,
+			Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, true),
+			Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&transferLog.Topics[1])),
+		}
+		ops = append(ops, &burnOp)
+		return ops
+	}
+
 	addressFrom := transferLog.Topics[1]
 	addressTo := transferLog.Topics[2]
 
@@ -402,31 +434,35 @@ func Erc20Ops(
 		ops = append(ops, &burnOp)
 		return ops
 	}
-	sendingOp := RosettaTypes.Operation{
-		OperationIdentifier: &RosettaTypes.OperationIdentifier{
-			Index: opsLen,
-		},
-		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
-		Type:    sdkTypes.OpErc20Transfer,
-		Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, true),
-		Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressFrom)),
-	}
-	receiptOp := RosettaTypes.Operation{
-		OperationIdentifier: &RosettaTypes.OperationIdentifier{
-			Index: opsLen + 1,
-		},
-		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
-		Type:    sdkTypes.OpErc20Transfer,
-		Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, false),
-		Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressTo)),
-		RelatedOperations: []*RosettaTypes.OperationIdentifier{
-			{
+
+	if event.Hex() == client.Erc20LogTopicMap[client.Erc20TransferLogTopic] {
+		sendingOp := RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
 				Index: opsLen,
 			},
-		},
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.OpErc20Transfer,
+			Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, true),
+			Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressFrom)),
+		}
+		receiptOp := RosettaTypes.Operation{
+			OperationIdentifier: &RosettaTypes.OperationIdentifier{
+				Index: opsLen + 1,
+			},
+			Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
+			Type:    sdkTypes.OpErc20Transfer,
+			Amount:  evmClient.Erc20Amount(transferLog.Data, contractAddress, currency.Symbol, currency.Decimals, false),
+			Account: evmClient.Account(evmClient.ConvertEVMTopicHashToAddress(&addressTo)),
+			RelatedOperations: []*RosettaTypes.OperationIdentifier{
+				{
+					Index: opsLen,
+				},
+			},
+		}
+		ops = append(ops, &sendingOp)
+		ops = append(ops, &receiptOp)
+		return ops
 	}
-	ops = append(ops, &sendingOp)
-	ops = append(ops, &receiptOp)
 
 	return ops
 }
