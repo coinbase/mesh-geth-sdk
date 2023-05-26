@@ -23,7 +23,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
@@ -92,46 +91,26 @@ func (s *BlockAPIService) populateTransactions(
 	return transactions, nil
 }
 
-func ContainsTopic(log *EthTypes.Log, topic string) bool {
-	for _, t := range log.Topics {
-		hex := t.Hex()
-		if hex == topic {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
 ) (*RosettaTypes.Transaction, error) {
-	// var ops []*RosettaTypes.Operation
-
-	// Compute fee operations
-
 	ops, err := s.client.ParseOps(tx)
 	if err != nil {
 		return nil, err
 	}
-	keccak := crypto.Keccak256([]byte(client.Erc20TransferEventLogTopics))
-	encodedTransferMethod := hexutil.Encode(keccak)
 
 	var receiptLogs []*EthTypes.Log
 	if tx.Receipt != nil {
 		receiptLogs = tx.Receipt.Logs
 	}
-	// Compute tx operations via tx.Receipt logs for ERC20 transfers
-	// if Filter == false, we record every ERC20 tokens
+	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
 	for _, log := range receiptLogs {
-		// If this isn't an ERC20 transfer, skip
-		if !ContainsTopic(log, encodedTransferMethod) {
-			continue
-		}
+		// if Filter == false, we record every ERC20 tokens
 		if !s.client.GetRosettaConfig().FilterTokens || (s.client.GetRosettaConfig().FilterTokens &&
 			client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
 			switch len(log.Topics) {
-			case TopicsInErc20Transfer:
+			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
 				currency, err := s.client.GetContractCurrency(log.Address, true)
 				if err != nil {
 					return nil, err
