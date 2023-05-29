@@ -15,7 +15,6 @@
 package services
 
 import (
-	"github.com/coinbase/rosetta-geth-sdk/client"
 	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
@@ -378,7 +377,7 @@ func Erc20Ops(
 	if len(transferLog.Topics) == TopicsInErc20DepositOrWithdrawal {
 		address := transferLog.Topics[1]
 
-		if event.Hex() == client.Erc20LogTopicMap[client.Erc20DepositLogTopic] {
+		if event.Hex() == evmClient.Erc20LogTopicMap[evmClient.Erc20DepositLogTopic] {
 			mintOp := RosettaTypes.Operation{
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: opsLen,
@@ -392,7 +391,7 @@ func Erc20Ops(
 			return ops
 		}
 
-		if event.Hex() == client.Erc20LogTopicMap[client.Erc20WithdrawalLogTopic] {
+		if event.Hex() == evmClient.Erc20LogTopicMap[evmClient.Erc20WithdrawalLogTopic] {
 			burnOp := RosettaTypes.Operation{
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: opsLen,
@@ -439,7 +438,7 @@ func Erc20Ops(
 			return ops
 		}
 
-		if event.Hex() == client.Erc20LogTopicMap[client.Erc20TransferLogTopic] {
+		if event.Hex() == evmClient.Erc20LogTopicMap[evmClient.Erc20TransferLogTopic] {
 			sendingOp := RosettaTypes.Operation{
 				OperationIdentifier: &RosettaTypes.OperationIdentifier{
 					Index: opsLen,
