@@ -60,6 +60,7 @@ var (
 	ErrGeth = &types.Error{
 		Code:    2, //nolint
 		Message: "geth error",
+		Retriable: true,
 	}
 
 	// ErrUnableToDecompressPubkey is returned when
@@ -193,7 +194,6 @@ var (
 	ErrClientCallParametersInvalid = errors.New("call parameters invalid")
 	ErrClientCallOutputMarshal     = errors.New("call output marshal")
 	ErrClientCallMethodInvalid     = errors.New("call method invalid")
-	ErrClientTimeout               = errors.New("request timed out")
 )
 
 // wrapErr adds details to the types.Error provided. We use a function
@@ -209,9 +209,6 @@ func WrapErr(rErr *types.Error, err error) *types.Error {
 		newErr.Details = map[string]interface{}{
 			"context": err.Error(),
 		}
-	}
-	if rErr.Code == 2 && err == ErrClientTimeout {
-		newErr.Retriable = true
 	}
 
 	return newErr
