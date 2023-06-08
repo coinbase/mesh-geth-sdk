@@ -580,7 +580,7 @@ func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh strin
 	map[string][]*FlatCall, error,
 ) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix + "_replayBlockTransactions", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayBlockTransactions", hsh, []string{"trace"})
 	if err != nil {
 		return nil, err
 	}
@@ -628,7 +628,7 @@ func (ec *SDKClient) TraceReplayTransaction(
 	hsh string,
 ) (json.RawMessage, []*FlatCall, error) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix + "_replayTransaction", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", hsh, []string{"trace"})
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -934,13 +934,13 @@ func (ec *SDKClient) GetLoadedTransaction(
 ) (*LoadedTransaction, error) {
 	header, err := ec.HeaderByHash(ctx, common.HexToHash(request.BlockIdentifier.Hash))
 	if err != nil {
-		return nil, fmt.Errorf("%w: failure getting header", err)
+		return nil, fmt.Errorf("failure getting header: %w", err)
 	}
 
 	hash := common.HexToHash(request.TransactionIdentifier.Hash)
 	tx, pending, err := ec.TransactionByHash(ctx, hash)
 	if err != nil {
-		return nil, fmt.Errorf("%w: failure getting tx", err)
+		return nil, fmt.Errorf("failure getting tx: %w", err)
 	}
 	if pending {
 		return nil, nil
@@ -969,11 +969,18 @@ func (ec *SDKClient) GetLoadedTransaction(
 	if ec.rosettaConfig.SupportsBlockAuthor {
 		blockAuthor, err := ec.BlockAuthor(ctx, header.Number.Int64())
 		if err != nil {
-			return nil, fmt.Errorf("%w: could not get block author for %x", err, hash)
+			return nil, fmt.Errorf("could not get block author for %x: %w", hash, err)
 		}
-		loadedTx.Author = MustChecksum(blockAuthor)
+		if err := ChecksumAddress(blockAuthor); err != nil {
+			return nil, fmt.Errorf("block author %s is not a valid address: %w", blockAuthor, err)
+		}
+		loadedTx.Author = blockAuthor
 	} else {
-		loadedTx.Miner = MustChecksum(header.Coinbase.Hex())
+		miner := header.Coinbase.Hex()
+		if err := ChecksumAddress(miner); err != nil {
+			return nil, fmt.Errorf("miner %s is not a valid address: %w", miner, err)
+		}
+		loadedTx.Miner = miner
 	}
 	return loadedTx, nil
 }

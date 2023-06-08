@@ -33,7 +33,7 @@ import (
 	"github.com/neilotoole/errgroup"
 )
 
-const(
+const (
 	ReadHeaderTimeout = time.Minute
 )
 
@@ -45,8 +45,7 @@ func BootStrap(
 	errors []*RosettaTypes.Error,
 	client construction.Client,
 ) error {
-	// The asserter automatically rejects incorrectly formatted
-	// requests.
+	// The asserter automatically rejects incorrectly formatted requests.
 	asserter, err := asserter.NewServer(
 		types.OperationTypes,
 		AssetTypes.HistoricalBalanceSupported,
@@ -58,13 +57,13 @@ func BootStrap(
 	if err != nil {
 		return fmt.Errorf("%w: could not initialize server asserter", err)
 	}
-	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter)
 
+	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter)
 	loggedRouter := server.LoggerMiddleware(router)
 	corsRouter := server.CorsMiddleware(loggedRouter)
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: corsRouter,
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           corsRouter,
 		ReadHeaderTimeout: ReadHeaderTimeout,
 	}
 

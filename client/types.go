@@ -96,11 +96,10 @@ type ParseMetadata struct {
 }
 
 type Transaction struct {
-	From  string   `json:"from"`
-	To    string   `json:"to"`
-	Value *big.Int `json:"value"`
-	Data  []byte   `json:"data"`
-	// ContractData     string          `json:"contractData"`
+	From     string                 `json:"from"`
+	To       string                 `json:"to"`
+	Value    *big.Int               `json:"value"`
+	Data     []byte                 `json:"data"`
 	Nonce    uint64                 `json:"nonce"`
 	GasPrice *big.Int               `json:"gas_price"`
 	GasLimit uint64                 `json:"gas"`

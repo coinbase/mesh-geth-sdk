@@ -195,9 +195,8 @@ var (
 	ErrClientCallMethodInvalid     = errors.New("call method invalid")
 )
 
-// wrapErr adds details to the types.Error provided. We use a function
-// to do this so that we don't accidentially overrwrite the standard
-// errors.
+// WrapErr adds details to the types.Error provided. We use a function
+// to do this so that we don't accidentally override the standard errors.
 func WrapErr(rErr *types.Error, err error) *types.Error {
 	newErr := &types.Error{
 		Code:      rErr.Code,

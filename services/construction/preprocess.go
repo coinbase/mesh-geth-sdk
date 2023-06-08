@@ -66,119 +66,38 @@ func (s *APIService) ConstructionPreprocess( //nolint
 
 	fromOp, _ := matches[0].First()
 	fromAddress := fromOp.Account.Address
+	currency := fromOp.Amount.Currency
 	toOp, amount := matches[1].First()
 	toAddress := toOp.Account.Address
 
-	fromCurrency := fromOp.Amount.Currency
-
-	checkFrom, ok := client.ChecksumAddress(fromAddress)
-	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidAddress,
-			fmt.Errorf("%s is not a valid address", fromAddress),
-		)
+	// Address validation
+	if err := client.ChecksumAddress(fromAddress); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", fromAddress, err))
 	}
-	checkTo, ok := client.ChecksumAddress(toAddress)
-	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidAddress,
-			fmt.Errorf("%s is not a valid address", toAddress),
-		)
+	if err := client.ChecksumAddress(toAddress); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", toAddress, err))
 	}
 
 	preprocessOptions := &client.Options{
-		From:                   checkFrom,
-		To:                     checkTo,
+		From:                   fromAddress,
+		To:                     toAddress,
 		Value:                  amount.String(),
 		SuggestedFeeMultiplier: req.SuggestedFeeMultiplier,
-		Currency:               fromCurrency,
+		Currency:               currency,
 	}
 
-	if v, ok := req.Metadata["gas_price"]; ok {
-		stringObj, ok := v.(string)
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid gas price string", v),
-			)
-		}
-		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid gas price", v),
-			)
-		}
-		preprocessOptions.GasPrice = bigObj
-	}
-	if v, ok := req.Metadata["gas_limit"]; ok {
-		stringObj, ok := v.(string)
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid gas limit string", v),
-			)
-		}
-		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid gas limit", v),
-			)
-		}
-		preprocessOptions.GasLimit = bigObj
-	}
-	if v, ok := req.Metadata["nonce"]; ok {
-		stringObj, ok := v.(string)
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid nonce string", v),
-			)
-		}
-		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid nonce", v),
-			)
-		}
-		preprocessOptions.Nonce = bigObj
+	// Load tx construction data from metadata
+	if err := loadMetadata(req, preprocessOptions); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 	}
 
-	if v, ok := req.Metadata["method_signature"]; ok {
-		methodSigStringObj := v.(string)
-		if !ok {
-			return nil, sdkTypes.WrapErr(
-				sdkTypes.ErrInvalidInput,
-				fmt.Errorf("%s is not a valid method signature string", v),
-			)
-		}
-		var methodArgs []string
-		if v, ok := req.Metadata["method_args"]; ok {
-			methodArgsBytes, _ := json.Marshal(v)
-			err := json.Unmarshal(methodArgsBytes, &methodArgs)
-			if err != nil {
-				fmt.Println("Error in unmarshal")
-			}
-		}
-		data, err := constructContractCallData(methodSigStringObj, methodArgs)
-		if err != nil {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
-		}
-		preprocessOptions.ContractAddress = checkTo
-		preprocessOptions.ContractData = hexutil.Encode(data)
-		preprocessOptions.MethodSignature = methodSigStringObj
-		preprocessOptions.MethodArgs = methodArgs
-	}
-
-	marshaled, err := client.MarshalJSONMap(preprocessOptions)
+	options, err := client.MarshalJSONMap(preprocessOptions)
 	if err != nil {
 		return nil, sdkTypes.ErrInvalidInput
 	}
 
 	return &types.ConstructionPreprocessResponse{
-		Options: marshaled,
+		Options: options,
 	}, nil
 }
 
@@ -298,4 +217,69 @@ func contractCallMethodID(methodSig string) ([]byte, error) {
 	}
 
 	return hash.Sum(nil)[:4], nil
+}
+
+func loadNumericMetadata(req *types.ConstructionPreprocessRequest, metadata string, options *client.Options) error {
+	if v, ok := req.Metadata[metadata]; ok {
+		stringObj, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("%s is not a valid %s string", v, metadata)
+		}
+
+		bigObj, ok := new(big.Int).SetString(stringObj, 10) // nolint:gomnd
+		if !ok {
+			return fmt.Errorf("%s is not a valid %s", v, metadata)
+		}
+
+		switch metadata {
+		case "gas_price":
+			options.GasPrice = bigObj
+		case "gas_limit":
+			options.GasLimit = bigObj
+		case "nonce":
+			options.Nonce = bigObj
+		}
+	}
+
+	return nil
+}
+
+func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Options) error {
+	if err := loadNumericMetadata(req, "gas_price", options); err != nil {
+		return err
+	}
+	if err := loadNumericMetadata(req, "gas_limit", options); err != nil {
+		return err
+	}
+	if err := loadNumericMetadata(req, "nonce", options); err != nil {
+		return err
+	}
+
+	if v, ok := req.Metadata["method_signature"]; ok {
+		methodSigStringObj, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("%s is not a valid method signature string", v)
+		}
+
+		var methodArgs []string
+		if v, ok := req.Metadata["method_args"]; ok {
+			methodArgsBytes, _ := json.Marshal(v)
+			err := json.Unmarshal(methodArgsBytes, &methodArgs)
+			if err != nil {
+				return fmt.Errorf("%s is failed to unmarshal: %w", string(methodArgsBytes), err)
+			}
+		}
+
+		data, err := constructContractCallData(methodSigStringObj, methodArgs)
+		if err != nil {
+			return err
+		}
+
+		options.ContractAddress = options.To
+		options.ContractData = hexutil.Encode(data)
+		options.MethodSignature = methodSigStringObj
+		options.MethodArgs = methodArgs
+	}
+
+	return nil
 }
