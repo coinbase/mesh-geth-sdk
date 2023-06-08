@@ -74,7 +74,7 @@ func (s *APIService) CreateOperationDescription(
 		return nil, errors.New("invalid currency on operation")
 	}
 	if types.Hash(firstCurrency) != types.Hash(secondCurrency) {
-		return nil, errors.New("currency doesn't match between the operations")
+		return nil, errors.New("currency info doesn't match between the operations")
 	}
 
 	if isContractCall {
@@ -84,8 +84,10 @@ func (s *APIService) CreateOperationDescription(
 		j := new(big.Int)
 		j.SetString(operations[1].Amount.Value, base)
 
-		if i.Cmp(big.NewInt(0)) != 0 || j.Cmp(big.NewInt(0)) != 0 {
-			return nil, errors.New("for generic call both operation values should be zero")
+		if i.Cmp(big.NewInt(0)) == 0 {
+			if j.Cmp(big.NewInt(0)) != 0 {
+				return nil, errors.New("for generic call both values should be zero")
+			}
 		}
 		return s.CreateOperationDescriptionContractCall(), nil
 	}

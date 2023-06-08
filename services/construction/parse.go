@@ -191,5 +191,5 @@ func hasERC20TransferData(data []byte) bool {
 	methodID := data[:4]
 	expectedMethodID, _ := erc20TransferMethodID()
 
-	return bytes.Compare(methodID, expectedMethodID) == 0
+	return bytes.Equal(methodID, expectedMethodID)
 }

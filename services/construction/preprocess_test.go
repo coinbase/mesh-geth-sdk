@@ -293,7 +293,7 @@ func TestConstructionPreprocess(t *testing.T) {
 			}(),
 			expectedResponse: nil,
 			expectedError: templateError(
-				AssetTypes.ErrInvalidAddress, "invalid is not a valid address"),
+				AssetTypes.ErrInvalidAddress, "invalid is not a valid address: invalid address"),
 		},
 		"error: invalid destination address": {
 			operations: func() []*types.Operation {
@@ -307,7 +307,7 @@ func TestConstructionPreprocess(t *testing.T) {
 			}(),
 			expectedResponse: nil,
 			expectedError: templateError(
-				AssetTypes.ErrInvalidAddress, "invalid is not a valid address"),
+				AssetTypes.ErrInvalidAddress, "invalid is not a valid address: invalid address"),
 		},
 		"error: missing token address": {
 			operations: templateOperations(preprocessTransferValue, &types.Currency{
@@ -334,13 +334,13 @@ func TestConstructionPreprocess(t *testing.T) {
 				"non-native currency must have contractAddress in Metadata",
 			),
 		},
-		"error: reject call with non-zero transfer value": { 
+		"error: reject call with non-zero transfer value": {
 			operations: bigAmountTemplateOperations(preprocessNoZeroTransferValue, ethereumCurrencyConfig, "CALL"),
 			metadata: map[string]interface{}{
 				"method_signature": "approve(address,uint256)",
 				"method_args":      []string{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"},
 			},
-			expectedResponse:  &types.ConstructionPreprocessResponse{
+			expectedResponse: &types.ConstructionPreprocessResponse{
 				Options: map[string]interface{}{
 					"from":             testingFromAddress,
 					"to":               testingToAddress, // it will be contract address user need to pass in operation
