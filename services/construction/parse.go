@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"errors"
+
 	"github.com/coinbase/rosetta-geth-sdk/client"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
@@ -37,7 +39,6 @@ func (s *APIService) ConstructionParse(
 	request *types.ConstructionParseRequest,
 ) (*types.ConstructionParseResponse, *types.Error) {
 	var tx client.Transaction
-	// var sender common.Address
 
 	if !request.Signed {
 		err := json.Unmarshal([]byte(request.Transaction), &tx)
@@ -68,46 +69,34 @@ func (s *APIService) ConstructionParse(
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, err)
 		}
-		// sender = msg.From()
 		tx.From = msg.From().Hex()
 	}
 
 	//TODO: add logic for contract call parsing
-	var opMethod string
-	var value *big.Int
-	var toAddressHex string
-	// Erc20 transfer
+
+	value := tx.Value
+	opMethod := sdkTypes.CallOpType
+	fromAddress := tx.From
+	toAddress := tx.To
+
+	// ERC20 transfer
 	if len(tx.Data) != 0 && hasERC20TransferData(tx.Data) {
-		toAddress, amountSent, err := parseErc20TransferData(tx.Data)
+		address, amountSent, err := parseErc20TransferData(tx.Data)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 		}
 
 		value = amountSent
 		opMethod = sdkTypes.OpErc20Transfer
-		toAddressHex = toAddress.Hex()
-	} else {
-		value = tx.Value
-		opMethod = sdkTypes.CallOpType
-		toAddressHex = tx.To
+		toAddress = address.Hex()
 	}
 
-	// Ensure valid from address
-	checkFrom, ok := client.ChecksumAddress(tx.From)
-	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidAddress,
-			fmt.Errorf("%s is not a valid address", tx.From),
-		)
+	// Address validation
+	if err := client.ChecksumAddress(fromAddress); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", tx.From, err))
 	}
-
-	// Ensure valid to address
-	checkTo, ok := client.ChecksumAddress(toAddressHex)
-	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidAddress,
-			fmt.Errorf("%s is not a valid address", tx.To),
-		)
+	if err := client.ChecksumAddress(toAddress); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", tx.To, err))
 	}
 
 	ops := []*types.Operation{
@@ -117,7 +106,7 @@ func (s *APIService) ConstructionParse(
 				Index: 0,
 			},
 			Account: &types.AccountIdentifier{
-				Address: checkFrom,
+				Address: fromAddress,
 			},
 			Amount: &types.Amount{
 				Value:    new(big.Int).Neg(value).String(),
@@ -130,7 +119,7 @@ func (s *APIService) ConstructionParse(
 				Index: 1,
 			},
 			Account: &types.AccountIdentifier{
-				Address: checkTo,
+				Address: toAddress,
 			},
 			Amount: &types.Amount{
 				Value:    value.String(),
@@ -138,26 +127,6 @@ func (s *APIService) ConstructionParse(
 			},
 		},
 	}
-
-	// var gasPrice, _ = new(big.Int).SetString(tx.GasPrice.String(), 10) // nolint:gomnd
-	// gasUsed := tx.GasLimit * gasPrice.Uint64()
-
-	// txFee := new(big.Int).SetUint64(gasUsed)
-	// txFee = txFee.Mul(txFee, tx.GasPrice)
-
-	// feeOps := []*types.Operation{
-	// 	{
-	// 		OperationIdentifier: &types.OperationIdentifier{
-	// 			Index: 2, // nolint:gomnd
-	// 		},
-	// 		Type: sdkTypes.FeeOpType,
-	// 		// Status:  types.String(sdkTypes.SuccessStatus),
-	// 		Account: client.Account(&sender),
-	// 		Amount:  client.Amount(new(big.Int).Neg(txFee), tx.Currency),
-	// 	},
-	// }
-
-	// ops = append(ops, feeOps...)
 
 	metadata := &client.ParseMetadata{
 		Nonce:    tx.Nonce,
@@ -175,7 +144,7 @@ func (s *APIService) ConstructionParse(
 			Operations: ops,
 			AccountIdentifierSigners: []*types.AccountIdentifier{
 				{
-					Address: checkFrom,
+					Address: fromAddress,
 				},
 			},
 			Metadata: metaMap,
@@ -193,7 +162,7 @@ func (s *APIService) ConstructionParse(
 // erc20TransferMethodID calculates the first 4 bytes of the method
 // signature for transfer on an ERC20 contract
 func erc20TransferMethodID() ([]byte, error) {
-	transferFnSignature := []byte("transfer(address,uint256)")
+	transferFnSignature := []byte(client.TransferFnSignature)
 	hash := sha3.NewLegacyKeccak256()
 	if _, err := hash.Write(transferFnSignature); err != nil {
 		return nil, err
@@ -204,29 +173,23 @@ func erc20TransferMethodID() ([]byte, error) {
 
 func parseErc20TransferData(data []byte) (*common.Address, *big.Int, error) {
 	if len(data) != client.GenericTransferBytesLength {
-		return nil, nil, fmt.Errorf("incorrect length for data array")
+		return nil, nil, errors.New("incorrect length for data array")
 	}
-	methodID := getTransferMethodID()
+
+	methodID, _ := erc20TransferMethodID()
 	if hexutil.Encode(data[:4]) != hexutil.Encode(methodID) {
-		return nil, nil, fmt.Errorf("incorrect methodID signature")
+		return nil, nil, errors.New("incorrect methodID signature")
 	}
 
 	address := common.BytesToAddress(data[5:36])
 	amount := new(big.Int).SetBytes(data[37:])
-	return &address, amount, nil
-}
 
-func getTransferMethodID() []byte {
-	transferSignature := []byte(client.TransferFnSignature) // do not include spaces in the string
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write(transferSignature)
-	methodID := hash.Sum(nil)[:4]
-	return methodID
+	return &address, amount, nil
 }
 
 func hasERC20TransferData(data []byte) bool {
 	methodID := data[:4]
 	expectedMethodID, _ := erc20TransferMethodID()
-	res := bytes.Compare(methodID, expectedMethodID)
-	return res == 0
+
+	return bytes.Equal(methodID, expectedMethodID)
 }

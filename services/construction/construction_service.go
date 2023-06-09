@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"errors"
+
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/parser"
@@ -63,18 +65,16 @@ func (s *APIService) CreateOperationDescription(
 	isContractCall bool,
 ) ([]*parser.OperationDescription, error) {
 	if len(operations) != numOfValidOpsForDescription {
-		return nil, fmt.Errorf("invalid number of operations")
+		return nil, errors.New("invalid number of operations")
 	}
 
 	firstCurrency := operations[0].Amount.Currency
 	secondCurrency := operations[1].Amount.Currency
-
 	if firstCurrency == nil || secondCurrency == nil {
-		return nil, fmt.Errorf("invalid currency on operation")
+		return nil, errors.New("invalid currency on operation")
 	}
-
 	if types.Hash(firstCurrency) != types.Hash(secondCurrency) {
-		return nil, fmt.Errorf("currency info doesn't match between the operations")
+		return nil, errors.New("currency info doesn't match between the operations")
 	}
 
 	if isContractCall {
@@ -86,7 +86,7 @@ func (s *APIService) CreateOperationDescription(
 
 		if i.Cmp(big.NewInt(0)) == 0 {
 			if j.Cmp(big.NewInt(0)) != 0 {
-				return nil, fmt.Errorf("for generic call both values should be zero")
+				return nil, errors.New("for generic call both values should be zero")
 			}
 		}
 		return s.CreateOperationDescriptionContractCall(), nil
@@ -95,10 +95,10 @@ func (s *APIService) CreateOperationDescription(
 	if types.Hash(firstCurrency) == types.Hash(s.config.RosettaCfg.Currency) {
 		return s.CreateOperationDescriptionNative(), nil
 	}
+
 	firstContract, firstOk := firstCurrency.Metadata[client.ContractAddressMetadata].(string)
 	_, secondOk := secondCurrency.Metadata[client.ContractAddressMetadata].(string)
-
-	// Not Native curr
+	// Non-native currency
 	if !firstOk || !secondOk {
 		return nil, fmt.Errorf("non-native currency must have contractAddress in Metadata")
 	}
@@ -116,8 +116,8 @@ func (s *APIService) CreateOperationDescriptionContractCall() []*parser.Operatio
 			Exists: true,
 		},
 		Amount: &parser.AmountDescription{
-			Exists:   true,
-			Sign:     parser.AnyAmountSign,
+			Exists: true,
+			Sign:   parser.AnyAmountSign,
 		},
 	}
 	nativeReceive := parser.OperationDescription{
@@ -126,8 +126,8 @@ func (s *APIService) CreateOperationDescriptionContractCall() []*parser.Operatio
 			Exists: true,
 		},
 		Amount: &parser.AmountDescription{
-			Exists:   true,
-			Sign:     parser.AnyAmountSign,
+			Exists: true,
+			Sign:   parser.AnyAmountSign,
 		},
 	}
 
@@ -204,16 +204,12 @@ func (s *APIService) CreateOperationDescriptionERC20(
 // ConstructionHash implements /construction/hash endpoint.
 //
 // TransactionHash returns the network-specific Transaction hash for a signed Transaction.
-//
 func (s *APIService) ConstructionHash(
 	ctx context.Context,
 	req *types.ConstructionHashRequest,
 ) (*types.TransactionIdentifierResponse, *types.Error) {
 	if len(req.SignedTransaction) == 0 {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("signed Transaction value is not provided"),
-		)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, errors.New("signed Transaction value is not provided"))
 	}
 
 	var wrappedTx client.SignedTransactionWrapper

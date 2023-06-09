@@ -43,7 +43,6 @@ import (
 // which is sufficient for construction. For this reason, parsing the corresponding
 // Transaction in the Data API (when it lands on chain) will contain a superset of
 // whatever operations were provided during construction.
-//
 func (s *APIService) ConstructionPayloads(
 	ctx context.Context,
 	req *types.ConstructionPayloadsRequest) (*types.ConstructionPayloadsResponse, *types.Error) {
@@ -51,6 +50,7 @@ func (s *APIService) ConstructionPayloads(
 	if _, ok := req.Metadata["method_signature"]; ok {
 		isContractCall = true
 	}
+
 	operationDescriptions, err := s.CreateOperationDescription(req.Operations, isContractCall)
 	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
@@ -76,33 +76,25 @@ func (s *APIService) ConstructionPayloads(
 	nonce := metadata.Nonce
 	gasPrice := metadata.GasPrice
 	gasLimit := metadata.GasLimit
-
 	chainID := s.config.ChainConfig.ChainID
-
 	fromOp, _ := matches[0].First()
 	fromAddress := fromOp.Account.Address
 	fromCurrency := fromOp.Amount.Currency
 
-	checkFrom, ok := client.ChecksumAddress(fromAddress)
-	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("%s is not a valid address", fromAddress),
-		)
+	// Address validation
+	if err := client.ChecksumAddress(fromAddress); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address: %w", fromAddress, err))
+	}
+	if err := client.ChecksumAddress(toAddress); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address: %w", toAddress, err))
 	}
 
-	checkTo, ok := client.ChecksumAddress(toAddress)
-	if !ok {
-		return nil, sdkTypes.WrapErr(
-			sdkTypes.ErrInvalidInput,
-			fmt.Errorf("%s is not a valid address", toAddress),
-		)
-	}
 	var transferData []byte
 	var sendToAddress common.Address
 
 	switch {
 	case isContractCall:
+		// Generic contract call logic
 		contractData, err := hexutil.Decode(metadata.ContractData)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
@@ -120,10 +112,11 @@ func (s *APIService) ConstructionPayloads(
 			)
 		}
 		transferData = contractData
-		sendToAddress = common.HexToAddress(checkTo)
+		sendToAddress = common.HexToAddress(toAddress)
 	case types.Hash(fromCurrency) == types.Hash(s.config.RosettaCfg.Currency):
+		// Native currency logic
 		transferData = []byte{}
-		sendToAddress = common.HexToAddress(checkTo)
+		sendToAddress = common.HexToAddress(toAddress)
 	default:
 		// ERC20 logic
 		contract, ok := fromCurrency.Metadata[client.ContractAddressMetadata].(string)
@@ -142,6 +135,9 @@ func (s *APIService) ConstructionPayloads(
 		amount = big.NewInt(0)
 	}
 
+	// Construct SigningPayload
+	signer := EthTypes.LatestSignerForChainID(chainID)
+
 	tx := EthTypes.NewTransaction(
 		nonce,
 		sendToAddress,
@@ -151,8 +147,14 @@ func (s *APIService) ConstructionPayloads(
 		transferData,
 	)
 
+	payload := &types.SigningPayload{
+		AccountIdentifier: &types.AccountIdentifier{Address: fromAddress},
+		Bytes:             signer.Hash(tx).Bytes(),
+		SignatureType:     types.EcdsaRecovery,
+	}
+
 	unsignedTx := &client.Transaction{
-		From:     checkFrom,
+		From:     fromAddress,
 		To:       sendToAddress.Hex(),
 		Value:    amount,
 		Data:     tx.Data(),
@@ -161,15 +163,6 @@ func (s *APIService) ConstructionPayloads(
 		GasLimit: tx.Gas(),
 		ChainID:  chainID,
 		Currency: fromCurrency,
-	}
-
-	// Construct SigningPayload
-	signer := EthTypes.LatestSignerForChainID(chainID)
-
-	payload := &types.SigningPayload{
-		AccountIdentifier: &types.AccountIdentifier{Address: checkFrom},
-		Bytes:             signer.Hash(tx).Bytes(),
-		SignatureType:     types.EcdsaRecovery,
 	}
 
 	unsignedTxJSON, err := json.Marshal(unsignedTx)

@@ -17,8 +17,9 @@ package construction
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
+
+	"errors"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -27,13 +28,13 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 )
+
 // ConstructionMetadata implements /construction/metadata endpoint.
 //
 // Get any information required to construct a transaction for a specific network.
 // Metadata returned here could be a recent hash to use, an account sequence number,
 // or even arbitrary chain state. The request used when calling this endpoint
 // is created by calling /construction/preprocess in an offline environment.
-//
 func (s APIService) ConstructionMetadata( //nolint
 	ctx context.Context,
 	req *types.ConstructionMetadataRequest,
@@ -47,21 +48,18 @@ func (s APIService) ConstructionMetadata( //nolint
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 	}
 
+	// Address validation
 	if len(input.From) == 0 {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("from address is not provided"))
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, errors.New("from address is not provided"))
 	}
-
 	if len(input.To) == 0 {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("to address is not provided"))
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, errors.New("to address is not provided"))
 	}
-
-	_, okFrom := client.ChecksumAddress(input.From)
-	if !okFrom {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.From))
+	if err := client.ChecksumAddress(input.From); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", input.From, err))
 	}
-	_, okTo := client.ChecksumAddress(input.To)
-	if !okTo {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.To))
+	if err := client.ChecksumAddress(input.To); err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", input.To, err))
 	}
 
 	nonce, err := s.client.GetNonce(ctx, input)
@@ -78,42 +76,38 @@ func (s APIService) ConstructionMetadata( //nolint
 	if input.GasLimit == nil || input.GasLimit.Uint64() == 0 {
 		switch {
 		case len(input.ContractAddress) > 0:
-			log.Info("Fetching generic contract call gas limit")
-			checkContractAddress, ok := client.ChecksumAddress(input.ContractAddress)
-			if !ok {
-				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address", input.To))
+			if err := client.ChecksumAddress(input.ContractAddress); err != nil {
+				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", input.To, err))
 			}
+
 			contractData, err := hexutil.Decode(input.ContractData)
 			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 			}
+
 			// Override the destination address to be the contract address
-			gasLimit, err = s.client.GetContractCallGasLimit(ctx, checkContractAddress, input.From, contractData)
+			gasLimit, err = s.client.GetContractCallGasLimit(ctx, input.ContractAddress, input.From, contractData)
 			if err != nil {
-				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}
 		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
-			log.Info("Fetching native gas limit")
 			value := new(big.Int)
 			value.SetString(input.Value, 10) // nolint:gomnd
+
 			gasLimit, err = s.client.GetNativeTransferGasLimit(ctx, input.To, input.From, value)
 			if err != nil {
-				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrNativeGasLimitError, err)
 			}
 		default:
-			log.Info("Fetching ERC20 gas limit")
 			value := new(big.Int)
 			value.SetString(input.Value, 10) // nolint:gomnd
+
 			gasLimit, err = s.client.GetErc20TransferGasLimit(ctx, input.To, input.From, value, input.Currency)
 			if err != nil {
-				// client error
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}
 		}
 	} else {
-		log.Info("Setting existing gas limit")
 		gasLimit = input.GasLimit.Uint64()
 	}
 
