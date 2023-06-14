@@ -7,6 +7,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	golang.org/x/crypto v0.10.0
+	golang.org/x/sync v0.1.0
 )
