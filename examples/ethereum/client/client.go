@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"fmt"
+
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/coinbase/rosetta-geth-sdk/services"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
@@ -106,10 +107,10 @@ func (c *EthereumClient) GetBlockReceipts(
 
 		if ethReceipts[i].BlockHash != blockHash {
 			return nil, fmt.Errorf(
-				"%w: expected block hash %s for Transaction but got %s",
-				sdkTypes.ErrClientBlockOrphaned,
+				"expected block hash %s for Transaction but got %s: %w",
 				blockHash.Hex(),
 				ethReceipts[i].BlockHash.Hex(),
+				sdkTypes.ErrClientBlockOrphaned,
 			)
 		}
 	}
@@ -167,7 +168,7 @@ func NewEthereumClient(cfg *configuration.Configuration) (*EthereumClient, error
 	evmClient, err := evmClient.NewClient(cfg, nil)
 
 	if err != nil {
-		log.Fatalln("%w: cannot initialize client", err)
+		log.Fatalln("cannot initialize client: %w", err)
 		return nil, err
 	}
 

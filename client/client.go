@@ -75,7 +75,7 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 	enableNativeTracer := cfg.RosettaCfg.TraceType == configuration.GethNativeTrace
 	tc, err := GetTraceConfig(enableNativeTracer)
 	if err != nil {
-		return nil, fmt.Errorf("%w: unable to load trace config", err)
+		return nil, fmt.Errorf("unable to load trace config: %w", err)
 	}
 
 	return &SDKClient{
@@ -86,12 +86,6 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 		EthClient:      ec,
 		traceSemaphore: semaphore.NewWeighted(maxTraceConcurrency),
 	}, nil
-}
-
-func (ec *SDKClient) ParseOps(
-	tx *LoadedTransaction,
-) ([]*RosettaTypes.Operation, error) {
-	return nil, errors.New("ParseOps not implemented")
 }
 
 func (ec *SDKClient) PopulateCrossChainTransactions(
@@ -109,17 +103,6 @@ func (ec *SDKClient) GetClient() *SDKClient {
 	return ec
 }
 
-func toBlockNumArg(number *big.Int) string {
-	if number == nil {
-		return "latest"
-	}
-	pending := big.NewInt(-1)
-	if number.Cmp(pending) == 0 {
-		return "pending"
-	}
-	return hexutil.EncodeBig(number)
-}
-
 // decodeHexData accepts a fully formed hex string (including the 0x prefix) and returns a big.Int
 func decodeHexData(data string) (*big.Int, error) {
 	rawData := data[2:]
@@ -134,65 +117,24 @@ func decodeHexData(data string) (*big.Int, error) {
 	return decoded, nil
 }
 
-func (ec *SDKClient) getEthBlock(
-	ctx context.Context,
-	block *RosettaTypes.PartialBlockIdentifier,
-) (json.RawMessage, error) {
-	var raw json.RawMessage
-	if block != nil {
-		if block.Hash != nil {
-			if err := ec.CallContext(ctx, &raw, "eth_getBlockByHash", block.Hash, false); err != nil {
-				return nil, err
-			}
-		}
-		if block.Hash == nil && block.Index != nil {
-			if err := ec.CallContext(
-				ctx,
-				&raw,
-				"eth_getBlockByNumber",
-				hexutil.EncodeUint64(uint64(*block.Index)),
-				false,
-			); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		err := ec.CallContext(ctx, &raw, "eth_getBlockByNumber", toBlockNumArg(nil), false)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(raw) == 0 {
-		return nil, ethereum.NotFound
-	}
-
-	return raw, nil
-}
-
 func (ec *SDKClient) Balance(
 	ctx context.Context,
 	account *RosettaTypes.AccountIdentifier,
-	block *RosettaTypes.PartialBlockIdentifier,
+	blockIdentifier *RosettaTypes.PartialBlockIdentifier,
 	currencies []*RosettaTypes.Currency,
 ) (*RosettaTypes.AccountBalanceResponse, error) {
-	raw, err := ec.getEthBlock(ctx, block)
+	header, err := ec.blockHeader(ctx, blockIdentifier)
 	if err != nil {
-		return nil, err
-	}
-
-	var head *EthTypes.Header
-	if err := json.Unmarshal(raw, &head); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get block header: %w", err)
 	}
 
 	var (
 		nativeBalance hexutil.Big
 		nonce         hexutil.Uint64
-		code          string
 	)
 
-	blockNum := hexutil.EncodeUint64(head.Number.Uint64())
+	// Get ETH balance, nonce, and bytecode of smart contract
+	blockNum := hexutil.EncodeUint64(header.Number.Uint64())
 	reqs := []rpc.BatchElem{
 		{
 			Method: "eth_getBalance",
@@ -204,10 +146,6 @@ func (ec *SDKClient) Balance(
 			Args:   []interface{}{account.Address, blockNum},
 			Result: &nonce,
 		},
-		{Method: "eth_getCode",
-			Args:   []interface{}{account.Address, blockNum},
-			Result: &code,
-		},
 	}
 	if err := ec.BatchCallContext(ctx, reqs); err != nil {
 		return nil, err
@@ -218,40 +156,34 @@ func (ec *SDKClient) Balance(
 		}
 	}
 
+	// No currencies are specified, return ETH balance
 	balances := []*RosettaTypes.Amount{}
 	if len(currencies) == 0 {
-		balances = append(
-			balances,
-			Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency),
-		)
+		balances = append(balances, Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency))
 	}
 
 	for _, currency := range currencies {
-		value, ok := currency.Metadata[ContractAddressMetadata]
+		address, ok := currency.Metadata[ContractAddressMetadata]
 		if !ok {
 			if utils.Equal(currency, ec.rosettaConfig.Currency) {
+				// ETH is specified in the currencies
 				balances = append(balances, Amount(nativeBalance.ToInt(), ec.rosettaConfig.Currency))
 				continue
 			}
 			return nil, fmt.Errorf("non-native currencies must specify contractAddress in metadata")
 		}
 
+		// ERC20 is specified in the currencies
 		identifierAddress := account.Address
 		if has0xPrefix(identifierAddress) {
 			identifierAddress = identifierAddress[2:42]
 		}
 
-		data, err := hexutil.Decode(BalanceOfMethodPrefix + identifierAddress)
-		if err != nil {
-			return nil, fmt.Errorf("%w: marshalling balanceOf call msg data failed", err)
-		}
-		encodedERC20Data := hexutil.Encode(data)
-
-		contractAddress := common.HexToAddress(value.(string))
-
+		contractAddress := address.(string)
+		data := BalanceOfMethodPrefix + identifierAddress
 		callParams := map[string]string{
-			"to":   value.(string),
-			"data": encodedERC20Data,
+			"to":   contractAddress,
+			"data": data,
 		}
 		var resp string
 		if err := ec.CallContext(ctx, &resp, "eth_call", callParams, blockNum); err != nil {
@@ -259,28 +191,19 @@ func (ec *SDKClient) Balance(
 		}
 		balance, err := decodeHexData(resp)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to decode balanceOf call response: %w", err)
 		}
-
-		amount := Erc20Amount(
-			balance.Bytes(),
-			contractAddress,
-			currency.Symbol,
-			currency.Decimals,
-			false,
-		)
-		balances = append(balances, amount)
+		balances = append(balances, Amount(balance, Erc20Currency(currency.Symbol, currency.Decimals, contractAddress)))
 	}
 
 	return &RosettaTypes.AccountBalanceResponse{
 		Balances: balances,
 		BlockIdentifier: &RosettaTypes.BlockIdentifier{
-			Hash:  head.Hash().Hex(),
-			Index: head.Number.Int64(),
+			Hash:  header.Hash().Hex(),
+			Index: header.Number.Int64(),
 		},
 		Metadata: map[string]interface{}{
 			"nonce": int64(nonce),
-			"code":  code,
 		},
 	}, nil
 }
@@ -299,15 +222,16 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		return nil, -1, nil, nil, err
 	}
 
+	// Get sync status
 	var syncStatus *RosettaTypes.SyncStatus
 	if ec.rosettaConfig.SupportsSyncing {
-		progress, err := ec.syncProgress(ctx)
+		syncProgress, err := ec.SyncProgress(ctx)
 		if err != nil {
 			return nil, -1, nil, nil, err
 		}
-		if progress != nil {
-			currentIndex := int64(progress.CurrentBlock)
-			targetIndex := int64(progress.HighestBlock)
+		if syncProgress != nil {
+			currentIndex := int64(syncProgress.CurrentBlock)
+			targetIndex := int64(syncProgress.HighestBlock)
 
 			syncStatus = &RosettaTypes.SyncStatus{
 				CurrentIndex: &currentIndex,
@@ -321,6 +245,7 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		}
 	}
 
+	// Get peers information
 	var peers []*RosettaTypes.Peer
 	if ec.rosettaConfig.SupportsPeering {
 		peers, err = ec.peers(ctx)
@@ -341,76 +266,43 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		nil
 }
 
-// Header returns a block header from the current canonical chain. If number is
-// nil, the latest known header is returned.
+// blockHeader returns a block header from the current canonical chain.
+// If number is nil, the latest known header is returned.
 func (ec *SDKClient) blockHeader(
 	ctx context.Context,
-	input *RosettaTypes.PartialBlockIdentifier,
+	blockIdentifier *RosettaTypes.PartialBlockIdentifier,
 ) (*EthTypes.Header, error) {
 	var (
 		header *EthTypes.Header
 		err    error
 	)
 
-	if input == nil {
-		header, err = ec.HeaderByNumber(ctx, nil)
-	} else {
-		if input.Hash == nil && input.Index == nil {
-			return nil, ethereum.NotFound
-		}
-
-		if input.Index != nil {
-			header, err = ec.HeaderByNumber(ctx, big.NewInt(*input.Index))
+	if blockIdentifier == nil || (blockIdentifier.Hash == nil && blockIdentifier.Index == nil) {
+		defaultBlockNumber := ec.rosettaConfig.DefaultBlockNumber
+		if len(defaultBlockNumber) != 0 {
+			// Handle reorg issues of Optimism and Base
+			err := ec.CallContext(ctx, &header, "eth_getBlockByNumber", defaultBlockNumber, false)
+			if err != nil {
+				return nil, err
+			}
+			if err == nil && header == nil {
+				return nil, ethereum.NotFound
+			}
 		} else {
-			header, err = ec.HeaderByHash(ctx, common.HexToHash(*input.Hash))
+			header, err = ec.HeaderByNumber(ctx, nil)
+		}
+	} else {
+		if blockIdentifier.Index != nil {
+			header, err = ec.HeaderByNumber(ctx, big.NewInt(*blockIdentifier.Index))
+		} else {
+			header, err = ec.HeaderByHash(ctx, common.HexToHash(*blockIdentifier.Hash))
 		}
 	}
 
 	if err != nil {
-		return nil, ethereum.NotFound
+		return nil, fmt.Errorf("failed to get block header: %w", err)
 	}
-
 	return header, nil
-}
-
-// nolint:staticcheck
-func (ec *SDKClient) BlockAuthor(ctx context.Context, blockIndex int64) (string, error) {
-	return "", errors.New("BlockAuthor not implemented")
-}
-
-// syncProgress retrieves the current progress of the sync algorithm. If there's
-// no sync currently running, it returns nil.
-func (ec *SDKClient) syncProgress(ctx context.Context) (*ethereum.SyncProgress, error) {
-	var raw json.RawMessage
-	if err := ec.CallContext(ctx, &raw, "eth_syncing"); err != nil {
-		return nil, err
-	}
-
-	var syncing bool
-	if err := json.Unmarshal(raw, &syncing); err == nil {
-		return nil, nil // Not syncing (always false)
-	}
-
-	var progress rpcProgress
-	if err := json.Unmarshal(raw, &progress); err != nil {
-		return nil, err
-	}
-
-	return &ethereum.SyncProgress{
-		StartingBlock: uint64(progress.StartingBlock),
-		CurrentBlock:  uint64(progress.CurrentBlock),
-		HighestBlock:  uint64(progress.HighestBlock),
-		PulledStates:  uint64(progress.PulledStates),
-		KnownStates:   uint64(progress.KnownStates),
-	}, nil
-}
-
-type rpcProgress struct {
-	StartingBlock hexutil.Uint64
-	CurrentBlock  hexutil.Uint64
-	HighestBlock  hexutil.Uint64
-	PulledStates  hexutil.Uint64
-	KnownStates   hexutil.Uint64
 }
 
 // Peers retrieves all peers of the node.
@@ -509,15 +401,6 @@ func (tx *RPCTransaction) LoadedTransaction() *LoadedTransaction {
 		Mint:        tx.TxExtraInfo.Mint,
 	}
 	return ethTx
-}
-
-func (ec *SDKClient) GetBlockReceipts(
-	ctx context.Context,
-	blockHash common.Hash,
-	txs []RPCTransaction,
-	baseFee *big.Int,
-) ([]*RosettaTxReceipt, error) {
-	return nil, errors.New("GetBlockReceipts not implemented")
 }
 
 // TraceBlockByHash returns the Transaction traces of all transactions in the block
@@ -838,11 +721,6 @@ func (ec *SDKClient) GetGasPrice(
 	return gasPrice, nil
 }
 
-func (ec *SDKClient) GetNativeTransferGasLimit(ctx context.Context, toAddress string,
-	fromAddress string, value *big.Int) (uint64, error) {
-	return 0, errors.New("GetNativeTransferGasLimit not implemented")
-}
-
 func (ec *SDKClient) GetErc20TransferGasLimit(
 	ctx context.Context,
 	toAddress string,
@@ -920,13 +798,6 @@ func (ec *SDKClient) GetContractCurrency(
 	return currency, nil
 }
 
-func (ec *SDKClient) GetTransactionReceipt(
-	ctx context.Context,
-	tx *LoadedTransaction,
-) (*RosettaTxReceipt, error) {
-	return nil, errors.New("GetTransactionReceipt not implemented")
-}
-
 // nolint:staticcheck
 func (ec *SDKClient) GetLoadedTransaction(
 	ctx context.Context,
@@ -983,4 +854,40 @@ func (ec *SDKClient) GetLoadedTransaction(
 		loadedTx.Miner = miner
 	}
 	return loadedTx, nil
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Below are functions that should be implemented by chain specific Rosetta
+///////////////////////////////////////////////////////////////////////////
+
+func (ec *SDKClient) ParseOps(
+	tx *LoadedTransaction,
+) ([]*RosettaTypes.Operation, error) {
+	return nil, errors.New("ParseOps not implemented")
+}
+
+// nolint:staticcheck
+func (ec *SDKClient) BlockAuthor(ctx context.Context, blockIndex int64) (string, error) {
+	return "", errors.New("BlockAuthor not implemented")
+}
+
+func (ec *SDKClient) GetTransactionReceipt(
+	ctx context.Context,
+	tx *LoadedTransaction,
+) (*RosettaTxReceipt, error) {
+	return nil, errors.New("GetTransactionReceipt not implemented")
+}
+
+func (ec *SDKClient) GetBlockReceipts(
+	ctx context.Context,
+	blockHash common.Hash,
+	txs []RPCTransaction,
+	baseFee *big.Int,
+) ([]*RosettaTxReceipt, error) {
+	return nil, errors.New("GetBlockReceipts not implemented")
+}
+
+func (ec *SDKClient) GetNativeTransferGasLimit(ctx context.Context, toAddress string,
+	fromAddress string, value *big.Int) (uint64, error) {
+	return 0, errors.New("GetNativeTransferGasLimit not implemented")
 }

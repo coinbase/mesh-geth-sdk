@@ -27,7 +27,7 @@ func main() {
 	// Load configuration using the ENVs in the environment.
 	cfg, err := config.LoadConfiguration()
 	if err != nil {
-		log.Fatalln("%w: unable to load configuration", err)
+		log.Fatalln("unable to load configuration: %w", err)
 	}
 
 	// Load all the supported operation types, status
@@ -37,12 +37,12 @@ func main() {
 	// Create a new ethereum client by leveraging SDK functionalities
 	client, err := client.NewEthereumClient(cfg)
 	if err != nil {
-		log.Fatalln("%w: cannot initialize client", err)
+		log.Fatalln("cannot initialize client: %w", err)
 	}
 
 	// Bootstrap to start the Rosetta API server
 	err = utils.BootStrap(cfg, types, errors, client)
 	if err != nil {
-		log.Fatalln("%w: unable to bootstrap Rosetta server", err)
+		log.Fatalln("unable to bootstrap Rosetta server: %w", err)
 	}
 }

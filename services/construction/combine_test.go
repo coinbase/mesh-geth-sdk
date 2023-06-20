@@ -34,9 +34,6 @@ var (
 
 func TestConstructionCombine(t *testing.T) {
 	testingClient := newTestingClient()
-	// if err != nil {
-	//	log.Fatalln("%w: unable to load testing configuration", err)
-	// }
 
 	var signatures []*types.Signature
 	_ = json.Unmarshal([]byte(combineSignaturesRaw), &signatures)

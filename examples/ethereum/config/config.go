@@ -221,8 +221,6 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.GenesisBlockIdentifier = GoerliGenesisBlockIdentifier
 		config.ChainConfig = params.GoerliChainConfig
 		config.GethArguments = GoerliGethArguments
-	// case "":
-	// 	return nil, errors.New("NETWORK must be populated")
 	default:
 		return nil, fmt.Errorf("%s is not a valid network", networkValue)
 	}
@@ -239,7 +237,7 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 	if len(envSkipGethAdmin) > 0 {
 		val, err := strconv.ParseBool(envSkipGethAdmin)
 		if err != nil {
-			return nil, fmt.Errorf("%w: unable to parse SKIP_GETH_ADMIN %s", err, envSkipGethAdmin)
+			return nil, fmt.Errorf("unable to parse SKIP_GETH_ADMIN %s: %w", envSkipGethAdmin, err)
 		}
 		config.SkipGethAdmin = val
 	}
@@ -251,14 +249,14 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 
 	port, err := strconv.Atoi(portValue)
 	if err != nil || len(portValue) == 0 || port <= 0 {
-		return nil, fmt.Errorf("%w: unable to parse port %s", err, portValue)
+		return nil, fmt.Errorf("unable to parse port %s: %w", portValue, err)
 	}
 	config.Port = port
 
 	tokenFilter := os.Getenv(TokenFilterEnv)
 	tokenFilterValue, err := strconv.ParseBool(tokenFilter)
 	if err != nil {
-		return nil, fmt.Errorf("%w: unable to parse token filter %t", err, tokenFilterValue)
+		return nil, fmt.Errorf("unable to parse token filter %t: %w", tokenFilterValue, err)
 	}
 
 	payload := []configuration.Token{}

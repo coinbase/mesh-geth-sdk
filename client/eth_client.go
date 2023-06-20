@@ -29,7 +29,7 @@ func NewEthClient(endpoint string) (*EthClient, error) {
 	client, err := ethclient.Dial(endpoint)
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: unable to dial node", err)
+		return nil, fmt.Errorf("unable to dial node: %w", err)
 	}
 
 	return &EthClient{client}, nil
