@@ -205,9 +205,9 @@ func (s *BlockAPIService) GetBlock(
 	if err := json.Unmarshal(raw, &body); err != nil {
 		return nil, nil, nil, err
 	}
-	if len(body.Hash.Hex()) > 0 && len(body.Transactions) == 0 {
-		return nil, nil, nil, errors.New("block hash is populated but transactions are not, this may due to the connected node is not full node")
-	}
+	// Note: We need a full node to return a complete RPCBlock,
+	// otherwise, only body.Hash is populated. body.Transactions is empty.
+	// TODO(xiaying): log warn if len(body.Hash) > 1 && len(body.txs) == 0
 
 	var blockAuthor string
 	if s.client.GetRosettaConfig().SupportsBlockAuthor {
