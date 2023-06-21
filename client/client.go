@@ -281,28 +281,22 @@ func (ec *SDKClient) blockHeader(
 		defaultBlockNumber := ec.rosettaConfig.DefaultBlockNumber
 		if len(defaultBlockNumber) != 0 {
 			// Handle reorg issues of Optimism and Base
-			err := ec.CallContext(ctx, &header, "eth_getBlockByNumber", defaultBlockNumber, false)
-			if err != nil {
-				return nil, err
-			}
-			if err == nil && header == nil {
-				return nil, ethereum.NotFound
-			}
+			err = ec.CallContext(ctx, &header, "eth_getBlockByNumber", defaultBlockNumber, false)
 		} else {
-			header, err = ec.HeaderByNumber(ctx, nil)
+			err = ec.CallContext(ctx, &header, "eth_getBlockByNumber", ToBlockNumArg(nil), false)
 		}
 	} else {
 		if blockIdentifier.Index != nil {
-			header, err = ec.HeaderByNumber(ctx, big.NewInt(*blockIdentifier.Index))
+			err = ec.CallContext(ctx, &header, "eth_getBlockByNumber", ToBlockNumArg(big.NewInt(*blockIdentifier.Index)), false)
 		} else {
-			header, err = ec.HeaderByHash(ctx, common.HexToHash(*blockIdentifier.Hash))
+			err = ec.CallContext(ctx, &header, "eth_getBlockByHash", common.HexToHash(*blockIdentifier.Hash), false)
 		}
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to get block header: %w", err)
+	if err == nil && header == nil {
+		return nil, ethereum.NotFound
 	}
-	return header, nil
+	return header, err
 }
 
 // Peers retrieves all peers of the node.
