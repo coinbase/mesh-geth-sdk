@@ -49,7 +49,7 @@ func GetTraceConfig(useNative bool) (*tracers.TraceConfig, error) {
 func loadTraceConfig() (*tracers.TraceConfig, error) {
 	loadedFile, err := ioutil.ReadFile(tracerPath)
 	if err != nil {
-		return nil, fmt.Errorf("%w: could not load tracer file", err)
+		return nil, fmt.Errorf("could not load tracer file: %w", err)
 	}
 
 	loadedTracer := string(loadedFile)
@@ -66,19 +66,19 @@ type rpcCall struct {
 
 // EVMTransfer is an Ethereum debug trace.
 type EVMTransfer struct {
-	Purpose      string      `json:"purpose"`
-	From         *common.Address `json:"from"`
-	To           *common.Address `json:"to"`
-	Value        *big.Int       `json:"value"`
+	Purpose string          `json:"purpose"`
+	From    *common.Address `json:"from"`
+	To      *common.Address `json:"to"`
+	Value   *big.Int        `json:"value"`
 }
 
 // UnmarshalJSON is a custom unmarshaler for Call.
 func (t *EVMTransfer) UnmarshalJSON(input []byte) error {
 	type CustomTrace struct {
-		Purpose      string      `json:"purpose"`
-		From         *common.Address `json:"from"`
-		To           *common.Address `json:"to"`
-		Value        *hexutil.Big    `json:"value"`
+		Purpose string          `json:"purpose"`
+		From    *common.Address `json:"from"`
+		To      *common.Address `json:"to"`
+		Value   *hexutil.Big    `json:"value"`
 	}
 	var dec CustomTrace
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -109,40 +109,40 @@ func (t *EVMTransfer) UnmarshalJSON(input []byte) error {
 // Call is an Ethereum debug trace.
 type Call struct {
 	BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers"`
-	AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers"`
-	Type         string         `json:"type"`
-	From         common.Address `json:"from"`
-	To           common.Address `json:"to"`
-	Value        *big.Int       `json:"value"`
-	GasUsed      *big.Int       `json:"gasUsed"`
-	Revert       bool
-	ErrorMessage string  `json:"error"`
-	Calls        []*Call `json:"calls"`
+	AfterEVMTransfers  []*EVMTransfer `json:"afterEVMTransfers"`
+	Type               string         `json:"type"`
+	From               common.Address `json:"from"`
+	To                 common.Address `json:"to"`
+	Value              *big.Int       `json:"value"`
+	GasUsed            *big.Int       `json:"gasUsed"`
+	Revert             bool
+	ErrorMessage       string  `json:"error"`
+	Calls              []*Call `json:"calls"`
 }
 
 type FlatCall struct {
 	BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers"`
-	AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers"`
-	Type         string         `json:"type"`
-	From         common.Address `json:"from"`
-	To           common.Address `json:"to"`
-	Value        *big.Int       `json:"value"`
-	GasUsed      *big.Int       `json:"gasUsed"`
-	Revert       bool
-	ErrorMessage string `json:"error"`
+	AfterEVMTransfers  []*EVMTransfer `json:"afterEVMTransfers"`
+	Type               string         `json:"type"`
+	From               common.Address `json:"from"`
+	To                 common.Address `json:"to"`
+	Value              *big.Int       `json:"value"`
+	GasUsed            *big.Int       `json:"gasUsed"`
+	Revert             bool
+	ErrorMessage       string `json:"error"`
 }
 
 func (t *Call) flatten() *FlatCall {
 	return &FlatCall{
 		BeforeEVMTransfers: t.BeforeEVMTransfers,
-		AfterEVMTransfers: t.AfterEVMTransfers,
-		Type:         t.Type,
-		From:         t.From,
-		To:           t.To,
-		Value:        t.Value,
-		GasUsed:      t.GasUsed,
-		Revert:       t.Revert,
-		ErrorMessage: t.ErrorMessage,
+		AfterEVMTransfers:  t.AfterEVMTransfers,
+		Type:               t.Type,
+		From:               t.From,
+		To:                 t.To,
+		Value:              t.Value,
+		GasUsed:            t.GasUsed,
+		Revert:             t.Revert,
+		ErrorMessage:       t.ErrorMessage,
 	}
 }
 
@@ -150,15 +150,15 @@ func (t *Call) flatten() *FlatCall {
 func (t *Call) UnmarshalJSON(input []byte) error {
 	type CustomTrace struct {
 		BeforeEVMTransfers []*EVMTransfer `json:"beforeEVMTransfers"`
-		AfterEVMTransfers []*EVMTransfer `json:"afterEVMTransfers"`
-		Type         string         `json:"type"`
-		From         string         `json:"from"` // string here to avoid erroring when "from" is a blank string
-		To           common.Address `json:"to"`
-		Value        *hexutil.Big   `json:"value"`
-		GasUsed      *hexutil.Big   `json:"gasUsed"`
-		Revert       bool
-		ErrorMessage string  `json:"error"`
-		Calls        []*Call `json:"calls"`
+		AfterEVMTransfers  []*EVMTransfer `json:"afterEVMTransfers"`
+		Type               string         `json:"type"`
+		From               string         `json:"from"` // string here to avoid erroring when "from" is a blank string
+		To                 common.Address `json:"to"`
+		Value              *hexutil.Big   `json:"value"`
+		GasUsed            *hexutil.Big   `json:"gasUsed"`
+		Revert             bool
+		ErrorMessage       string  `json:"error"`
+		Calls              []*Call `json:"calls"`
 	}
 	var dec CustomTrace
 	if err := json.Unmarshal(input, &dec); err != nil {

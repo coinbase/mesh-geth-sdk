@@ -83,7 +83,7 @@ func (s *BlockAPIService) populateTransactions(
 		}
 		transaction, err := s.PopulateTransaction(ctx, tx)
 		if err != nil {
-			return nil, fmt.Errorf("%w: cannot parse %s", err, tx.Transaction.Hash().Hex())
+			return nil, fmt.Errorf("cannot parse %s: %w", tx.Transaction.Hash().Hex(), err)
 		}
 		transactions = append(transactions, transaction)
 	}
@@ -191,7 +191,7 @@ func (s *BlockAPIService) GetBlock(
 	var raw json.RawMessage
 	err := s.client.CallContext(ctx, &raw, blockMethod, args...)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("%w: block fetch failed", err)
+		return nil, nil, nil, fmt.Errorf("block fetch failed: %w", err)
 	} else if len(raw) == 0 {
 		return nil, nil, nil, ethereum.NotFound
 	}
@@ -213,7 +213,7 @@ func (s *BlockAPIService) GetBlock(
 	if s.client.GetRosettaConfig().SupportsBlockAuthor {
 		blockAuthor, err = s.client.BlockAuthor(ctx, head.Number.Int64())
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("%w: could not get block author for %x", err, body.Hash[:])
+			return nil, nil, nil, fmt.Errorf("could not get block author for %x: %w", body.Hash[:], err)
 		}
 	}
 
@@ -232,18 +232,12 @@ func (s *BlockAPIService) GetBlock(
 			return nil, nil, nil, err
 		}
 	}
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("%w: could not get receipts for %x", err, body.Hash[:])
-	}
 
 	// Convert all txs to loaded txs
 	txs := make([]*EthTypes.Transaction, len(body.Transactions))
 	loadedTxs := make([]*client.LoadedTransaction, len(body.Transactions))
 	for i, tx := range body.Transactions {
 		txs[i] = tx.Tx
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("%w: failure getting gas price", err)
-		}
 		loadedTxs[i] = tx.LoadedTransaction()
 		loadedTxs[i].Transaction = txs[i]
 		loadedTxs[i].BaseFee = head.BaseFee
@@ -259,8 +253,8 @@ func (s *BlockAPIService) GetBlock(
 			continue
 		}
 		// Find traces based on Tx Hash
-		hsh := loadedTxs[i].TxHash.Hex()
-		if flattenedCalls, ok := m[hsh]; ok {
+		hash := loadedTxs[i].TxHash.Hex()
+		if flattenedCalls, ok := m[hash]; ok {
 			loadedTxs[i].Trace = flattenedCalls
 		}
 	}
@@ -269,7 +263,7 @@ func (s *BlockAPIService) GetBlock(
 	if s.client.GetRosettaConfig().SupportRewardTx {
 		uncles, err = s.client.GetUncles(ctx, &head, &body)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("%w: unable to get uncles", err)
+			return nil, nil, nil, fmt.Errorf("unable to get uncles: %w", err)
 		}
 	}
 
@@ -306,10 +300,8 @@ func (s *BlockAPIService) Block(
 	}
 	receipts, err := s.client.GetBlockReceipts(ctx, rpcBlock.Hash, rpcBlock.Transactions, baseFee)
 	if err != nil {
-		formtErr := fmt.Errorf("%w: could not get receipts for %x", err, rpcBlock.Hash[:])
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, formtErr)
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("could not get receipts for %x: %w", rpcBlock.Hash[:], err))
 	}
-	// var receipts *[]client.RosettaTxReceipt = nil
 
 	for i, tx := range loadedTxns {
 		if receipts != nil {
@@ -383,7 +375,7 @@ func (s *BlockAPIService) BlockTransaction(
 
 	loadedTx, err := s.client.GetLoadedTransaction(ctx, request)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get loaded tx", err))
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to get loaded tx: %w", err))
 	}
 	var (
 		raw       json.RawMessage
@@ -397,14 +389,14 @@ func (s *BlockAPIService) BlockTransaction(
 		raw, flattened, traceErr = s.client.TraceTransaction(ctx, *loadedTx.TxHash)
 	}
 	if traceErr != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx trace", traceErr))
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to get tx trace: %w", traceErr))
 	}
 	loadedTx.RawTrace = raw
 	loadedTx.Trace = flattened
 
 	receipt, err := s.client.GetTransactionReceipt(ctx, loadedTx)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to get tx receipt", err))
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to get tx receipt: %w", err))
 	}
 	loadedTx.Receipt = receipt
 
@@ -418,7 +410,7 @@ func (s *BlockAPIService) BlockTransaction(
 
 	transaction, err := s.PopulateTransaction(ctx, loadedTx)
 	if err != nil {
-		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("%w: unable to populate tx", err))
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to populate tx: %w", err))
 	}
 
 	return &RosettaTypes.BlockTransactionResponse{

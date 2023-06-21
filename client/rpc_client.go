@@ -81,7 +81,7 @@ func NewRPCClient(endpoint string) (*RPCClient, error) {
 		Transport: defaultTransport,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: unable to dial node", err)
+		return nil, fmt.Errorf("unable to dial node: %w", err)
 	}
 	return &RPCClient{client}, nil
 }

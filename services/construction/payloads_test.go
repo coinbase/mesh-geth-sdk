@@ -53,9 +53,6 @@ var (
 
 func TestPayloads(t *testing.T) {
 	testingClient := newTestingClient()
-	// if err != nil {
-	//	log.Fatalln("%w: unable to load testing configuration", err)
-	// }
 
 	assert.NoError(t, json.Unmarshal([]byte(payloadsRaw), &payloads))
 	assert.NoError(t, json.Unmarshal([]byte(payloadsRawERC20), &payloadsERC20))

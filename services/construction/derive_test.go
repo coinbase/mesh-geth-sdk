@@ -27,9 +27,6 @@ import (
 
 func TestConstructionDerive(t *testing.T) {
 	testingClient := newTestingClient()
-	// if err != nil {
-	//	log.Fatalln("%w: unable to load testing configuration", err)
-	// }
 
 	tests := map[string]struct {
 		request          *types.ConstructionDeriveRequest

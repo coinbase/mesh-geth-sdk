@@ -55,7 +55,7 @@ func BootStrap(
 		"",
 	)
 	if err != nil {
-		return fmt.Errorf("%w: could not initialize server asserter", err)
+		return fmt.Errorf("could not initialize server asserter: %w", err)
 	}
 
 	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter)

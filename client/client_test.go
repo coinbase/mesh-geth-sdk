@@ -27,6 +27,7 @@ import (
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -254,12 +255,12 @@ func TestBalance(t *testing.T) {
 		nil,
 	).Run(
 		func(args mock.Arguments) {
-			r := args.Get(1).(*json.RawMessage)
+			r := args.Get(1).(**types.Header)
 
 			file, err := ioutil.ReadFile("testdata/block_10992.json")
 			assert.NoError(t, err)
-
-			*r = json.RawMessage(file)
+			err = json.Unmarshal(file, &r)
+			assert.NoError(t, err)
 		},
 	).Once()
 
@@ -268,8 +269,7 @@ func TestBalance(t *testing.T) {
 		"BatchCallContext",
 		ctx,
 		mock.MatchedBy(func(rpcs []rpc.BatchElem) bool {
-			return len(rpcs) == 3 && rpcs[0].Method == "eth_getBalance" &&
-				rpcs[1].Method == "eth_getTransactionCount" && rpcs[2].Method == "eth_getCode"
+			return len(rpcs) == 2 && rpcs[0].Method == "eth_getBalance" && rpcs[1].Method == "eth_getTransactionCount"
 		}),
 	).Return(
 		nil,
@@ -277,7 +277,7 @@ func TestBalance(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).([]rpc.BatchElem)
 
-			assert.Len(t, r, 3)
+			assert.Len(t, r, 2)
 			for i := range r {
 				assert.Len(t, r[i].Args, 2)
 				assert.Equal(t, r[i].Args[0], account)
@@ -287,21 +287,18 @@ func TestBalance(t *testing.T) {
 			balance := hexutil.MustDecodeBig("0x2324c0d180077fe7000")
 			*(r[0].Result.(*hexutil.Big)) = (hexutil.Big)(*balance)
 			*(r[1].Result.(*hexutil.Uint64)) = hexutil.Uint64(0)
-			*(r[2].Result.(*string)) = "0x"
 		},
 	).Once()
 
-	callData, err := hexutil.Decode(BalanceOfMethodPrefix + account[2:42])
-	encodedERC20Data := hexutil.Encode(callData)
+	callData := BalanceOfMethodPrefix + account[2:42]
 	tokenAddress := common.HexToAddress("0x1E77ad77925Ac0075CF61Fb76bA35D884985019d")
-	assert.NoError(t, err)
 	mockJSONRPC.On(
 		"CallContext",
 		ctx,
 		mock.Anything,
 		"eth_call",
 		map[string]string{
-			"data": encodedERC20Data,
+			"data": callData,
 			"to":   tokenAddress.String(),
 		},
 		blockNum,
@@ -358,7 +355,6 @@ func TestBalance(t *testing.T) {
 			},
 		},
 		Metadata: map[string]interface{}{
-			"code":  "0x",
 			"nonce": int64(0),
 		},
 	}, resp)
