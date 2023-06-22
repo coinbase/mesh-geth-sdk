@@ -16,7 +16,6 @@ package construction
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -135,16 +134,7 @@ func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Opti
 			return fmt.Errorf("%s is not a valid method signature string", v)
 		}
 
-		var methodArgs []string
-		if v, ok := req.Metadata["method_args"]; ok {
-			methodArgsBytes, _ := json.Marshal(v)
-			err := json.Unmarshal(methodArgsBytes, &methodArgs)
-			if err != nil {
-				return fmt.Errorf("%s is failed to unmarshal: %w", string(methodArgsBytes), err)
-			}
-		}
-
-		data, err := constructContractCallDataGeneric(methodSigStringObj, methodArgs)
+		data, err := constructContractCallDataGeneric(methodSigStringObj, req.Metadata["method_args"])
 		if err != nil {
 			return err
 		}
@@ -152,7 +142,7 @@ func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Opti
 		options.ContractAddress = options.To
 		options.ContractData = hexutil.Encode(data)
 		options.MethodSignature = methodSigStringObj
-		options.MethodArgs = methodArgs
+		options.MethodArgs = req.Metadata["method_args"]
 	}
 
 	return nil

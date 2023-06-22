@@ -37,7 +37,7 @@ func constructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 		if decErr != nil {
 			return nil, fmt.Errorf("error decoding method args hex data: %w", decErr)
 		}
-		return append(data, b...), nil
+		return b, nil
 
 	// case 2: method args are a list of interface{} which will be converted to string before encoding
 	case []interface{}:

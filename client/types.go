@@ -81,12 +81,12 @@ type TxExtraInfo struct {
 }
 
 type Metadata struct {
-	Nonce           uint64   `json:"nonce"`
-	GasPrice        *big.Int `json:"gas_price"`
-	GasLimit        uint64   `json:"gas_limit"`
-	ContractData    string   `json:"data,omitempty"`
-	MethodSignature string   `json:"method_signature,omitempty"`
-	MethodArgs      []string `json:"method_args,omitempty"`
+	Nonce           uint64      `json:"nonce"`
+	GasPrice        *big.Int    `json:"gas_price"`
+	GasLimit        uint64      `json:"gas_limit"`
+	ContractData    string      `json:"data,omitempty"`
+	MethodSignature string      `json:"method_signature,omitempty"`
+	MethodArgs      interface{} `json:"method_args,omitempty"`
 }
 
 type ParseMetadata struct {
@@ -191,7 +191,7 @@ type Options struct {
 	Nonce                  *big.Int               `json:"nonce,omitempty"`
 	Currency               *RosettaTypes.Currency `json:"currency,omitempty"`
 	MethodSignature        string                 `json:"method_signature,omitempty"`
-	MethodArgs             []string               `json:"method_args,omitempty"`
+	MethodArgs             interface{}            `json:"method_args,omitempty"`
 	ContractData           string                 `json:"data,omitempty"`
 }
 
