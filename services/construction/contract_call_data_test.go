@@ -15,6 +15,7 @@
 package construction
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -49,6 +50,16 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodSig:        "register(string,address,bool)",
 			methodArgs:       []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", "true"},
 			expectedResponse: "0x60d7a2780000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000008626f6f6c20616263000000000000000000000000000000000000000000000000",
+		},
+		"error: case string: invalid method args hex data": {
+			methodSig:     "attest((bytes32,(address,uint64,bool,bytes32,bytes,uint256)))",
+			methodArgs:    "!!!",
+			expectedError: errors.New("error decoding method args hex data: encoding/hex: invalid byte: U+0021 '!'"),
+		},
+		"error: case []interface: ": {
+			methodSig:     "register(string,address,bool)",
+			methodArgs:    []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", true},
+			expectedError: errors.New("invalid method_args type at index 2: bool (must be a string)"),
 		},
 	}
 
