@@ -186,7 +186,6 @@ func contractCallMethodID(methodSig string) ([]byte, error) {
 	fnSignature := []byte(methodSig)
 	hash := sha3.NewLegacyKeccak256()
 	if _, err := hash.Write(fnSignature); err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 
