@@ -80,7 +80,9 @@ func constructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 	}
 }
 
-// encodeMethodArgsStrings constructs the data field of a transaction
+// encodeMethodArgsStrings constructs the data field of a transaction for a list of string args.
+// It attempts to first convert the string arg to it's corresponding type in the method signature,
+// and then performs abi encoding to the converted args list and construct the data.
 func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []string) ([]byte, error) {
 	arguments := abi.Arguments{}
 	var argumentsData []interface{}
