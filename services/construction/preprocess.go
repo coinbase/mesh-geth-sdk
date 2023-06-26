@@ -16,19 +16,10 @@ package construction
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"math/big"
-	"strconv"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/coinbase/rosetta-geth-sdk/client"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -101,124 +92,6 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	}, nil
 }
 
-// constructContractCallData constructs the data field of a transaction
-func constructContractCallData(methodSig string, methodArgs []string) ([]byte, error) {
-	arguments := abi.Arguments{}
-	argumentsData := []interface{}{}
-
-	methodID, err := contractCallMethodID(methodSig)
-	if err != nil {
-		return nil, err
-	}
-
-	var data []byte
-	data = append(data, methodID...)
-
-	const split = 2
-	splitSigByLeadingParenthesis := strings.Split(methodSig, "(")
-	if len(splitSigByLeadingParenthesis) < split {
-		return data, nil
-	}
-	splitSigByTrailingParenthesis := strings.Split(splitSigByLeadingParenthesis[1], ")")
-	if len(splitSigByTrailingParenthesis) < 1 {
-		return data, nil
-	}
-	splitSigByComma := strings.Split(splitSigByTrailingParenthesis[0], ",")
-
-	if len(splitSigByComma) != len(methodArgs) {
-		return nil, errors.New("invalid method arguments")
-	}
-
-	for i, v := range splitSigByComma {
-		typed, _ := abi.NewType(v, v, nil)
-		argument := abi.Arguments{
-			{
-				Type: typed,
-			},
-		}
-
-		arguments = append(arguments, argument...)
-		var argData interface{}
-		const base = 10
-		switch {
-		case v == "address":
-			{
-				argData = common.HexToAddress(methodArgs[i])
-			}
-		case v == "uint32":
-			{
-				u64, err := strconv.ParseUint(methodArgs[i], 10, 32)
-				if err != nil {
-					log.Fatal(err)
-				}
-				argData = uint32(u64)
-			}
-		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
-			{
-				value := new(big.Int)
-				value.SetString(methodArgs[i], base)
-				argData = value
-			}
-		case v == "bytes32":
-			{
-				value := [32]byte{}
-				bytes, err := hexutil.Decode(methodArgs[i])
-				if err != nil {
-					log.Fatal(err)
-				}
-				copy(value[:], bytes)
-				argData = value
-			}
-		case strings.HasPrefix(v, "bytes"):
-			{
-				// No fixed size set as it would make it an "array" instead
-				// of a "slice" when encoding. We want it to be a slice.
-				value := []byte{}
-				bytes, err := hexutil.Decode(methodArgs[i])
-				if err != nil {
-					log.Fatal(err)
-				}
-				copy(value[:], bytes) // nolint:gocritic
-				argData = value
-			}
-		case strings.HasPrefix(v, "string"):
-			{
-				argData = methodArgs[i]
-			}
-		case strings.HasPrefix(v, "bool"):
-			{
-				value, err := strconv.ParseBool(methodArgs[i])
-				if err != nil {
-					log.Fatal(err)
-				}
-				argData = value
-			}
-		}
-		argumentsData = append(argumentsData, argData)
-	}
-
-	abiEncodeData, err := arguments.PackValues(argumentsData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode arguments: %w", err)
-	}
-
-	data = append(data, abiEncodeData...)
-	return data, nil
-}
-
-// contractCallMethodID calculates the first 4 bytes of the method
-// signature for function call on contract
-func contractCallMethodID(methodSig string) ([]byte, error) {
-	fnSignature := []byte(methodSig)
-	hash := sha3.NewLegacyKeccak256()
-	if _, err := hash.Write(fnSignature); err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-
-	return hash.Sum(nil)[:4], nil
-}
-
 func loadNumericMetadata(req *types.ConstructionPreprocessRequest, metadata string, options *client.Options) error {
 	if v, ok := req.Metadata[metadata]; ok {
 		stringObj, ok := v.(string)
@@ -261,16 +134,7 @@ func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Opti
 			return fmt.Errorf("%s is not a valid method signature string", v)
 		}
 
-		var methodArgs []string
-		if v, ok := req.Metadata["method_args"]; ok {
-			methodArgsBytes, _ := json.Marshal(v)
-			err := json.Unmarshal(methodArgsBytes, &methodArgs)
-			if err != nil {
-				return fmt.Errorf("%s is failed to unmarshal: %w", string(methodArgsBytes), err)
-			}
-		}
-
-		data, err := constructContractCallData(methodSigStringObj, methodArgs)
+		data, err := constructContractCallDataGeneric(methodSigStringObj, req.Metadata["method_args"])
 		if err != nil {
 			return err
 		}
@@ -278,7 +142,7 @@ func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Opti
 		options.ContractAddress = options.To
 		options.ContractData = hexutil.Encode(data)
 		options.MethodSignature = methodSigStringObj
-		options.MethodArgs = methodArgs
+		options.MethodArgs = req.Metadata["method_args"]
 	}
 
 	return nil
