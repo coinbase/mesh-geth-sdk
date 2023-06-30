@@ -39,6 +39,11 @@ var (
 		ErrInvalidAddress,
 		ErrGethNotReady,
 		ErrInvalidInput,
+		ErrInternalError,
+		ErrNonceError,
+		ErrGasPriceError,
+		ErrNativeGasLimitError,
+		ErrERC20GasLimitError,
 	}
 
 	// ErrUnimplemented is returned when an endpoint
@@ -164,28 +169,28 @@ var (
 
 	// ErrNonceError is returned when we are unable to get nonce
 	ErrNonceError = &types.Error{
-		Code:    15, //nolint
+		Code:    16, //nolint
 		Message: "error getting nonce",
 	}
 
 	// ErrGasPriceError is returned when we have an
 	// error to get gas price
 	ErrGasPriceError = &types.Error{
-		Code:    15, //nolint
+		Code:    17, //nolint
 		Message: "error getting gas price",
 	}
 
 	// ErrNativeGasLimitError is returned when we have an
 	// error to get native gas limit
 	ErrNativeGasLimitError = &types.Error{
-		Code:    15, //nolint
+		Code:    18, //nolint
 		Message: "error getting gas limit for native transfer",
 	}
 
 	// ErrERC20GasLimitError is returned when we have an
 	// error to get ERC20 gas limit
 	ErrERC20GasLimitError = &types.Error{
-		Code:    15, //nolint
+		Code:    19, //nolint
 		Message: "error getting gas limit for erc20 transfer",
 	}
 
