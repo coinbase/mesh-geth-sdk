@@ -15,33 +15,27 @@
 package client
 
 import (
-	"errors"
 	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// ChecksumAddress ensures an address is EIP55-compliant
-func ChecksumAddress(address string) error {
+// ChecksumAddress ensures an address can be EIP55-compliant format
+func ChecksumAddress(address string) (string, error) {
 	addr, err := common.NewMixedcaseAddressFromString(address)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if !addr.ValidChecksum() {
-		return errors.New("checksum address is not equal to original address")
-	}
-
-	return nil
+	return addr.Address().Hex(), nil
 }
 
-// MustChecksum ensures an address is EIP55-compliant
-// If it does not, the program will exit.
+// MustChecksum ensures an address can be EIP55-compliant format
 func MustChecksum(address string) string {
-	err := ChecksumAddress(address)
+	addr, err := ChecksumAddress(address)
 	if err != nil {
-		log.Fatalf("invalid address %s", address)
+		log.Fatalf("invalid address %s: %v", address, err)
 	}
 
-	return address
+	return addr
 }

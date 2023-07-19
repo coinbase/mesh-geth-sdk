@@ -82,10 +82,12 @@ func (s *APIService) ConstructionPayloads(
 	fromCurrency := fromOp.Amount.Currency
 
 	// Address validation
-	if err := client.ChecksumAddress(fromAddress); err != nil {
+	from, err := client.ChecksumAddress(fromAddress)
+	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address: %w", fromAddress, err))
 	}
-	if err := client.ChecksumAddress(toAddress); err != nil {
+	to, err := client.ChecksumAddress(toAddress)
+	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("%s is not a valid address: %w", toAddress, err))
 	}
 
@@ -112,11 +114,11 @@ func (s *APIService) ConstructionPayloads(
 			)
 		}
 		transferData = contractData
-		sendToAddress = common.HexToAddress(toAddress)
+		sendToAddress = common.HexToAddress(to)
 	case types.Hash(fromCurrency) == types.Hash(s.config.RosettaCfg.Currency):
 		// Native currency logic
 		transferData = []byte{}
-		sendToAddress = common.HexToAddress(toAddress)
+		sendToAddress = common.HexToAddress(to)
 	default:
 		// ERC20 logic
 		contract, ok := fromCurrency.Metadata[client.ContractAddressMetadata].(string)
@@ -148,13 +150,13 @@ func (s *APIService) ConstructionPayloads(
 	)
 
 	payload := &types.SigningPayload{
-		AccountIdentifier: &types.AccountIdentifier{Address: fromAddress},
+		AccountIdentifier: &types.AccountIdentifier{Address: from},
 		Bytes:             signer.Hash(tx).Bytes(),
 		SignatureType:     types.EcdsaRecovery,
 	}
 
 	unsignedTx := &client.Transaction{
-		From:     fromAddress,
+		From:     from,
 		To:       sendToAddress.Hex(),
 		Value:    amount,
 		Data:     tx.Data(),

@@ -836,16 +836,10 @@ func (ec *SDKClient) GetLoadedTransaction(
 		if err != nil {
 			return nil, fmt.Errorf("could not get block author for %x: %w", hash, err)
 		}
-		if err := ChecksumAddress(blockAuthor); err != nil {
-			return nil, fmt.Errorf("block author %s is not a valid address: %w", blockAuthor, err)
-		}
-		loadedTx.Author = blockAuthor
+		loadedTx.Author = MustChecksum(blockAuthor)
 	} else {
 		miner := header.Coinbase.Hex()
-		if err := ChecksumAddress(miner); err != nil {
-			return nil, fmt.Errorf("miner %s is not a valid address: %w", miner, err)
-		}
-		loadedTx.Miner = miner
+		loadedTx.Miner = MustChecksum(miner)
 	}
 	return loadedTx, nil
 }

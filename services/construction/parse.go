@@ -92,10 +92,12 @@ func (s *APIService) ConstructionParse(
 	}
 
 	// Address validation
-	if err := client.ChecksumAddress(fromAddress); err != nil {
+	from, err := client.ChecksumAddress(fromAddress)
+	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", tx.From, err))
 	}
-	if err := client.ChecksumAddress(toAddress); err != nil {
+	to, err := client.ChecksumAddress(toAddress)
+	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", tx.To, err))
 	}
 
@@ -106,7 +108,7 @@ func (s *APIService) ConstructionParse(
 				Index: 0,
 			},
 			Account: &types.AccountIdentifier{
-				Address: fromAddress,
+				Address: from,
 			},
 			Amount: &types.Amount{
 				Value:    new(big.Int).Neg(value).String(),
@@ -119,7 +121,7 @@ func (s *APIService) ConstructionParse(
 				Index: 1,
 			},
 			Account: &types.AccountIdentifier{
-				Address: toAddress,
+				Address: to,
 			},
 			Amount: &types.Amount{
 				Value:    value.String(),
