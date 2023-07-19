@@ -332,7 +332,7 @@ func TraceOps(
 	// Zero-out all destroyed accounts that are removed
 	// during transaction finalization.
 	for acct, val := range destroyedAccounts {
-		if err := evmClient.ChecksumAddress(acct); err != nil {
+		if _, err := evmClient.ChecksumAddress(acct); err != nil {
 			continue
 		}
 

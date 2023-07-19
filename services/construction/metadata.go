@@ -55,10 +55,10 @@ func (s APIService) ConstructionMetadata( //nolint
 	if len(input.To) == 0 {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, errors.New("to address is not provided"))
 	}
-	if err := client.ChecksumAddress(input.From); err != nil {
+	if _, err := client.ChecksumAddress(input.From); err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", input.From, err))
 	}
-	if err := client.ChecksumAddress(input.To); err != nil {
+	if _, err := client.ChecksumAddress(input.To); err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", input.To, err))
 	}
 
@@ -76,7 +76,8 @@ func (s APIService) ConstructionMetadata( //nolint
 	if input.GasLimit == nil || input.GasLimit.Uint64() == 0 {
 		switch {
 		case len(input.ContractAddress) > 0:
-			if err := client.ChecksumAddress(input.ContractAddress); err != nil {
+			contractAddress, err := client.ChecksumAddress(input.ContractAddress)
+			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", input.To, err))
 			}
 
@@ -86,7 +87,7 @@ func (s APIService) ConstructionMetadata( //nolint
 			}
 
 			// Override the destination address to be the contract address
-			gasLimit, err = s.client.GetContractCallGasLimit(ctx, input.ContractAddress, input.From, contractData)
+			gasLimit, err = s.client.GetContractCallGasLimit(ctx, contractAddress, input.From, contractData)
 			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}

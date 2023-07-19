@@ -62,16 +62,18 @@ func (s *APIService) ConstructionPreprocess( //nolint
 	toAddress := toOp.Account.Address
 
 	// Address validation
-	if err := client.ChecksumAddress(fromAddress); err != nil {
+	from, err := client.ChecksumAddress(fromAddress)
+	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", fromAddress, err))
 	}
-	if err := client.ChecksumAddress(toAddress); err != nil {
+	to, err := client.ChecksumAddress(toAddress)
+	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidAddress, fmt.Errorf("%s is not a valid address: %w", toAddress, err))
 	}
 
 	preprocessOptions := &client.Options{
-		From:                   fromAddress,
-		To:                     toAddress,
+		From:                   from,
+		To:                     to,
 		Value:                  amount.String(),
 		SuggestedFeeMultiplier: req.SuggestedFeeMultiplier,
 		Currency:               currency,
