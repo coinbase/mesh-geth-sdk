@@ -77,6 +77,11 @@ func (s *BlockAPIService) populateTransactions(
 	}
 
 	for _, tx := range loadedTransactions {
+		// hardcode to skip this tx for unblock Base parsing issue due to tx heavy load
+		if tx.TxHash.String() == "0xad132f33a3c94755aa2c901965c7ed1b8042bd846cd1df2e97176c8cdda0b39e" {
+			continue
+		}
+
 		if tx.IsBridgedTxn {
 			// Bridge tx is already handled in PopulateCrossChainTransactions flow
 			continue
