@@ -102,7 +102,7 @@ func (s *APIService) ConstructionPayloads(
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 		}
 
-		data, err := constructContractCallDataGeneric(metadata.MethodSignature, metadata.MethodArgs)
+		data, err := ConstructContractCallDataGeneric(metadata.MethodSignature, metadata.MethodArgs)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 		}
