@@ -22,9 +22,9 @@ import (
 	"math/big"
 
 	"errors"
-
 	"github.com/coinbase/rosetta-geth-sdk/client"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
+	goEthTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -65,11 +65,11 @@ func (s *APIService) ConstructionParse(
 		tx.ChainID = t.ChainId()
 		tx.Currency = wrappedTx.Currency
 
-		msg, err := t.AsMessage(EthTypes.NewEIP155Signer(t.ChainId()), nil)
+		from, err := goEthTypes.Sender(EthTypes.NewEIP155Signer(t.ChainId()), &t)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, err)
 		}
-		tx.From = msg.From().Hex()
+		tx.From = from.Hex()
 	}
 
 	//TODO: add logic for contract call parsing

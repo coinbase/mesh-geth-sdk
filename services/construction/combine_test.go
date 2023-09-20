@@ -17,9 +17,9 @@ package construction
 import (
 	"context"
 	"encoding/json"
+	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	"testing"
 
-	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/stretchr/testify/assert"
 )

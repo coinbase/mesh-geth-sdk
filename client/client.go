@@ -27,9 +27,9 @@ import (
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/utils"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -812,12 +812,11 @@ func (ec *SDKClient) GetLoadedTransaction(
 	}
 
 	signer := EthTypes.LatestSignerForChainID(ec.P.ChainID)
-	msg, err := tx.AsMessage(signer, header.BaseFee)
+	from, err := types.Sender(signer, tx)
 	if err != nil {
 		return nil, err
 	}
 	blockNumber := header.Number.String()
-	from := msg.From()
 	txHash := tx.Hash()
 
 	txInfo := TxExtraInfo{
