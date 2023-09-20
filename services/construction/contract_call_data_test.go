@@ -65,7 +65,7 @@ func TestConstruction_ContractCallData(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			bytes, err := constructContractCallDataGeneric(test.methodSig, test.methodArgs)
+			bytes, err := ConstructContractCallDataGeneric(test.methodSig, test.methodArgs)
 			if err != nil {
 				fmt.Println(err)
 				assert.EqualError(t, err, test.expectedError.Error())
