@@ -136,7 +136,7 @@ func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Opti
 			return fmt.Errorf("%s is not a valid method signature string", v)
 		}
 
-		data, err := constructContractCallDataGeneric(methodSigStringObj, req.Metadata["method_args"])
+		data, err := ConstructContractCallDataGeneric(methodSigStringObj, req.Metadata["method_args"])
 		if err != nil {
 			return err
 		}

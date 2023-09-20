@@ -29,10 +29,10 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// constructContractCallDataGeneric constructs the data field of a transaction.
+// ConstructContractCallDataGeneric constructs the data field of a transaction.
 // The methodArgs can be already in ABI encoded format in case of a single string
 // It can also be passed in as a slice of args, which requires further encoding.
-func constructContractCallDataGeneric(methodSig string, methodArgs interface{}) ([]byte, error) {
+func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) ([]byte, error) {
 	data, err := contractCallMethodID(methodSig)
 	if err != nil {
 		return nil, err
