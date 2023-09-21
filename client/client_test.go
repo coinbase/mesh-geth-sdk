@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"testing"
 
@@ -54,7 +54,7 @@ func TestOpenEthTraceAPI_EmptyTrace(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).(*json.RawMessage)
 
-			file, err := ioutil.ReadFile(
+			file, err := os.ReadFile(
 				"testdata/trace_block_empty.json",
 			)
 			assert.NoError(t, err)
@@ -95,7 +95,7 @@ func TestTraceBlockByHash(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).(*json.RawMessage)
 
-			file, err := ioutil.ReadFile(
+			file, err := os.ReadFile(
 				"testdata/block_trace_0xd88e8376ec3eef899d9fbc6349e8330ebfc102b245fef784a999ac854091cb64.json",
 			)
 			assert.NoError(t, err)
@@ -154,7 +154,7 @@ func TestOpenEthTraceAPI_1Txn(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).(*json.RawMessage)
 
-			file, err := ioutil.ReadFile(
+			file, err := os.ReadFile(
 				"testdata/trace_block_1_tx.json",
 			)
 			assert.NoError(t, err)
@@ -206,7 +206,7 @@ func TestOpenEthTraceAPI_MultiTxns(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).(*json.RawMessage)
 
-			file, err := ioutil.ReadFile(
+			file, err := os.ReadFile(
 				"testdata/trace_block_many_traces.json",
 			)
 			assert.NoError(t, err)
@@ -257,7 +257,7 @@ func TestBalance(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).(**types.Header)
 
-			file, err := ioutil.ReadFile("testdata/block_10992.json")
+			file, err := os.ReadFile("testdata/block_10992.json")
 			assert.NoError(t, err)
 			err = json.Unmarshal(file, &r)
 			assert.NoError(t, err)
@@ -308,7 +308,7 @@ func TestBalance(t *testing.T) {
 		func(args mock.Arguments) {
 			r := args.Get(1).(*string)
 			var expected map[string]interface{}
-			file, err := ioutil.ReadFile("testdata/call_balance_token_10992.json")
+			file, err := os.ReadFile("testdata/call_balance_token_10992.json")
 			assert.NoError(t, err)
 
 			err = json.Unmarshal(file, &expected)

@@ -76,6 +76,8 @@ func NewRPCClient(endpoint string) (*RPCClient, error) {
 	defaultTransport.MaxIdleConns = DefaultMaxConnections
 	defaultTransport.MaxIdleConnsPerHost = DefaultMaxConnections
 
+	// TODO: temporarily disable the deprecate warning, need to fix later.
+	// nolint:staticcheck
 	client, err := rpc.DialHTTPWithClient(endpoint, &http.Client{
 		Timeout:   gethHTTPTimeout,
 		Transport: defaultTransport,

@@ -17,8 +17,8 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -47,7 +47,7 @@ func GetTraceConfig(useNative bool) (*tracers.TraceConfig, error) {
 }
 
 func loadTraceConfig() (*tracers.TraceConfig, error) {
-	loadedFile, err := ioutil.ReadFile(tracerPath)
+	loadedFile, err := os.ReadFile(tracerPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not load tracer file: %w", err)
 	}

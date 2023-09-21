@@ -146,13 +146,6 @@ var (
 		Index: GenesisBlockIndex,
 	}
 
-	// RopstenGenesisBlockIdentifier is the *types.BlockIdentifier
-	// of the Ropsten genesis block.
-	RopstenGenesisBlockIdentifier = &types.BlockIdentifier{
-		Hash:  params.RopstenGenesisHash.Hex(),
-		Index: GenesisBlockIndex,
-	}
-
 	// RinkebyGenesisBlockIdentifier is the *types.BlockIdentifier
 	// of the Ropsten genesis block.
 	RinkebyGenesisBlockIdentifier = &types.BlockIdentifier{
@@ -197,14 +190,6 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.GenesisBlockIdentifier = MainnetGenesisBlockIdentifier
 		config.ChainConfig = params.MainnetChainConfig
 		config.GethArguments = MainnetGethArguments
-	case Testnet, Ropsten, "":
-		config.Network = &types.NetworkIdentifier{
-			Blockchain: Blockchain,
-			Network:    RopstenNetwork,
-		}
-		config.GenesisBlockIdentifier = RopstenGenesisBlockIdentifier
-		config.ChainConfig = params.RopstenChainConfig
-		config.GethArguments = RopstenGethArguments
 	case Rinkeby:
 		config.Network = &types.NetworkIdentifier{
 			Blockchain: Blockchain,

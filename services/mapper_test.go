@@ -15,12 +15,13 @@
 package services
 
 import (
-    evmClient "github.com/coinbase/rosetta-geth-sdk/client"
-    "github.com/ethereum/go-ethereum/common"
-    "github.com/stretchr/testify/assert"
-    "math/big"
-    "testing"
-    )
+	"math/big"
+	"testing"
+
+	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestParseTransferOps(t *testing.T) {
 	a1 := common.HexToAddress("0xdd4b76b0316dcafa98862a12a92791ac9426a0e2")
@@ -180,7 +181,7 @@ func TestParseTransferOpsFirstIndexRelatedOps(t *testing.T) {
 				From:    &a2,
 				Purpose: "refund",
 				To:      &a4,
-				Value:   big.NewInt( 7441300000000),
+				Value:   big.NewInt(7441300000000),
 			},
 			&evmClient.EVMTransfer{
 				From:    &a2,
