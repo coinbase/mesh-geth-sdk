@@ -22,6 +22,7 @@ import (
 	"math/big"
 
 	"errors"
+
 	"github.com/coinbase/rosetta-geth-sdk/client"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	goEthTypes "github.com/ethereum/go-ethereum/core/types"

@@ -16,9 +16,9 @@ package client
 
 import (
 	"encoding/json"
+	"log"
 	"math/big"
 	"strings"
-	"log"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 
@@ -181,7 +181,7 @@ func GenerateErc20TransferData(toAddress string, value *big.Int) []byte {
 }
 
 func (tx *LoadedTransaction) GetMint() *big.Int {
-	if  tx.Mint == "" {
+	if tx.Mint == "" {
 		return big.NewInt(0)
 	}
 	hexString := tx.Mint[2:]

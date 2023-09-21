@@ -29,7 +29,6 @@ import (
 // ConstructionSubmit implements /construction/submit endpoint.
 //
 // Submit a pre-signed Transaction to the node.
-//
 func (s *APIService) ConstructionSubmit(
 	ctx context.Context,
 	req *types.ConstructionSubmitRequest,
