@@ -22,6 +22,7 @@ import (
 	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
+	Eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -194,4 +195,10 @@ type Client interface {
 	ParseOps(
 		tx *evmClient.LoadedTransaction,
 	) ([]*RosettaTypes.Operation, error)
+
+	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on
+	// the current pending state of the backend blockchain. There is no guarantee that this is
+	// the true gas limit requirement as other transactions may be added or removed by miners,
+	// but it should provide a basis for setting a reasonable default.
+	EstimateGas(ctx context.Context, msg Eth.CallMsg) (uint64, error)
 }
