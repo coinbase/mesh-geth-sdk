@@ -203,6 +203,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 func TraceOps(
 	calls []*evmClient.FlatCall,
 	startIndex int,
+	native_currency *RosettaTypes.Currency,
 ) []*RosettaTypes.Operation { // nolint: gocognit
 	var ops []*RosettaTypes.Operation
 	if len(calls) == 0 {
@@ -250,7 +251,7 @@ func TraceOps(
 				},
 				Amount: &RosettaTypes.Amount{
 					Value:    new(big.Int).Neg(trace.Value).String(),
-					Currency: sdkTypes.Currency,
+					Currency: native_currency,
 				},
 				Metadata: metadata,
 			}
