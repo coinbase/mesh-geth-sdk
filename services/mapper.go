@@ -130,7 +130,7 @@ func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaType
 	return ops
 }
 
-func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
+func FeeOps(tx *evmClient.LoadedTransaction, native_currency *RosettaTypes.Currency) []*RosettaTypes.Operation {
 	var minerEarnedAmount *big.Int
 	if tx.FeeBurned == nil {
 		minerEarnedAmount = tx.FeeAmount
@@ -157,7 +157,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), native_currency),
 		},
 
 		{
@@ -174,7 +174,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(feeRewarder),
 			},
-			Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
+			Amount: evmClient.Amount(minerEarnedAmount, native_currency),
 		},
 	}
 
@@ -189,7 +189,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 		Type:    sdkTypes.FeeOpType,
 		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),
 		Account: evmClient.Account(tx.From),
-		Amount:  evmClient.Amount(new(big.Int).Neg(tx.FeeBurned), sdkTypes.Currency),
+		Amount:  evmClient.Amount(new(big.Int).Neg(tx.FeeBurned), native_currency),
 	}
 
 	ops = append(ops, burntOp)
@@ -312,7 +312,7 @@ func TraceOps(
 				},
 				Amount: &RosettaTypes.Amount{
 					Value:    trace.Value.String(),
-					Currency: sdkTypes.Currency,
+					Currency: native_currency,
 				},
 				Metadata: metadata,
 			}
@@ -356,7 +356,7 @@ func TraceOps(
 			},
 			Amount: &RosettaTypes.Amount{
 				Value:    new(big.Int).Neg(val).String(),
-				Currency: sdkTypes.Currency,
+				Currency: native_currency,
 			},
 		})
 	}
