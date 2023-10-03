@@ -112,10 +112,22 @@ func (s APIService) ConstructionMetadata( //nolint
 		gasLimit = input.GasLimit.Uint64()
 	}
 
+	gasTipCap, err := s.client.GetGasTipCap(ctx, input)
+	if err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrGasTipCapError, err)
+	}
+
+	gasFeeCap, err := s.client.GetGasFeeCap(ctx, input, gasTipCap)
+	if err != nil {
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrGasFeeCapError, err)
+	}
+
 	metadata := &client.Metadata{
 		Nonce:           nonce,
 		GasPrice:        gasPrice,
 		GasLimit:        gasLimit,
+		GasTipCap:       gasTipCap,
+		GasFeeCap:       gasFeeCap,
 		ContractData:    input.ContractData,
 		MethodSignature: input.MethodSignature,
 		MethodArgs:      input.MethodArgs,
@@ -127,6 +139,10 @@ func (s APIService) ConstructionMetadata( //nolint
 	}
 
 	suggestedFee := gasPrice.Int64() * int64(gasLimit)
+	if gasFeeCap != nil {
+		suggestedFee = gasFeeCap.Int64() * int64(gasLimit)
+	}
+
 	return &types.ConstructionMetadataResponse{
 		Metadata: metadataMap,
 		SuggestedFee: []*types.Amount{

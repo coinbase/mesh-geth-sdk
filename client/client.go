@@ -696,7 +696,6 @@ func (ec *SDKClient) GetGasPrice(
 	var gasPrice *big.Int
 	var err error
 	if input.GasPrice == nil || input.GasPrice.Uint64() == 0 {
-		log.Println("Fetching gas price")
 		gasPrice, err = ec.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
@@ -709,10 +708,67 @@ func (ec *SDKClient) GetGasPrice(
 			newGasPrice.Int(gasPrice)
 		}
 	} else {
-		log.Println("Setting existing gas price")
 		gasPrice = input.GasPrice
 	}
 	return gasPrice, nil
+}
+
+func (ec *SDKClient) GetGasTipCap(ctx context.Context, input Options) (*big.Int, error) {
+	if input.GasTipCap == nil {
+		var hex hexutil.Big
+		if err := ec.CallContext(ctx, &hex, "eth_maxPriorityFeePerGas"); err != nil {
+			return nil, err
+		}
+
+		return hex.ToInt(), nil
+	}
+
+	return input.GasTipCap, nil
+}
+
+func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap *big.Int) (*big.Int, error) {
+	if input.GasFeeCap == nil {
+		baseFee, err := ec.GetBaseFee(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if baseFee != nil {
+			// Calculate max fee per gas
+			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + GasTipCap
+			baseFeeFloor := big.NewInt(100)
+			baseFeeMultiplier := big.NewInt(2)
+			adjustedBaseFee := new(big.Int).Mul(baseFee, baseFeeMultiplier)
+			gasFeeCap := bigIntMax(adjustedBaseFee, baseFeeFloor)
+			gasFeeCap.Add(gasFeeCap, gasTipCap)
+
+			return gasTipCap, nil
+		}
+	}
+
+	return input.GasFeeCap, nil
+}
+
+func bigIntMax(a *big.Int, b *big.Int) *big.Int {
+	if a.Cmp(b) == -1 {
+		return b
+	}
+
+	return a
+}
+
+func (ec *SDKClient) GetBaseFee(ctx context.Context) (*big.Int, error) {
+	type header struct {
+		BaseFee hexutil.Big `json:"baseFeePerGas"`
+	}
+	var head *header
+	if err := ec.CallContext(ctx, &head, "eth_getBlockByNumber", "latest", false); err != nil {
+		return nil, err
+	}
+	if head == nil {
+		return nil, ethereum.NotFound
+	}
+	return head.BaseFee.ToInt(), nil
 }
 
 func (ec *SDKClient) GetErc20TransferGasLimit(

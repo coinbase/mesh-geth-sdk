@@ -62,10 +62,12 @@ func (s *APIService) ConstructionParse(
 		tx.Nonce = t.Nonce()
 		tx.GasPrice = t.GasPrice()
 		tx.GasLimit = t.Gas()
+		tx.GasTipCap = t.GasTipCap()
+		tx.GasFeeCap = t.GasFeeCap()
 		tx.ChainID = t.ChainId()
 		tx.Currency = wrappedTx.Currency
 
-		msg, err := t.AsMessage(EthTypes.NewEIP155Signer(t.ChainId()), nil)
+		msg, err := t.AsMessage(EthTypes.LatestSignerForChainID(t.ChainId()), nil)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, err)
 		}
@@ -131,9 +133,12 @@ func (s *APIService) ConstructionParse(
 	}
 
 	metadata := &client.ParseMetadata{
-		Nonce:    tx.Nonce,
-		GasPrice: tx.GasPrice,
-		ChainID:  tx.ChainID,
+		Nonce:     tx.Nonce,
+		GasPrice:  tx.GasPrice,
+		GasLimit:  tx.GasLimit,
+		GasTipCap: tx.GasTipCap,
+		GasFeeCap: tx.GasFeeCap,
+		ChainID:   tx.ChainID,
 	}
 	metaMap, err := client.MarshalJSONMap(metadata)
 	if err != nil {

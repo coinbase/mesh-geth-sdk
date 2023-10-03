@@ -24,7 +24,6 @@ import (
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/types"
-	"github.com/ethereum/go-ethereum/common"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -49,17 +48,10 @@ func (s *APIService) ConstructionCombine(
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 	}
 
-	ethTransaction := EthTypes.NewTransaction(
-		unsignedTx.Nonce,
-		common.HexToAddress(unsignedTx.To),
-		unsignedTx.Value,
-		unsignedTx.GasLimit,
-		unsignedTx.GasPrice,
-		unsignedTx.Data,
-	)
+	ethUnsignedTx := EthTransaction(&unsignedTx)
 
 	signer := EthTypes.LatestSignerForChainID(unsignedTx.ChainID)
-	signedTx, err := ethTransaction.WithSignature(signer, req.Signatures[0].Bytes)
+	signedTx, err := ethUnsignedTx.WithSignature(signer, req.Signatures[0].Bytes)
 	if err != nil {
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 	}

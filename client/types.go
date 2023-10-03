@@ -84,27 +84,34 @@ type Metadata struct {
 	Nonce           uint64      `json:"nonce"`
 	GasPrice        *big.Int    `json:"gas_price"`
 	GasLimit        uint64      `json:"gas_limit"`
+	GasTipCap       *big.Int    `json:"gas_tip_cap,omitempty"`
+	GasFeeCap       *big.Int    `json:"gas_fee_cap,omitempty"`
 	ContractData    string      `json:"data,omitempty"`
 	MethodSignature string      `json:"method_signature,omitempty"`
 	MethodArgs      interface{} `json:"method_args,omitempty"`
 }
 
 type ParseMetadata struct {
-	Nonce    uint64   `json:"nonce"`
-	GasPrice *big.Int `json:"gas_price"`
-	ChainID  *big.Int `json:"chain_id"`
+	Nonce     uint64   `json:"nonce"`
+	GasPrice  *big.Int `json:"gas_price"`
+	GasLimit  uint64   `json:"gas_limit"`
+	GasTipCap *big.Int `json:"gas_tip_cap,omitempty"`
+	GasFeeCap *big.Int `json:"gas_fee_cap,omitempty"`
+	ChainID   *big.Int `json:"chain_id"`
 }
 
 type Transaction struct {
-	From     string                 `json:"from"`
-	To       string                 `json:"to"`
-	Value    *big.Int               `json:"value"`
-	Data     []byte                 `json:"data"`
-	Nonce    uint64                 `json:"nonce"`
-	GasPrice *big.Int               `json:"gas_price"`
-	GasLimit uint64                 `json:"gas"`
-	ChainID  *big.Int               `json:"chain_id"`
-	Currency *RosettaTypes.Currency `json:"currency,omitempty"`
+	From      string                 `json:"from"`
+	To        string                 `json:"to"`
+	Value     *big.Int               `json:"value"`
+	Data      []byte                 `json:"data"`
+	Nonce     uint64                 `json:"nonce"`
+	GasPrice  *big.Int               `json:"gas_price"`
+	GasLimit  uint64                 `json:"gas"`
+	GasTipCap *big.Int               `json:"gas_tip_cap,omitempty"`
+	GasFeeCap *big.Int               `json:"gas_fee_cap,omitempty"`
+	ChainID   *big.Int               `json:"chain_id"`
+	Currency  *RosettaTypes.Currency `json:"currency,omitempty"`
 }
 
 type LoadedTransaction struct {
@@ -188,6 +195,8 @@ type Options struct {
 	SuggestedFeeMultiplier *float64               `json:"suggested_fee_multiplier,omitempty"`
 	GasPrice               *big.Int               `json:"gas_price,omitempty"`
 	GasLimit               *big.Int               `json:"gas_limit,omitempty"`
+	GasTipCap              *big.Int               `json:"gas_tip_cap,omitempty"`
+	GasFeeCap              *big.Int               `json:"gas_fee_cap,omitempty"`
 	Nonce                  *big.Int               `json:"nonce,omitempty"`
 	Currency               *RosettaTypes.Currency `json:"currency,omitempty"`
 	MethodSignature        string                 `json:"method_signature,omitempty"`

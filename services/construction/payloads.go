@@ -76,6 +76,8 @@ func (s *APIService) ConstructionPayloads(
 	nonce := metadata.Nonce
 	gasPrice := metadata.GasPrice
 	gasLimit := metadata.GasLimit
+	gasTipCap := metadata.GasTipCap
+	gasFeeCap := metadata.GasFeeCap
 	chainID := s.config.ChainConfig.ChainID
 	fromOp, _ := matches[0].First()
 	fromAddress := fromOp.Account.Address
@@ -138,33 +140,27 @@ func (s *APIService) ConstructionPayloads(
 	}
 
 	// Construct SigningPayload
-	signer := EthTypes.LatestSignerForChainID(chainID)
+	unsignedTx := &client.Transaction{
+		From:      from,
+		To:        sendToAddress.Hex(),
+		Value:     amount,
+		Data:      transferData,
+		Nonce:     nonce,
+		GasPrice:  gasPrice,
+		GasLimit:  gasLimit,
+		GasTipCap: gasTipCap,
+		GasFeeCap: gasFeeCap,
+		ChainID:   chainID,
+		Currency:  fromCurrency,
+	}
+	unsignedEthTx := EthTransaction(unsignedTx)
 
-	tx := EthTypes.NewTransaction(
-		nonce,
-		sendToAddress,
-		amount,
-		gasLimit,
-		gasPrice,
-		transferData,
-	)
+	signer := EthTypes.LatestSignerForChainID(chainID)
 
 	payload := &types.SigningPayload{
 		AccountIdentifier: &types.AccountIdentifier{Address: from},
-		Bytes:             signer.Hash(tx).Bytes(),
+		Bytes:             signer.Hash(unsignedEthTx).Bytes(),
 		SignatureType:     types.EcdsaRecovery,
-	}
-
-	unsignedTx := &client.Transaction{
-		From:     from,
-		To:       sendToAddress.Hex(),
-		Value:    amount,
-		Data:     tx.Data(),
-		Nonce:    tx.Nonce(),
-		GasPrice: gasPrice,
-		GasLimit: tx.Gas(),
-		ChainID:  chainID,
-		Currency: fromCurrency,
 	}
 
 	unsignedTxJSON, err := json.Marshal(unsignedTx)

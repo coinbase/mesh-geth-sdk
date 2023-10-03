@@ -57,6 +57,15 @@ type Client interface {
 	// GetGasPrice retrieves the currently suggested gas price
 	GetGasPrice(context.Context, evmClient.Options) (*big.Int, error)
 
+	// GetGasTipCap returns gas tip cap for EIP-1559 support
+	GetGasTipCap(context.Context, evmClient.Options) (*big.Int, error)
+
+	// GetGasFeeCap returns gas fee cap for EIP-1559 support
+	GetGasFeeCap(context.Context, evmClient.Options, *big.Int) (*big.Int, error)
+
+	// GetBaseFee returns base fee for EIP-1559 support
+	GetBaseFee(ctx context.Context) (*big.Int, error)
+
 	// GetRosettaConfig returns the Rosetta config we defined for the network
 	GetRosettaConfig() configuration.RosettaConfig
 
