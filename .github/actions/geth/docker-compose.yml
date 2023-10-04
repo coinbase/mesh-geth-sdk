@@ -16,7 +16,7 @@ version: '3'
 
 services:
   geth:
-    image: ethereum/client-go:v1.10.23
+    image: ethereum/client-go:v1.13.0
     environment:
       - DEVMODE=true
     volumes:
