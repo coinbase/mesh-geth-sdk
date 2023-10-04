@@ -44,9 +44,9 @@ jobs:
       run: python .github/scripts/contract_infos.py
       shell: bash
 
-    - name: Populate transactions
-      run: python .github/scripts/populate_txns.py
-      shell: bash
+    # - name: Populate transactions
+    #   run: python .github/scripts/populate_txns.py
+    #   shell: bash
 
     - name: Start Rosetta Server
       run: .github/scripts/setup.sh
