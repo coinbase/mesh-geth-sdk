@@ -29,11 +29,12 @@ import (
 // ConstructionSubmit implements /construction/submit endpoint.
 //
 // Submit a pre-signed Transaction to the node.
-//
 func (s *APIService) ConstructionSubmit(
 	ctx context.Context,
 	req *types.ConstructionSubmitRequest,
 ) (*types.TransactionIdentifierResponse, *types.Error) {
+	fmt.Printf("signed transaction: %s", req.SignedTransaction)
+
 	if s.config.Mode != sdkTypes.Online {
 		return nil, sdkTypes.ErrUnavailableOffline
 	}
