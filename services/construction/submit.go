@@ -33,8 +33,6 @@ func (s *APIService) ConstructionSubmit(
 	ctx context.Context,
 	req *types.ConstructionSubmitRequest,
 ) (*types.TransactionIdentifierResponse, *types.Error) {
-	fmt.Printf("signed transaction: %s", req.SignedTransaction)
-
 	if s.config.Mode != sdkTypes.Online {
 		return nil, sdkTypes.ErrUnavailableOffline
 	}
@@ -57,7 +55,8 @@ func (s *APIService) ConstructionSubmit(
 	}
 
 	if err := s.client.Submit(ctx, &signedTx); err != nil {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInternalError, err)
+		temp := fmt.Errorf("signed tx: %s: %w", req.SignedTransaction, err)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInternalError, temp)
 	}
 
 	return &types.TransactionIdentifierResponse{
