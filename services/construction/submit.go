@@ -55,8 +55,7 @@ func (s *APIService) ConstructionSubmit(
 	}
 
 	if err := s.client.Submit(ctx, &signedTx); err != nil {
-		temp := fmt.Errorf("signed tx: %s: %w", req.SignedTransaction, err)
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrInternalError, temp)
+		return nil, sdkTypes.WrapErr(sdkTypes.ErrInternalError, err)
 	}
 
 	return &types.TransactionIdentifierResponse{
