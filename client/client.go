@@ -736,17 +736,38 @@ func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap 
 		if baseFee != nil {
 			// Calculate max fee per gas
 			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + GasTipCap
-			baseFeeFloor := ec.rosettaConfig.BaseFeeFloor
-			baseFeeMultiplier := ec.rosettaConfig.BaseFeeMultiplier
+			baseFeeFloor := getBaseFeeFloor(ec.rosettaConfig)
+			baseFeeMultiplier := getBaseFeeMultiplier(ec.rosettaConfig)
 			adjustedBaseFee := new(big.Int).Mul(baseFee, baseFeeMultiplier)
 			gasFeeCap := new(big.Int).Set(bigIntMax(adjustedBaseFee, baseFeeFloor))
 			gasFeeCap.Add(gasFeeCap, gasTipCap)
+
+			fmt.Println(baseFeeFloor)
+			fmt.Println(baseFeeMultiplier)
 
 			return gasFeeCap, nil
 		}
 	}
 
 	return input.GasFeeCap, nil
+}
+
+func getBaseFeeFloor(rosettaConfig configuration.RosettaConfig) *big.Int {
+	baseFeeFloor := big.NewInt(100)
+	if rosettaConfig.BaseFeeFloor != nil {
+		baseFeeFloor = rosettaConfig.BaseFeeFloor
+	}
+
+	return baseFeeFloor
+}
+
+func getBaseFeeMultiplier(rosettaConfig configuration.RosettaConfig) *big.Int {
+	baseFeeMultiplier := big.NewInt(2)
+	if rosettaConfig.BaseFeeMultiplier != nil {
+		baseFeeMultiplier = rosettaConfig.BaseFeeMultiplier
+	}
+
+	return baseFeeMultiplier
 }
 
 func bigIntMax(a *big.Int, b *big.Int) *big.Int {
