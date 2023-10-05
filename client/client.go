@@ -736,13 +736,13 @@ func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap 
 		if baseFee != nil {
 			// Calculate max fee per gas
 			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + GasTipCap
-			baseFeeFloor := big.NewInt(100)
-			baseFeeMultiplier := big.NewInt(2)
+			baseFeeFloor := ec.rosettaConfig.BaseFeeFloor
+			baseFeeMultiplier := ec.rosettaConfig.BaseFeeMultiplier
 			adjustedBaseFee := new(big.Int).Mul(baseFee, baseFeeMultiplier)
-			gasFeeCap := bigIntMax(adjustedBaseFee, baseFeeFloor)
+			gasFeeCap := new(big.Int).Set(bigIntMax(adjustedBaseFee, baseFeeFloor))
 			gasFeeCap.Add(gasFeeCap, gasTipCap)
 
-			return gasTipCap, nil
+			return gasFeeCap, nil
 		}
 	}
 
