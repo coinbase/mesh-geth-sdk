@@ -28,9 +28,15 @@ var (
 
 	parseSignedERC20Transfer = `{"signed_tx":"eyJ0eXBlIjoiMHgwIiwibm9uY2UiOiIweDIiLCJnYXNQcmljZSI6IjB4NTk2ODJmMTciLCJtYXhQcmlvcml0eUZlZVBlckdhcyI6bnVsbCwibWF4RmVlUGVyR2FzIjpudWxsLCJnYXMiOiIweDU0NDQiLCJ2YWx1ZSI6IjB4MCIsImlucHV0IjoiMHhhOTA1OWNiYjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMGRmN2M0ZmZmMzFhMTkwZThkNDZmYzliYThjZGU2YWFkOGY2OWZjNzYwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxIiwidiI6IjB4MmEiLCJyIjoiMHhiMzNhY2QwMTQwMTgwMTEzYzgxNmViMzBiOTEzMjQ3ZTkxNjFjZDA0NTZhNmM2YjkxYzgxMmQ1Zjc2NWQ4MzdjIiwicyI6IjB4MTQ3NTlhYWZhOGMwMWU1OTFjZmQyM2ZkMzc4YjNiMDY0NDZjYmFiMDcwMmVmNTRmMDMzYzZlNjg1NmZhYWVkNSIsInRvIjoiMHgxZTc3YWQ3NzkyNWFjMDA3NWNmNjFmYjc2YmEzNWQ4ODQ5ODUwMTlkIiwiaGFzaCI6IjB4ZTM3M2QzYzNjNzVkMjQ4NzVkYjk3YjQyZTEzMzFmZjIyNTdlMTczOTQ4NTkzYzU4ZTVmOTI4YWMyYjQ3NzY2NyJ9","currency":{"symbol":"USDC","decimals":6,"metadata":{"contractAddress":"0x1E77ad77925Ac0075CF61Fb76bA35D884985019d"}}}` // nolint
 
-	parseTransferValue    = uint64(100)
-	parseTransferGasPrice = uint64(2000000009)
-	parseTransferNonce    = uint64(1)
+	parseTransferValue          = uint64(100)
+	parseTransferGasPrice       = uint64(2000000009)
+	parseTransferNonce          = uint64(1)
+	parseEthTransferGasTipCap   = uint64(2000000009)
+	parseEthTransferGasFeeCap   = uint64(2000000009)
+	parseEthTransferGasLimit    = uint64(21000)
+	parseErc20TransferGasTipCap = uint64(1500000023)
+	parseErc20TransferGasFeeCap = uint64(1500000023)
+	parseErc20TransferGasLimit  = uint64(21572)
 )
 
 func TestParse(t *testing.T) {
@@ -55,9 +61,12 @@ func TestParse(t *testing.T) {
 					},
 				},
 				Metadata: map[string]interface{}{
-					"nonce":     float64(parseTransferNonce),
-					"gas_price": float64(parseTransferGasPrice),
-					"chain_id":  float64(ethRopstenChainID),
+					"nonce":       float64(parseTransferNonce),
+					"gas_price":   float64(parseTransferGasPrice),
+					"chain_id":    float64(ethRopstenChainID),
+					"gas_tip_cap": float64(parseEthTransferGasTipCap),
+					"gas_fee_cap": float64(parseEthTransferGasFeeCap),
+					"gas_limit":   float64(parseEthTransferGasLimit),
 				},
 			},
 		},
@@ -81,9 +90,12 @@ func TestParse(t *testing.T) {
 					},
 				},
 				Metadata: map[string]interface{}{
-					"nonce":     float64(2),
-					"gas_price": float64(1500000023),
-					"chain_id":  float64(ethRopstenChainID),
+					"nonce":       float64(2),
+					"gas_price":   float64(1500000023),
+					"chain_id":    float64(ethRopstenChainID),
+					"gas_tip_cap": float64(parseErc20TransferGasTipCap),
+					"gas_fee_cap": float64(parseErc20TransferGasFeeCap),
+					"gas_limit":   float64(parseErc20TransferGasLimit),
 				},
 			},
 		},

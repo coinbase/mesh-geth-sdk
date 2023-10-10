@@ -696,7 +696,6 @@ func (ec *SDKClient) GetGasPrice(
 	var gasPrice *big.Int
 	var err error
 	if input.GasPrice == nil || input.GasPrice.Uint64() == 0 {
-		log.Println("Fetching gas price")
 		gasPrice, err = ec.SuggestGasPrice(ctx)
 		if err != nil {
 			return nil, err
@@ -709,10 +708,86 @@ func (ec *SDKClient) GetGasPrice(
 			newGasPrice.Int(gasPrice)
 		}
 	} else {
-		log.Println("Setting existing gas price")
 		gasPrice = input.GasPrice
 	}
 	return gasPrice, nil
+}
+
+func (ec *SDKClient) GetGasTipCap(ctx context.Context, input Options) (*big.Int, error) {
+	if input.GasTipCap == nil {
+		var hex hexutil.Big
+		if err := ec.CallContext(ctx, &hex, "eth_maxPriorityFeePerGas"); err != nil {
+			return nil, err
+		}
+
+		return hex.ToInt(), nil
+	}
+
+	return input.GasTipCap, nil
+}
+
+func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap *big.Int) (*big.Int, error) {
+	if input.GasFeeCap == nil {
+		baseFee, err := ec.GetBaseFee(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if baseFee != nil {
+			// Calculate max fee per gas (i.e. gas fee cap)
+			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + GasTipCap
+			// BaseFeeFloor: when base fee is decreasing dramatically, we can leverage BaseFeeFloor to speed up the tx onchain landing process
+			// BaseFeeMultiplier: when base fee is increasing dramatically, we can leverage BaseFeeMultiplier to ensure the tx can be landed onchain with enough fee
+			// BaseFeeFloor and BaseFeeMultiplier are chain specific, if the downstream service doesn't specify them in Rosetta config,
+			// the default formula in Rosetta layer is EIP-1559 neutral, which is GasFeeCap = BaseFee + GasTipCap
+			baseFeeFloor := getBaseFeeFloor(ec.rosettaConfig)
+			baseFeeMultiplier := getBaseFeeMultiplier(ec.rosettaConfig)
+			adjustedBaseFee := new(big.Int).Mul(baseFee, baseFeeMultiplier)
+			gasFeeCap := new(big.Int).Set(bigIntMax(adjustedBaseFee, baseFeeFloor))
+			gasFeeCap.Add(gasFeeCap, gasTipCap)
+
+			return gasFeeCap, nil
+		}
+	}
+
+	return input.GasFeeCap, nil
+}
+
+func getBaseFeeFloor(rosettaConfig configuration.RosettaConfig) *big.Int {
+	baseFeeFloor := big.NewInt(configuration.DefaultBaseFeeFloor)
+	if rosettaConfig.BaseFeeFloor != nil {
+		baseFeeFloor = rosettaConfig.BaseFeeFloor
+	}
+
+	return baseFeeFloor
+}
+
+func getBaseFeeMultiplier(rosettaConfig configuration.RosettaConfig) *big.Int {
+	baseFeeMultiplier := big.NewInt(configuration.DefaultBaseFeeMultiplier)
+	if rosettaConfig.BaseFeeMultiplier != nil {
+		baseFeeMultiplier = rosettaConfig.BaseFeeMultiplier
+	}
+
+	return baseFeeMultiplier
+}
+
+func bigIntMax(a *big.Int, b *big.Int) *big.Int {
+	if a.Cmp(b) == -1 {
+		return b
+	}
+
+	return a
+}
+
+func (ec *SDKClient) GetBaseFee(ctx context.Context) (*big.Int, error) {
+	var head *Header
+	if err := ec.CallContext(ctx, &head, "eth_getBlockByNumber", "latest", false); err != nil {
+		return nil, err
+	}
+	if head == nil {
+		return nil, ethereum.NotFound
+	}
+	return head.BaseFee.ToInt(), nil
 }
 
 func (ec *SDKClient) GetErc20TransferGasLimit(

@@ -15,6 +15,8 @@
 package configuration
 
 import (
+	"math/big"
+
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -74,6 +76,9 @@ type RosettaConfig struct {
 	// SupportsBlockAuthor indicates if blockchain supports author
 	SupportsBlockAuthor bool
 
+	// SupportsEIP1559 indicates if the blockchain supports EIP-1559
+	SupportsEIP1559 bool
+
 	// Currency is the native currency blockchain supports
 	Currency *RosettaTypes.Currency
 
@@ -95,6 +100,12 @@ type RosettaConfig struct {
 	// DefaultBlockNumber is the default block number if block identifier is not specified
 	// This is mainly used for Optimism and Base, it can be "safe" or "finalized" to avoid reorg issues
 	DefaultBlockNumber string
+
+	// BaseFeeFloor is the floor base fee for EIP-1559
+	BaseFeeFloor *big.Int
+
+	// BaseFeeMultiplier is the multiplier of base fee for EIP-1559
+	BaseFeeMultiplier *big.Int
 }
 
 type Token struct {
@@ -124,6 +135,9 @@ const (
 	ModeOnline         = "ONLINE"
 	StandardIngestion  = "standard"
 	AnalyticsIngestion = "analytics"
+
+	DefaultBaseFeeFloor      = 0
+	DefaultBaseFeeMultiplier = 1
 )
 
 // IsOfflineMode returns true if running in offline mode

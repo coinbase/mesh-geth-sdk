@@ -184,7 +184,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 
 	burntOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
-			Index: 0, // nolint:gomnd
+			Index: 2, // nolint:gomnd
 		},
 		Type:    sdkTypes.FeeOpType,
 		Status:  RosettaTypes.String(sdkTypes.SuccessStatus),

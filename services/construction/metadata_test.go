@@ -36,6 +36,9 @@ var (
 	transferContractValue    = "0"
 	transferGasPrice         = uint64(5000000000)
 	transferGasLimit         = uint64(21000)
+	transferGasTipCap        = uint64(100000000)
+	transferGasFeeCap        = uint64(100000000)
+	transferBaseFee          = uint(50)
 	transferGasLimitERC20    = uint64(0) // 0 or 21644?
 	transferGasLimitContract = uint64(545568)
 	transferNonce            = uint64(67)
@@ -45,6 +48,10 @@ var (
 	metadataGenericData = "0x095ea7b3000000000000000000000000d10a72cf054650931365cc44d912a4fd7525" +
 		"705800000000000000000000000000000000000000000000000000000000000003e8"
 	tokenContractAddress = "0x2d7882beDcbfDDce29Ba99965dd3cdF7fcB10A1e"
+
+	rosettaConfig = configuration.RosettaConfig{
+		SupportsEIP1559: true,
+	}
 )
 
 func TestMetadata(t *testing.T) {
@@ -78,18 +85,31 @@ func TestMetadata(t *testing.T) {
 				contractData, _ := hexutil.Decode(metadataGenericData)
 				client.On("GetContractCallGasLimit", ctx, tokenContractAddress, testingFromAddress, contractData).
 					Return(transferGasLimitContract, nil)
+
+				client.On("GetGasTipCap", ctx, mock.Anything).
+					Return(big.NewInt(int64(transferGasTipCap)), nil)
+
+				client.On("GetGasFeeCap", ctx, mock.Anything, mock.Anything).
+					Return(big.NewInt(int64(transferGasFeeCap)), nil)
+
+				client.On("GetBaseFee", ctx).
+					Return(big.NewInt(int64(transferBaseFee)), nil)
+				client.On("GetRosettaConfig").
+					Return(rosettaConfig)
 			},
 			expectedResponse: &types.ConstructionMetadataResponse{
 				Metadata: map[string]interface{}{
 					"nonce":            float64(transferNonce),
 					"gas_price":        float64(transferGasPrice),
 					"gas_limit":        float64(transferGasLimitContract),
+					"gas_tip_cap":      float64(transferGasTipCap),
+					"gas_fee_cap":      float64(transferGasFeeCap),
 					"data":             metadataGenericData,
 					"method_signature": "approve(address,uint256)",
 					"method_args":      []interface{}{"0xD10a72Cf054650931365Cc44D912a4FD75257058", "1000"},
 				},
 				SuggestedFee: []*types.Amount{
-					client.Amount(big.NewInt(int64(transferGasPrice)*int64(transferGasLimitContract)),
+					client.Amount(big.NewInt(int64(transferGasFeeCap)*int64(transferGasLimitContract)),
 						testingClient.cfg.RosettaCfg.Currency),
 				},
 			},
@@ -114,15 +134,28 @@ func TestMetadata(t *testing.T) {
 
 				client.On("GetNativeTransferGasLimit", ctx, testingToAddress, testingFromAddress, big.NewInt(1)).
 					Return(transferGasLimit, nil)
+
+				client.On("GetGasTipCap", ctx, mock.Anything).
+					Return(big.NewInt(int64(transferGasTipCap)), nil)
+
+				client.On("GetGasFeeCap", ctx, mock.Anything, mock.Anything).
+					Return(big.NewInt(int64(transferGasFeeCap)), nil)
+
+				client.On("GetBaseFee", ctx).
+					Return(big.NewInt(int64(transferBaseFee)), nil)
+				client.On("GetRosettaConfig").
+					Return(rosettaConfig)
 			},
 			expectedResponse: &types.ConstructionMetadataResponse{
 				Metadata: map[string]interface{}{
-					"nonce":     float64(transferNonce),
-					"gas_price": float64(transferGasPrice),
-					"gas_limit": float64(transferGasLimit),
+					"nonce":       float64(transferNonce),
+					"gas_price":   float64(transferGasPrice),
+					"gas_limit":   float64(transferGasLimit),
+					"gas_tip_cap": float64(transferGasTipCap),
+					"gas_fee_cap": float64(transferGasFeeCap),
 				},
 				SuggestedFee: []*types.Amount{
-					client.Amount(big.NewInt(int64(transferGasPrice)*int64(transferGasLimit)),
+					client.Amount(big.NewInt(int64(transferGasFeeCap)*int64(transferGasLimit)),
 						testingClient.cfg.RosettaCfg.Currency),
 				},
 			},
@@ -153,15 +186,28 @@ func TestMetadata(t *testing.T) {
 
 				client.On("GetErc20TransferGasLimit", ctx, testingToAddress, testingFromAddress, big.NewInt(1), mock.Anything).
 					Return(transferGasLimitERC20, nil)
+
+				client.On("GetGasTipCap", ctx, mock.Anything).
+					Return(big.NewInt(int64(transferGasTipCap)), nil)
+
+				client.On("GetGasFeeCap", ctx, mock.Anything, mock.Anything).
+					Return(big.NewInt(int64(transferGasFeeCap)), nil)
+
+				client.On("GetBaseFee", ctx).
+					Return(big.NewInt(int64(transferBaseFee)), nil)
+				client.On("GetRosettaConfig").
+					Return(rosettaConfig)
 			},
 			expectedResponse: &types.ConstructionMetadataResponse{
 				Metadata: map[string]interface{}{
-					"nonce":     float64(transferNonce),
-					"gas_price": float64(transferGasPrice),
-					"gas_limit": float64(transferGasLimitERC20),
+					"nonce":       float64(transferNonce),
+					"gas_price":   float64(transferGasPrice),
+					"gas_limit":   float64(transferGasLimitERC20),
+					"gas_tip_cap": float64(transferGasTipCap),
+					"gas_fee_cap": float64(transferGasFeeCap),
 				},
 				SuggestedFee: []*types.Amount{
-					client.Amount(big.NewInt(int64(transferGasPrice)*int64(transferGasLimitERC20)),
+					client.Amount(big.NewInt(int64(transferGasFeeCap)*int64(transferGasLimitERC20)),
 						testingClient.cfg.RosettaCfg.Currency),
 				},
 			},

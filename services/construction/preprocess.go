@@ -113,6 +113,10 @@ func loadNumericMetadata(req *types.ConstructionPreprocessRequest, metadata stri
 			options.GasLimit = bigObj
 		case "nonce":
 			options.Nonce = bigObj
+		case "gas_tip_cap":
+			options.GasTipCap = bigObj
+		case "gas_fee_cap":
+			options.GasFeeCap = bigObj
 		}
 	}
 
@@ -127,6 +131,12 @@ func loadMetadata(req *types.ConstructionPreprocessRequest, options *client.Opti
 		return err
 	}
 	if err := loadNumericMetadata(req, "nonce", options); err != nil {
+		return err
+	}
+	if err := loadNumericMetadata(req, "gas_tip_cap", options); err != nil {
+		return err
+	}
+	if err := loadNumericMetadata(req, "gas_fee_cap", options); err != nil {
 		return err
 	}
 
