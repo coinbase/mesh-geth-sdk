@@ -112,14 +112,18 @@ func (s APIService) ConstructionMetadata( //nolint
 		gasLimit = input.GasLimit.Uint64()
 	}
 
-	gasTipCap, err := s.client.GetGasTipCap(ctx, input)
-	if err != nil {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrGasTipCapError, err)
-	}
+	var gasTipCap *big.Int
+	var gasFeeCap *big.Int
+	if s.client.GetRosettaConfig().SupportsEIP1559 {
+		gasTipCap, err = s.client.GetGasTipCap(ctx, input)
+		if err != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrGasTipCapError, err)
+		}
 
-	gasFeeCap, err := s.client.GetGasFeeCap(ctx, input, gasTipCap)
-	if err != nil {
-		return nil, sdkTypes.WrapErr(sdkTypes.ErrGasFeeCapError, err)
+		gasFeeCap, err = s.client.GetGasFeeCap(ctx, input, gasTipCap)
+		if err != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrGasFeeCapError, err)
+		}
 	}
 
 	metadata := &client.Metadata{

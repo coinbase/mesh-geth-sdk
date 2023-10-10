@@ -734,16 +734,17 @@ func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap 
 		}
 
 		if baseFee != nil {
-			// Calculate max fee per gas
+			// Calculate max fee per gas (i.e. gas fee cap)
 			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + GasTipCap
+			// BaseFeeFloor: when base fee is decreasing dramatically, we can leverage BaseFeeFloor to speed up the tx onchain landing process
+			// BaseFeeMultiplier: when base fee is increasing dramatically, we can leverage BaseFeeMultiplier to ensure the tx can be landed onchain with enough fee
+			// BaseFeeFloor and BaseFeeMultiplier are chain specific, if the downstream service doesn't specify them in Rosetta config,
+			// the default formula in Rosetta layer is EIP-1559 neutral, which is GasFeeCap = BaseFee + GasTipCap
 			baseFeeFloor := getBaseFeeFloor(ec.rosettaConfig)
 			baseFeeMultiplier := getBaseFeeMultiplier(ec.rosettaConfig)
 			adjustedBaseFee := new(big.Int).Mul(baseFee, baseFeeMultiplier)
 			gasFeeCap := new(big.Int).Set(bigIntMax(adjustedBaseFee, baseFeeFloor))
 			gasFeeCap.Add(gasFeeCap, gasTipCap)
-
-			fmt.Println(baseFeeFloor)
-			fmt.Println(baseFeeMultiplier)
 
 			return gasFeeCap, nil
 		}
@@ -753,7 +754,7 @@ func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap 
 }
 
 func getBaseFeeFloor(rosettaConfig configuration.RosettaConfig) *big.Int {
-	baseFeeFloor := big.NewInt(100)
+	baseFeeFloor := big.NewInt(configuration.DefaultBaseFeeFloor)
 	if rosettaConfig.BaseFeeFloor != nil {
 		baseFeeFloor = rosettaConfig.BaseFeeFloor
 	}
@@ -762,7 +763,7 @@ func getBaseFeeFloor(rosettaConfig configuration.RosettaConfig) *big.Int {
 }
 
 func getBaseFeeMultiplier(rosettaConfig configuration.RosettaConfig) *big.Int {
-	baseFeeMultiplier := big.NewInt(2)
+	baseFeeMultiplier := big.NewInt(configuration.DefaultBaseFeeMultiplier)
 	if rosettaConfig.BaseFeeMultiplier != nil {
 		baseFeeMultiplier = rosettaConfig.BaseFeeMultiplier
 	}
@@ -779,10 +780,7 @@ func bigIntMax(a *big.Int, b *big.Int) *big.Int {
 }
 
 func (ec *SDKClient) GetBaseFee(ctx context.Context) (*big.Int, error) {
-	type header struct {
-		BaseFee hexutil.Big `json:"baseFeePerGas"`
-	}
-	var head *header
+	var head *Header
 	if err := ec.CallContext(ctx, &head, "eth_getBlockByNumber", "latest", false); err != nil {
 		return nil, err
 	}

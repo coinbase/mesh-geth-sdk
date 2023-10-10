@@ -229,3 +229,8 @@ type GetTransactionReceiptResult struct {
 	Type             string            `json:"type,omitempty"`
 	PostState        []byte            `json:"root"`
 }
+
+// Header represents the simple header for base fee to improve the performance of base fee pulling
+type Header struct {
+	BaseFee hexutil.Big `json:"baseFeePerGas"`
+}

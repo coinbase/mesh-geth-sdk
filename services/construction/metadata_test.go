@@ -48,6 +48,10 @@ var (
 	metadataGenericData = "0x095ea7b3000000000000000000000000d10a72cf054650931365cc44d912a4fd7525" +
 		"705800000000000000000000000000000000000000000000000000000000000003e8"
 	tokenContractAddress = "0x2d7882beDcbfDDce29Ba99965dd3cdF7fcB10A1e"
+
+	rosettaConfig = configuration.RosettaConfig{
+		SupportsEIP1559: true,
+	}
 )
 
 func TestMetadata(t *testing.T) {
@@ -90,6 +94,8 @@ func TestMetadata(t *testing.T) {
 
 				client.On("GetBaseFee", ctx).
 					Return(big.NewInt(int64(transferBaseFee)), nil)
+				client.On("GetRosettaConfig").
+					Return(rosettaConfig)
 			},
 			expectedResponse: &types.ConstructionMetadataResponse{
 				Metadata: map[string]interface{}{
@@ -137,6 +143,8 @@ func TestMetadata(t *testing.T) {
 
 				client.On("GetBaseFee", ctx).
 					Return(big.NewInt(int64(transferBaseFee)), nil)
+				client.On("GetRosettaConfig").
+					Return(rosettaConfig)
 			},
 			expectedResponse: &types.ConstructionMetadataResponse{
 				Metadata: map[string]interface{}{
@@ -187,6 +195,8 @@ func TestMetadata(t *testing.T) {
 
 				client.On("GetBaseFee", ctx).
 					Return(big.NewInt(int64(transferBaseFee)), nil)
+				client.On("GetRosettaConfig").
+					Return(rosettaConfig)
 			},
 			expectedResponse: &types.ConstructionMetadataResponse{
 				Metadata: map[string]interface{}{

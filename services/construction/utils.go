@@ -27,7 +27,9 @@ func EthTransaction(tx *client.Transaction) *types.Transaction {
 		x := common.HexToAddress(tx.To)
 		to = &x
 	}
-	if eip1559Tx := tx.GasTipCap != nil && tx.GasFeeCap != nil; eip1559Tx {
+
+	eip1559Tx := tx.GasTipCap != nil && tx.GasFeeCap != nil
+	if eip1559Tx {
 		return types.NewTx(&types.DynamicFeeTx{
 			Nonce:     tx.Nonce,
 			GasTipCap: tx.GasTipCap,
