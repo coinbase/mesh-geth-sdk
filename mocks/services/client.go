@@ -177,22 +177,6 @@ func (_m *Client) GetBlockReceipts(ctx context.Context, blockHash common.Hash, t
 	return r0, r1
 }
 
-// GetClient provides a mock function with given fields:
-func (_m *Client) GetClient() *client.SDKClient {
-	ret := _m.Called()
-
-	var r0 *client.SDKClient
-	if rf, ok := ret.Get(0).(func() *client.SDKClient); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*client.SDKClient)
-		}
-	}
-
-	return r0
-}
-
 // GetContractCallGasLimit provides a mock function with given fields: ctx, toAddress, fromAddress, data
 func (_m *Client) GetContractCallGasLimit(ctx context.Context, toAddress string, fromAddress string, data []byte) (uint64, error) {
 	ret := _m.Called(ctx, toAddress, fromAddress, data)
@@ -338,6 +322,32 @@ func (_m *Client) GetGasTipCap(_a0 context.Context, _a1 client.Options) (*big.In
 
 	if rf, ok := ret.Get(1).(func(context.Context, client.Options) error); ok {
 		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetL1DataFee provides a mock function with given fields: ctx, ethTxBytes
+func (_m *Client) GetL1DataFee(ctx context.Context, ethTxBytes []byte) (*big.Int, error) {
+	ret := _m.Called(ctx, ethTxBytes)
+
+	var r0 *big.Int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) (*big.Int, error)); ok {
+		return rf(ctx, ethTxBytes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) *big.Int); ok {
+		r0 = rf(ctx, ethTxBytes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
+		r1 = rf(ctx, ethTxBytes)
 	} else {
 		r1 = ret.Error(1)
 	}

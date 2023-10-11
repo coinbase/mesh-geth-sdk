@@ -954,3 +954,7 @@ func (ec *SDKClient) GetNativeTransferGasLimit(ctx context.Context, toAddress st
 	fromAddress string, value *big.Int) (uint64, error) {
 	return 0, errors.New("GetNativeTransferGasLimit not implemented")
 }
+
+func (ec *SDKClient) GetL1DataFee(ethTxBytes []byte) (*big.Int, error) {
+	return nil, errors.New("GetL1DataFee not implemented")
+}

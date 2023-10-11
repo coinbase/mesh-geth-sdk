@@ -21,9 +21,6 @@ import (
 
 	"errors"
 
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
-	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/coinbase/rosetta-geth-sdk/client"
@@ -182,15 +179,9 @@ func (s APIService) ConstructionMetadata( //nolint
 		}
 
 		// Get L1 data fee
-		if s.config.GethURL != "" {
-			gpoContract, err := bindings.NewGasPriceOracle(predeploys.GasPriceOracleAddr, s.client.GetClient().EthClient)
-			if err != nil {
-				return nil, sdkTypes.WrapErr(sdkTypes.ErrL1DataFeeError, err)
-			}
-			l1DataFee, err = gpoContract.GetL1Fee(&bind.CallOpts{Context: ctx}, ethTxBytes)
-			if err != nil {
-				return nil, sdkTypes.WrapErr(sdkTypes.ErrL1DataFeeError, err)
-			}
+		l1DataFee, err = s.client.GetL1DataFee(ctx, ethTxBytes)
+		if err != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrL1DataFeeError, err)
 		}
 	}
 
