@@ -183,7 +183,7 @@ func (s APIService) ConstructionMetadata( //nolint
 
 		// Get L1 data fee
 		if s.config.GethURL != "" {
-			gpoContract, err := bindings.NewGasPriceOracle(predeploys.GasPriceOracleAddr, s.ethClient)
+			gpoContract, err := bindings.NewGasPriceOracle(predeploys.GasPriceOracleAddr, s.client.GetClient().EthClient)
 			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrL1DataFeeError, err)
 			}

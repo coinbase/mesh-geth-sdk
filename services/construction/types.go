@@ -66,6 +66,9 @@ type Client interface {
 	// GetBaseFee returns base fee for EIP-1559 support
 	GetBaseFee(ctx context.Context) (*big.Int, error)
 
+	// GetClient returns sdk client
+	GetClient() *evmClient.SDKClient
+
 	// GetRosettaConfig returns the Rosetta config we defined for the network
 	GetRosettaConfig() configuration.RosettaConfig
 

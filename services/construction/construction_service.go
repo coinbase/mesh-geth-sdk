@@ -26,7 +26,6 @@ import (
 
 	"github.com/coinbase/rosetta-sdk-go/parser"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/coinbase/rosetta-geth-sdk/client"
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
@@ -40,11 +39,10 @@ const (
 
 // APIService implements /construction/* endpoints
 type APIService struct {
-	config    *configuration.Configuration
-	types     *sdkTypes.Types
-	errors    []*types.Error
-	client    Client
-	ethClient *ethclient.Client // eth client for any arbitrary eth call (e.g. l1 data fee contract call for OP stack chains)
+	config *configuration.Configuration
+	types  *sdkTypes.Types
+	errors []*types.Error
+	client Client
 }
 
 // NewAPIService creates a new instance of a APIService.
@@ -54,24 +52,11 @@ func NewAPIService(
 	errors []*types.Error,
 	client Client,
 ) *APIService {
-	// currently the eth client is only used for OP stack chains,
-	// we can remove the support check if it's used by multiple chains in the future
-	var ethClient *ethclient.Client
-	var err error
-	if cfg.RosettaCfg.SupportsOpStack {
-		ethClient, err = ethclient.Dial(cfg.GethURL)
-		if err != nil {
-			errString := fmt.Sprintf("failed to dial node %s", cfg.GethURL)
-			panic(errString)
-		}
-	}
-
 	return &APIService{
-		config:    cfg,
-		types:     types,
-		errors:    errors,
-		client:    client,
-		ethClient: ethClient,
+		config: cfg,
+		types:  types,
+		errors: errors,
+		client: client,
 	}
 }
 

@@ -177,6 +177,22 @@ func (_m *Client) GetBlockReceipts(ctx context.Context, blockHash common.Hash, t
 	return r0, r1
 }
 
+// GetClient provides a mock function with given fields:
+func (_m *Client) GetClient() *client.SDKClient {
+	ret := _m.Called()
+
+	var r0 *client.SDKClient
+	if rf, ok := ret.Get(0).(func() *client.SDKClient); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.SDKClient)
+		}
+	}
+
+	return r0
+}
+
 // GetContractCallGasLimit provides a mock function with given fields: ctx, toAddress, fromAddress, data
 func (_m *Client) GetContractCallGasLimit(ctx context.Context, toAddress string, fromAddress string, data []byte) (uint64, error) {
 	ret := _m.Called(ctx, toAddress, fromAddress, data)
