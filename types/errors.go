@@ -46,6 +46,7 @@ var (
 		ErrERC20GasLimitError,
 		ErrGasTipCapError,
 		ErrGasFeeCapError,
+		ErrL1DataFeeError,
 	}
 
 	// ErrUnimplemented is returned when an endpoint
@@ -208,6 +209,13 @@ var (
 	ErrGasFeeCapError = &types.Error{
 		Code:    21, //nolint
 		Message: "error getting gas fee cap",
+	}
+
+	// ErrL1DataFeeError is returned when we have an
+	// error to get l1 data fee
+	ErrL1DataFeeError = &types.Error{
+		Code:    22, //nolint
+		Message: "error getting l1 data fee",
 	}
 
 	ErrClientBlockOrphaned         = errors.New("block orphaned")

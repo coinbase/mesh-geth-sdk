@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/coinbase/rosetta-sdk-go v0.8.2
+	github.com/ethereum-optimism/optimism/op-bindings v0.10.14
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.1
