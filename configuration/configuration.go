@@ -79,6 +79,9 @@ type RosettaConfig struct {
 	// SupportsEIP1559 indicates if the blockchain supports EIP-1559
 	SupportsEIP1559 bool
 
+	// SupportsOpStack indicates if the blockchain supports OP stack
+	SupportsOpStack bool
+
 	// Currency is the native currency blockchain supports
 	Currency *RosettaTypes.Currency
 

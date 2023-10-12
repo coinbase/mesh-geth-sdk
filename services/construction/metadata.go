@@ -126,6 +126,65 @@ func (s APIService) ConstructionMetadata( //nolint
 		}
 	}
 
+	// Build eth transaction for L1 fee calculation for OP stack chains
+	var l1DataFee *big.Int
+	if s.client.GetRosettaConfig().SupportsOpStack {
+		isContractCall := false
+		if len(input.MethodSignature) > 0 {
+			isContractCall = true
+		}
+		value, ok := new(big.Int).SetString(input.Value, 10)
+		if !ok {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("transaction value %s is invalid", input.Value))
+		}
+		var data []byte
+
+		switch {
+		case isContractCall:
+			// Generic contract call
+			// data: contract data
+			// value: transfer value
+			contractData, err := hexutil.Decode(input.ContractData)
+			if err != nil {
+				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, fmt.Errorf("transaction data %s is invalid: %w", input.ContractData, err))
+			}
+			data = contractData
+		case input.Currency == nil || types.Hash(input.Currency) == types.Hash(s.config.RosettaCfg.Currency):
+			// ETH transfer
+			// data: empty
+			// value: transfer value
+			data = []byte{}
+		default:
+			// ERC20 transfer
+			// data: generate data by contract address and transfer value
+			// value: empty
+			data = client.GenerateErc20TransferData(input.ContractAddress, value)
+			value = big.NewInt(0)
+		}
+
+		unsignedTx := &client.Transaction{
+			Nonce:     nonce,
+			GasPrice:  gasPrice,
+			GasLimit:  gasLimit,
+			GasTipCap: gasTipCap,
+			GasFeeCap: gasFeeCap,
+			To:        input.To,
+			Value:     value,
+			Data:      data,
+		}
+		ethTx := EthTransaction(unsignedTx)
+		ethTxBytes, err := ethTx.MarshalBinary()
+		if err != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrL1DataFeeError, err)
+		}
+
+		// Get L1 data fee
+		l1DataFee, err = s.client.GetL1DataFee(ctx, ethTxBytes)
+		if err != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrL1DataFeeError, err)
+		}
+	}
+
 	metadata := &client.Metadata{
 		Nonce:           nonce,
 		GasPrice:        gasPrice,
@@ -135,6 +194,7 @@ func (s APIService) ConstructionMetadata( //nolint
 		ContractData:    input.ContractData,
 		MethodSignature: input.MethodSignature,
 		MethodArgs:      input.MethodArgs,
+		L1DataFee:       l1DataFee,
 	}
 
 	metadataMap, err := client.MarshalJSONMap(metadata)
