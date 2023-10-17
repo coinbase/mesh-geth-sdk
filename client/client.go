@@ -46,6 +46,7 @@ type SDKClient struct {
 	P  *params.ChainConfig
 	tc *tracers.TraceConfig
 
+	txTraceFilter configuration.TxTraceFilter
 	rosettaConfig configuration.RosettaConfig
 
 	*RPCClient
@@ -81,6 +82,7 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 	return &SDKClient{
 		P:              cfg.ChainConfig,
 		tc:             tc,
+		txTraceFilter:  cfg.TxTraceFilter,
 		rosettaConfig:  cfg.RosettaCfg,
 		RPCClient:      c,
 		EthClient:      ec,
@@ -397,7 +399,8 @@ func (tx *RPCTransaction) LoadedTransaction() *LoadedTransaction {
 	return ethTx
 }
 
-// TraceBlockByHash returns the Transaction traces of all transactions in the block
+// TraceBlockByHash returns the Transaction traces of all transactions in the block (unless
+// txTraceFilter is set, in which case only the transactions that pass the filter are traced)
 func (ec *SDKClient) TraceBlockByHash(
 	ctx context.Context,
 	blockHash common.Hash,
@@ -408,28 +411,49 @@ func (ec *SDKClient) TraceBlockByHash(
 	}
 	defer ec.traceSemaphore.Release(semaphoreTraceWeight)
 
-	var calls []*rpcCall
-	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, "debug_traceBlockByHash", blockHash, ec.tc)
-	if err != nil {
-		return nil, err
+	traceAll := true
+	skipTraceTx := make([]bool, len(txs))
+	if ec.txTraceFilter != nil {
+		for i, tx := range txs {
+			skipTraceTx[i] = !ec.txTraceFilter(tx.Tx)
+			traceAll = traceAll && !skipTraceTx[i]
+		}
 	}
-	if err := json.Unmarshal(raw, &calls); err != nil {
-		return nil, err
-	}
+
 	m := make(map[string][]*FlatCall)
-	for i, tx := range calls {
-		if tx.Result.Type == "" {
-			// ignore calls with an empty type
-			continue
+	if traceAll {
+		var calls []*rpcCall
+		var raw json.RawMessage
+		err := ec.CallContext(ctx, &raw, "debug_traceBlockByHash", blockHash, ec.tc)
+		if err != nil {
+			return nil, err
 		}
-		flatCalls := FlattenTraces(tx.Result, []*FlatCall{})
-		// Ethereum native traces are guaranteed to return all transactions
-		txHash := txs[i].TxExtraInfo.TxHash.Hex()
-		if txHash == "" {
-			return nil, fmt.Errorf("could not get %dth tx hash for block %s", i, blockHash.Hex())
+		if err := json.Unmarshal(raw, &calls); err != nil {
+			return nil, err
 		}
-		m[txHash] = flatCalls
+		for i, tx := range calls {
+			if tx.Result.Type == "" {
+				// ignore calls with an empty type
+				continue
+			}
+			txHash := txs[i].Tx.Hash()
+			flatCalls := FlattenTraces(tx.Result, []*FlatCall{})
+			// Ethereum native traces are guaranteed to return all transactions
+			m[txHash.Hex()] = flatCalls
+		}
+	} else {
+		for i, tx := range txs {
+			txHash := tx.Tx.Hash()
+			if skipTraceTx[i] {
+				m[txHash.Hex()] = []*FlatCall{}
+				continue
+			}
+			_, flatCalls, err := ec.traceTransaction(ctx, tx.Tx)
+			if err != nil {
+				return nil, err
+			}
+			m[txHash.Hex()] = flatCalls
+		}
 	}
 	return m, nil
 }
@@ -437,11 +461,21 @@ func (ec *SDKClient) TraceBlockByHash(
 // TraceTransaction returns a Transaction trace
 func (ec *SDKClient) TraceTransaction(
 	ctx context.Context,
-	hash common.Hash,
+	tx *EthTypes.Transaction,
+) (json.RawMessage, []*FlatCall, error) {
+	if ec.txTraceFilter != nil && !ec.txTraceFilter(tx) {
+		return nil, nil, errors.New("transaction tracing skipped by filter")
+	}
+	return ec.traceTransaction(ctx, tx)
+}
+
+func (ec *SDKClient) traceTransaction(
+	ctx context.Context,
+	tx *EthTypes.Transaction,
 ) (json.RawMessage, []*FlatCall, error) {
 	result := &Call{}
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, "debug_traceTransaction", hash, ec.tc)
+	err := ec.CallContext(ctx, &raw, "debug_traceTransaction", tx.Hash(), ec.tc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -453,47 +487,71 @@ func (ec *SDKClient) TraceTransaction(
 }
 
 // TraceReplayBlockTransactions returns all transactions in a block returning the requested traces for each Transaction.
-func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh string) (
+func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh common.Hash, txs []RPCTransaction) (
 	map[string][]*FlatCall, error,
 ) {
-	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayBlockTransactions", hsh, []string{"trace"})
-	if err != nil {
-		return nil, err
-	}
-	var results []*OpenEthTraceCall
-	if err := json.Unmarshal(raw, &results); err != nil {
-		return nil, err
-	}
-	if len(results) == 0 {
-		log.Printf("Block %s does not have traces", hsh)
+	traceAll := true
+	skipTraceTx := make([]bool, len(txs))
+	if ec.txTraceFilter != nil {
+		for i, tx := range txs {
+			skipTraceTx[i] = !ec.txTraceFilter(tx.Tx)
+			traceAll = traceAll && !skipTraceTx[i]
+		}
 	}
 
 	m := make(map[string][]*FlatCall)
-	for _, result := range results {
-		if len(result.Trace) == 0 {
-			continue
+	if traceAll {
+		var raw json.RawMessage
+		err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayBlockTransactions", hsh.Hex(), []string{"trace"})
+		if err != nil {
+			return nil, err
+		}
+		var results []*OpenEthTraceCall
+		if err := json.Unmarshal(raw, &results); err != nil {
+			return nil, err
+		}
+		if len(results) == 0 {
+			log.Printf("Block %s does not have traces", hsh)
 		}
 
-		for _, child := range result.Trace {
-			if child.TransactionHash == "" {
+		for _, result := range results {
+			if len(result.Trace) == 0 {
 				continue
 			}
-			action := child.Action
-			traceType := action.Type
-			if traceType == "" {
-				traceType = child.Type
+
+			for _, child := range result.Trace {
+				if child.TransactionHash == "" {
+					continue
+				}
+				action := child.Action
+				traceType := action.Type
+				if traceType == "" {
+					traceType = child.Type
+				}
+				flattenCall := &FlatCall{
+					Type:    traceType,
+					From:    action.From,
+					To:      action.To,
+					Value:   action.Value,
+					GasUsed: action.GasUsed,
+					// Revert:       t.Revert,
+					// ErrorMessage: t.ErrorMessage,
+				}
+				m[child.TransactionHash] = append(m[child.TransactionHash], flattenCall)
 			}
-			flattenCall := &FlatCall{
-				Type:    traceType,
-				From:    action.From,
-				To:      action.To,
-				Value:   action.Value,
-				GasUsed: action.GasUsed,
-				// Revert:       t.Revert,
-				// ErrorMessage: t.ErrorMessage,
+		}
+	} else {
+		for i, tx := range txs {
+			txHash := tx.Tx.Hash()
+			if skipTraceTx[i] {
+				m[txHash.Hex()] = []*FlatCall{}
+				continue
 			}
-			m[child.TransactionHash] = append(m[child.TransactionHash], flattenCall)
+			_, flatCalls, err := ec.traceReplayTransaction(ctx, tx.Tx)
+			if err != nil {
+				return nil, err
+			}
+			m[txHash.Hex()] = flatCalls
 		}
 	}
 	return m, nil
@@ -502,10 +560,20 @@ func (ec *SDKClient) TraceReplayBlockTransactions(ctx context.Context, hsh strin
 // TraceReplayTransaction returns a Transaction trace
 func (ec *SDKClient) TraceReplayTransaction(
 	ctx context.Context,
-	hsh string,
+	tx *EthTypes.Transaction,
+) (json.RawMessage, []*FlatCall, error) {
+	if ec.txTraceFilter != nil && !ec.txTraceFilter(tx) {
+		return nil, nil, errors.New("transaction tracing skipped by filter")
+	}
+	return ec.traceReplayTransaction(ctx, tx)
+}
+
+func (ec *SDKClient) traceReplayTransaction(
+	ctx context.Context,
+	tx *EthTypes.Transaction,
 ) (json.RawMessage, []*FlatCall, error) {
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", hsh, []string{"trace"})
+	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", tx.Hash().Hex(), []string{"trace"})
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -520,7 +588,7 @@ func (ec *SDKClient) TraceReplayTransaction(
 	}
 
 	if len(result.Trace) == 0 {
-		return nil, nil, fmt.Errorf("Transaction(%s) does not have traces", hsh)
+		return nil, nil, fmt.Errorf("Transaction(%s) does not have traces", tx.Hash())
 	}
 	flattened := FlattenOpenEthTraces(result, []*FlatCall{})
 	return raw, flattened, nil

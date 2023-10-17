@@ -19,12 +19,13 @@ import (
 	"encoding/json"
 	"math/big"
 
-	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
-	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
+
+	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
+	"github.com/coinbase/rosetta-geth-sdk/configuration"
 )
 
 // Client contains all the methods required to interact with go-ethereum based blockchain
@@ -85,7 +86,7 @@ type Client interface {
 	// TraceTransaction returns all traces for one transaction
 	// by calling geth debug_traceTransaction JSON RPC.
 	// The output is a list of FlatCall. Each Flatcall is populated from one single trace.
-	TraceTransaction(ctx context.Context, hash common.Hash) (json.RawMessage, []*evmClient.FlatCall, error)
+	TraceTransaction(ctx context.Context, tx *EthTypes.Transaction) (json.RawMessage, []*evmClient.FlatCall, error)
 
 	// BlockRewardTransaction returns the block reward Rosetta transaction for the miner
 	BlockRewardTransaction(
@@ -116,13 +117,14 @@ type Client interface {
 	// FlatCall. Each Flatcall is populated from one single trace.
 	TraceReplayBlockTransactions(
 		ctx context.Context,
-		hsh string,
+		hsh common.Hash,
+		txs []evmClient.RPCTransaction,
 	) (map[string][]*evmClient.FlatCall, error)
 
 	// TraceTransaction returns all traces for one transaction
 	// by calling open ethereum trace_replayTransaction JSON RPC.
 	// The output is a list of FlatCall. Each Flatcall is populated from one single trace.
-	TraceReplayTransaction(ctx context.Context, hsh string) (json.RawMessage, []*evmClient.FlatCall, error)
+	TraceReplayTransaction(ctx context.Context, tx *EthTypes.Transaction) (json.RawMessage, []*evmClient.FlatCall, error)
 
 	// PopulateCrossChainTransactions populates all the bridge transactions for the block
 	// This method is used for blockchain that supports bridging function

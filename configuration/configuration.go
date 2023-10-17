@@ -18,6 +18,7 @@ import (
 	"math/big"
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -50,12 +51,17 @@ type Configuration struct {
 	// GethArguments are the arguments to start a blockchain instance.
 	GethArguments string
 
+	// Filter that can be used to skip tracing on certain transactions
+	TxTraceFilter TxTraceFilter
+
 	// ChainConfig is the core config which determines the blockchain settings.
 	ChainConfig *params.ChainConfig
 
 	// RosettaCfg defines the config that used to implement Rosetta APIs
 	RosettaCfg RosettaConfig
 }
+
+type TxTraceFilter func(tx *types.Transaction) bool
 
 type RosettaConfig struct {
 	// SupportRewardTx indicates whether the blockchain supports block reward

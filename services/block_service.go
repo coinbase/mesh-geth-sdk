@@ -223,7 +223,7 @@ func (s *BlockAPIService) GetBlock(
 		addTraces = true
 		// Use open ethereum trace API if selected.
 		if s.client.GetRosettaConfig().TraceType == configuration.OpenEthereumTrace {
-			m, err = s.client.TraceReplayBlockTransactions(ctx, body.Hash.String())
+			m, err = s.client.TraceReplayBlockTransactions(ctx, body.Hash, body.Transactions)
 		} else {
 			m, err = s.client.TraceBlockByHash(ctx, body.Hash, body.Transactions)
 		}
@@ -384,9 +384,9 @@ func (s *BlockAPIService) BlockTransaction(
 	)
 
 	if s.client.GetRosettaConfig().TraceType == configuration.OpenEthereumTrace {
-		raw, flattened, traceErr = s.client.TraceReplayTransaction(ctx, loadedTx.TxHash.String())
+		raw, flattened, traceErr = s.client.TraceReplayTransaction(ctx, loadedTx.Transaction)
 	} else {
-		raw, flattened, traceErr = s.client.TraceTransaction(ctx, *loadedTx.TxHash)
+		raw, flattened, traceErr = s.client.TraceTransaction(ctx, loadedTx.Transaction)
 	}
 	if traceErr != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to get tx trace: %w", traceErr))
