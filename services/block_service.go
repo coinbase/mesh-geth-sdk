@@ -104,16 +104,27 @@ func (s *BlockAPIService) PopulateTransaction(
 	if tx.Receipt != nil {
 		receiptLogs = tx.Receipt.Logs
 	}
+
 	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
+	var contractCurrencyMap = make(map[string]*client.ContractCurrency)
 	for _, log := range receiptLogs {
-		// if Filter == false, we record every ERC20 tokens
-		if !s.client.GetRosettaConfig().FilterTokens || (s.client.GetRosettaConfig().FilterTokens &&
-			client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
+		if !s.client.GetRosettaConfig().FilterTokens ||
+			(s.client.GetRosettaConfig().FilterTokens &&
+				client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
+
 			switch len(log.Topics) {
 			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
-				currency, err := s.client.GetContractCurrency(log.Address, true)
-				if err != nil {
-					return nil, err
+				addressStr := log.Address.String()
+				var currency *client.ContractCurrency
+				var err error
+
+				if cachedCurrency, found := contractCurrencyMap[addressStr]; found {
+					currency = cachedCurrency
+				} else {
+					if currency, err = s.client.GetContractCurrency(log.Address, true); err != nil {
+						return nil, err
+					}
+					contractCurrencyMap[addressStr] = currency
 				}
 
 				if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
