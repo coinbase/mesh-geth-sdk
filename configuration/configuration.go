@@ -109,6 +109,9 @@ type RosettaConfig struct {
 
 	// BaseFeeMultiplier is the multiplier of base fee for EIP-1559
 	BaseFeeMultiplier *big.Int
+
+	// PriorityFeeDivisor is the divisor of priority fee for EIP-1559
+	PriorityFeeDivisor *big.Int
 }
 
 type Token struct {
@@ -139,8 +142,9 @@ const (
 	StandardIngestion  = "standard"
 	AnalyticsIngestion = "analytics"
 
-	DefaultBaseFeeFloor      = 0
-	DefaultBaseFeeMultiplier = 1
+	DefaultBaseFeeFloor       = 0
+	DefaultBaseFeeMultiplier  = 1
+	DefaultPriorityFeeDivisor = 1
 )
 
 // IsOfflineMode returns true if running in offline mode
