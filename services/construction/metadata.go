@@ -130,7 +130,7 @@ func (s APIService) ConstructionMetadata( //nolint
 	var l1DataFee *big.Int
 	if s.client.GetRosettaConfig().SupportsOpStack {
 		isContractCall := false
-		if len(input.MethodSignature) > 0 {
+		if len(input.ContractAddress) > 0 {
 			isContractCall = true
 		}
 		value, ok := new(big.Int).SetString(input.Value, 10)
@@ -158,7 +158,7 @@ func (s APIService) ConstructionMetadata( //nolint
 			// ERC20 transfer
 			// data: generate data by contract address and transfer value
 			// value: empty
-			data = client.GenerateErc20TransferData(input.ContractAddress, value)
+			data = client.GenerateErc20TransferData(input.To, value)
 			value = big.NewInt(0)
 		}
 
