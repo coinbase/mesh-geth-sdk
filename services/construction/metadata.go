@@ -72,6 +72,14 @@ func (s APIService) ConstructionMetadata( //nolint
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrGasPriceError, err)
 	}
 
+	if len(input.ContractAddress) > 0 && len(input.ContractData) == 0 {
+		contractData, err := ConstructContractCallDataGeneric(input.MethodSignature, input.MethodArgs)
+		if err != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
+		}
+		input.ContractData = hexutil.Encode(contractData)
+	}
+
 	var gasLimit uint64
 	if input.GasLimit == nil || input.GasLimit.Uint64() == 0 {
 		switch {
