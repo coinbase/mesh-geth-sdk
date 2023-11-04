@@ -814,7 +814,8 @@ func (ec *SDKClient) GetErc20TransferGasLimit(
 		return 0, fmt.Errorf("unable to find contract info for currency %s", currency.Symbol)
 	}
 
-	// ToAddress for erc20 transfers is the contract address
+	// toAddress in function param is the address to receive token
+	// the To address in EstimateGas is the contract address
 	contractAddress := common.HexToAddress(contract.(string))
 	data := GenerateErc20TransferData(toAddress, value)
 	gasLimit, err := ec.EstimateGas(ctx, ethereum.CallMsg{
