@@ -720,7 +720,11 @@ func (ec *SDKClient) GetGasTipCap(ctx context.Context, input Options) (*big.Int,
 			return nil, err
 		}
 
-		return hex.ToInt(), nil
+		gasTipCap := hex.ToInt()
+		priorityFeeDivisor := getPriorityFeeDivisor(ec.rosettaConfig)
+		adjustedPriorityFee := new(big.Int).Div(gasTipCap, priorityFeeDivisor)
+
+		return adjustedPriorityFee, nil
 	}
 
 	return input.GasTipCap, nil
@@ -735,19 +739,16 @@ func (ec *SDKClient) GetGasFeeCap(ctx context.Context, input Options, gasTipCap 
 
 		if baseFee != nil {
 			// Calculate max fee per gas (i.e. gas fee cap)
-			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + PriorityFeeDivisor * GasTipCap
+			// Formula: GasFeeCap = max(BaseFeeMultiplier * BaseFee, BaseFeeFloor) + GasTipCap
 			// BaseFeeFloor: when base fee is decreasing dramatically, we can leverage BaseFeeFloor to speed up the tx onchain landing process
 			// BaseFeeMultiplier: when base fee is increasing dramatically, we can leverage BaseFeeMultiplier to ensure the tx can be landed onchain with enough fee
-			// PriorityFeeDivisor: adjust priority fee
 			// BaseFeeFloor and BaseFeeMultiplier are chain specific, if the downstream service doesn't specify them in Rosetta config,
 			// the default formula in Rosetta layer is EIP-1559 neutral, which is GasFeeCap = BaseFee + GasTipCap
 			baseFeeFloor := getBaseFeeFloor(ec.rosettaConfig)
 			baseFeeMultiplier := getBaseFeeMultiplier(ec.rosettaConfig)
-			priorityFeeDivisor := getPriorityFeeDivisor(ec.rosettaConfig)
 			adjustedBaseFee := new(big.Int).Mul(baseFee, baseFeeMultiplier)
 			gasFeeCap := new(big.Int).Set(bigIntMax(adjustedBaseFee, baseFeeFloor))
-			adjustedPriorityFee := new(big.Int).Div(gasTipCap, priorityFeeDivisor)
-			gasFeeCap.Add(gasFeeCap, adjustedPriorityFee)
+			gasFeeCap.Add(gasFeeCap, gasTipCap)
 
 			return gasFeeCap, nil
 		}
