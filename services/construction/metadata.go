@@ -72,6 +72,7 @@ func (s APIService) ConstructionMetadata( //nolint
 		return nil, sdkTypes.WrapErr(sdkTypes.ErrGasPriceError, err)
 	}
 
+	// Calculate contract data for contract call
 	if len(input.ContractAddress) > 0 && len(input.ContractData) == 0 {
 		contractData, err := ConstructContractCallDataGeneric(input.MethodSignature, input.MethodArgs)
 		if err != nil {
