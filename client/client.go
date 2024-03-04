@@ -266,15 +266,35 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		nil
 }
 
+// ExtendedHeader Temporarily fix for Sepolia block hash issue
+// We are using an old version of go-ethereum. As a result, block hash could not computed correctly on the fly.
+// As a work around, we use block hash returned from node to unblock processing
+// TODO: revert once we upgrade go-ethereum to latest version
+type ExtendedHeader struct {
+	*EthTypes.Header
+	*BlockHash
+}
+
+// Hash returns the block hash from node
+func (eh *ExtendedHeader) Hash() common.Hash {
+	return eh.BlockHash.Hash
+}
+
+type BlockHash struct {
+	Hash common.Hash `json:"hash"`
+}
+
 // blockHeader returns a block header from the current canonical chain.
 // If number is nil, the latest known header is returned.
 func (ec *SDKClient) blockHeader(
 	ctx context.Context,
 	blockIdentifier *RosettaTypes.PartialBlockIdentifier,
-) (*EthTypes.Header, error) {
+) (*ExtendedHeader, error) {
 	var (
-		header *EthTypes.Header
-		err    error
+		header    *EthTypes.Header
+		blockHash *BlockHash
+		err       error
+		err1      error
 	)
 
 	if blockIdentifier == nil || (blockIdentifier.Hash == nil && blockIdentifier.Index == nil) {
@@ -282,21 +302,31 @@ func (ec *SDKClient) blockHeader(
 		if len(defaultBlockNumber) != 0 {
 			// Handle reorg issues of Optimism and Base
 			err = ec.CallContext(ctx, &header, "eth_getBlockByNumber", defaultBlockNumber, false)
+			err1 = ec.CallContext(ctx, &blockHash, "eth_getBlockByNumber", defaultBlockNumber, false)
 		} else {
 			err = ec.CallContext(ctx, &header, "eth_getBlockByNumber", ToBlockNumArg(nil), false)
+			err1 = ec.CallContext(ctx, &blockHash, "eth_getBlockByNumber", ToBlockNumArg(nil), false)
 		}
 	} else {
 		if blockIdentifier.Index != nil {
 			err = ec.CallContext(ctx, &header, "eth_getBlockByNumber", ToBlockNumArg(big.NewInt(*blockIdentifier.Index)), false)
+			err1 = ec.CallContext(ctx, &blockHash, "eth_getBlockByNumber", ToBlockNumArg(big.NewInt(*blockIdentifier.Index)), false)
 		} else {
 			err = ec.CallContext(ctx, &header, "eth_getBlockByHash", common.HexToHash(*blockIdentifier.Hash), false)
+			err1 = ec.CallContext(ctx, &blockHash, "eth_getBlockByHash", common.HexToHash(*blockIdentifier.Hash), false)
 		}
 	}
 
-	if err == nil && header == nil {
+	extendedHeader := &ExtendedHeader{
+		Header:    header,
+		BlockHash: blockHash,
+	}
+
+	if err == nil && err1 == nil && header == nil {
 		return nil, ethereum.NotFound
 	}
-	return header, err
+
+	return extendedHeader, err
 }
 
 // Peers retrieves all peers of the node.
