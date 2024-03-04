@@ -222,8 +222,8 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		return nil, -1, nil, nil, err
 	}
 
-	log.Printf("header string from node: ", header.Hash())
-	log.Printf("hash returned : ", header.Hash().Hex())
+	fmt.Printf("header string from node: %s\n", header.Hash())
+	fmt.Printf("hash returned : %s\n", header.Hash().Hex())
 
 	// Get sync status
 	var syncStatus *RosettaTypes.SyncStatus
