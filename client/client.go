@@ -266,33 +266,15 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		nil
 }
 
-// ExtendedHeader Temporarily fix for Sepolia block hash issue
-// We are using an old version of go-ethereum. As a result, block hash could not computed correctly on the fly.
-// As a work around, we use block hash returned from node to unblock processing
-// TODO: revert once we upgrade go-ethereum to latest version
-type ExtendedHeader struct {
-	*EthTypes.Header
-	*BlockHash
-}
-
-// Hash returns the block hash from node
-func (eh *ExtendedHeader) Hash() common.Hash {
-	return eh.BlockHash.Hash
-}
-
-type BlockHash struct {
-	Hash common.Hash `json:"hash"`
-}
-
 // blockHeader returns a block header from the current canonical chain.
 // If number is nil, the latest known header is returned.
 func (ec *SDKClient) blockHeader(
 	ctx context.Context,
 	blockIdentifier *RosettaTypes.PartialBlockIdentifier,
-) (*ExtendedHeader, error) {
+) (*sdkTypes.ExtendedHeader, error) {
 	var (
 		header    *EthTypes.Header
-		blockHash *BlockHash
+		blockHash *sdkTypes.BlockHash
 		err       error
 		err1      error
 	)
@@ -317,7 +299,7 @@ func (ec *SDKClient) blockHeader(
 		}
 	}
 
-	extendedHeader := &ExtendedHeader{
+	extendedHeader := &sdkTypes.ExtendedHeader{
 		Header:    header,
 		BlockHash: blockHash,
 	}

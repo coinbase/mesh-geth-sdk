@@ -16,6 +16,8 @@ package types
 
 import (
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
+	"github.com/ethereum/go-ethereum/common"
+	EthTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 const (
@@ -223,4 +225,22 @@ func LoadTypes() *Types {
 	types.NodeVersion = NodeVersion
 
 	return types
+}
+
+// ExtendedHeader Temporarily fix for Sepolia block hash issue
+// We are using an old version of go-ethereum. As a result, block hash could not computed correctly on the fly.
+// As a work around, we use block hash returned from node to unblock processing
+// TODO: revert once we upgrade go-ethereum to latest version
+type ExtendedHeader struct {
+	*EthTypes.Header
+	*BlockHash
+}
+
+// Hash returns the block hash from node
+func (eh *ExtendedHeader) Hash() common.Hash {
+	return eh.BlockHash.Hash
+}
+
+type BlockHash struct {
+	Hash common.Hash `json:"hash"`
 }

@@ -333,7 +333,7 @@ func (s *BlockAPIService) Block(
 
 	blockIdentifier = &RosettaTypes.BlockIdentifier{
 		Index: block.Number().Int64(),
-		Hash:  block.Hash().String(),
+		Hash:  rpcBlock.Hash.Hex(),
 	}
 
 	parentBlockIdentifier = blockIdentifier
