@@ -39,17 +39,13 @@ const (
 	// in MainnetNetworkIdentifier.
 	MainnetNetwork string = "Mainnet"
 
-	// RopstenNetwork is the value of the network
-	// in RopstenNetworkIdentifier.
-	RopstenNetwork string = "Ropsten"
-
-	// RinkebyNetwork is the value of the network
-	// in RinkebyNetworkNetworkIdentifier.
-	RinkebyNetwork string = "Rinkeby"
-
 	// GoerliNetwork is the value of the network
 	// in GoerliNetworkNetworkIdentifier.
 	GoerliNetwork string = "Goerli"
+
+	// SepoliaNetwork is the value of the network
+	// in SepoliaNetworkNetworkIdentifier.
+	SepoliaNetwork string = "Sepolia"
 
 	// Symbol is the symbol value
 	// used in Currency.
@@ -70,14 +66,11 @@ const (
 	// Mainnet is the Ethereum Mainnet.
 	Mainnet string = "MAINNET"
 
-	// Ropsten is the Ethereum Ropsten testnet.
-	Ropsten string = "ROPSTEN"
-
-	// Rinkeby is the Ethereum Rinkeby testnet.
-	Rinkeby string = "RINKEBY"
-
 	// Goerli is the Ethereum Görli testnet.
 	Goerli string = "GOERLI"
+
+	// Sepolia is the Ethereum Sepolia testnet.
+	Sepolia string = "SEPOLIA"
 
 	// Testnet defaults to `Ropsten` for backwards compatibility.
 	Testnet string = "TESTNET"
@@ -130,14 +123,11 @@ const (
 )
 
 var (
-	// RopstenGethArguments are the arguments to start a ropsten geth instance.
-	RopstenGethArguments = fmt.Sprintf("%s --ropsten", MainnetGethArguments)
-
-	// RinkebyGethArguments are the arguments to start a rinkeby geth instance.
-	RinkebyGethArguments = fmt.Sprintf("%s --rinkeby", MainnetGethArguments)
-
-	// GoerliGethArguments are the arguments to start a ropsten geth instance.
+	// GoerliGethArguments are the arguments to start a goerli geth instance.
 	GoerliGethArguments = fmt.Sprintf("%s --goerli", MainnetGethArguments)
+
+	// SepoliaGethArguments are the arguments to start a sepolia geth instance.
+	SepoliaGethArguments = fmt.Sprintf("%s --sepolia", MainnetGethArguments)
 
 	// MainnetGenesisBlockIdentifier is the *types.BlockIdentifier
 	// of the mainnet genesis block.
@@ -146,24 +136,17 @@ var (
 		Index: GenesisBlockIndex,
 	}
 
-	// RopstenGenesisBlockIdentifier is the *types.BlockIdentifier
-	// of the Ropsten genesis block.
-	RopstenGenesisBlockIdentifier = &types.BlockIdentifier{
-		Hash:  params.RopstenGenesisHash.Hex(),
-		Index: GenesisBlockIndex,
-	}
-
-	// RinkebyGenesisBlockIdentifier is the *types.BlockIdentifier
-	// of the Ropsten genesis block.
-	RinkebyGenesisBlockIdentifier = &types.BlockIdentifier{
-		Hash:  params.RinkebyGenesisHash.Hex(),
-		Index: GenesisBlockIndex,
-	}
-
 	// GoerliGenesisBlockIdentifier is the *types.BlockIdentifier
 	// of the Goerli genesis block.
 	GoerliGenesisBlockIdentifier = &types.BlockIdentifier{
 		Hash:  params.GoerliGenesisHash.Hex(),
+		Index: GenesisBlockIndex,
+	}
+
+	// SepoliaGenesisBlockIdentifier is the *types.BlockIdentifier
+	// of the Sepolia genesis block.
+	SepoliaGenesisBlockIdentifier = &types.BlockIdentifier{
+		Hash:  params.SepoliaGenesisHash.Hex(),
 		Index: GenesisBlockIndex,
 	}
 )
@@ -197,22 +180,6 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.GenesisBlockIdentifier = MainnetGenesisBlockIdentifier
 		config.ChainConfig = params.MainnetChainConfig
 		config.GethArguments = MainnetGethArguments
-	case Testnet, Ropsten, "":
-		config.Network = &types.NetworkIdentifier{
-			Blockchain: Blockchain,
-			Network:    RopstenNetwork,
-		}
-		config.GenesisBlockIdentifier = RopstenGenesisBlockIdentifier
-		config.ChainConfig = params.RopstenChainConfig
-		config.GethArguments = RopstenGethArguments
-	case Rinkeby:
-		config.Network = &types.NetworkIdentifier{
-			Blockchain: Blockchain,
-			Network:    RinkebyNetwork,
-		}
-		config.GenesisBlockIdentifier = RinkebyGenesisBlockIdentifier
-		config.ChainConfig = params.RinkebyChainConfig
-		config.GethArguments = RinkebyGethArguments
 	case Goerli:
 		config.Network = &types.NetworkIdentifier{
 			Blockchain: Blockchain,
@@ -221,6 +188,14 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.GenesisBlockIdentifier = GoerliGenesisBlockIdentifier
 		config.ChainConfig = params.GoerliChainConfig
 		config.GethArguments = GoerliGethArguments
+	case Sepolia:
+		config.Network = &types.NetworkIdentifier{
+			Blockchain: Blockchain,
+			Network:    SepoliaNetwork,
+		}
+		config.GenesisBlockIdentifier = SepoliaGenesisBlockIdentifier
+		config.ChainConfig = params.SepoliaChainConfig
+		config.GethArguments = SepoliaGethArguments
 	default:
 		return nil, fmt.Errorf("%s is not a valid network", networkValue)
 	}

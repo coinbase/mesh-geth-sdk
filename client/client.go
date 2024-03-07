@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"strconv"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -34,11 +33,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
+	"github.com/ethereum/go-ethereum/core"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/holiman/uint256"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -573,18 +574,20 @@ func FlattenTraces(data *Call, flattened []*FlatCall) []*FlatCall {
 // https://github.com/ethereum/go-ethereum/blob/master/consensus/ethash/consensus.go#L646-L653
 func (ec *SDKClient) miningReward(
 	currentBlock *big.Int,
-) int64 {
+) *uint256.Int {
 	if currentBlock.Int64() == int64(0) {
-		return big.NewInt(0).Int64()
+		return uint256.NewInt(0)
 	}
 
-	blockReward := ethash.FrontierBlockReward.Int64()
+	blockReward := ethash.FrontierBlockReward
+
 	if ec.P.IsByzantium(currentBlock) {
-		blockReward = ethash.ByzantiumBlockReward.Int64()
+		blockReward = ethash.ByzantiumBlockReward
 	}
 	if ec.P.IsConstantinople(currentBlock) {
-		blockReward = ethash.ConstantinopleBlockReward.Int64()
+		blockReward = ethash.ConstantinopleBlockReward
 	}
+
 	return blockReward
 }
 
@@ -607,9 +610,10 @@ func (ec *SDKClient) BlockRewardTransaction(
 	if len(uncles) > 0 {
 		reward := new(big.Float)
 		uncleReward := float64(numUncles) / sdkTypes.UnclesRewardMultiplier
-		rewardFloat := reward.Mul(big.NewFloat(uncleReward), big.NewFloat(float64(miningReward)))
-		rewardInt, _ := rewardFloat.Int64()
-		minerReward += rewardInt
+		rewardFloat := reward.Mul(big.NewFloat(uncleReward), big.NewFloat(miningReward.Float64()))
+		rewardInt := new(big.Int)
+		rewardFloat.Int(rewardInt)
+		minerReward.Add(minerReward, uint256.MustFromBig(rewardInt))
 	}
 
 	const base = 10
@@ -623,7 +627,7 @@ func (ec *SDKClient) BlockRewardTransaction(
 			Address: MustChecksum(miner),
 		},
 		Amount: &RosettaTypes.Amount{
-			Value:    strconv.FormatInt(minerReward, base),
+			Value:    minerReward.Dec(),
 			Currency: ec.rosettaConfig.Currency,
 		},
 	}
@@ -633,11 +637,13 @@ func (ec *SDKClient) BlockRewardTransaction(
 	for _, b := range uncles {
 		uncleMiner := b.Coinbase.String()
 		uncleBlock := b.Number.Int64()
+		miningRewardPerUncle := minerReward.Clone()
+		miningRewardPerUncle.Div(miningRewardPerUncle, uint256.NewInt(sdkTypes.MaxUncleDepth))
 		uncleRewardBlock := new(
 			big.Int,
 		).Mul(
 			big.NewInt(uncleBlock+sdkTypes.MaxUncleDepth-blockIdentifier.Index),
-			big.NewInt(miningReward/sdkTypes.MaxUncleDepth),
+			miningRewardPerUncle.ToBig(),
 		)
 
 		uncleRewardOp := &RosettaTypes.Operation{
@@ -901,12 +907,12 @@ func (ec *SDKClient) GetLoadedTransaction(
 	}
 
 	signer := EthTypes.LatestSignerForChainID(ec.P.ChainID)
-	msg, err := tx.AsMessage(signer, header.BaseFee)
+	msg, err := core.TransactionToMessage(tx, signer, header.BaseFee)
 	if err != nil {
 		return nil, err
 	}
 	blockNumber := header.Number.String()
-	from := msg.From()
+	from := msg.From
 	txHash := tx.Hash()
 
 	txInfo := TxExtraInfo{
