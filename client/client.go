@@ -29,7 +29,7 @@ import (
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 
-	"github.com/ethereum/go-ethereum"
+	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -295,7 +295,7 @@ func (ec *SDKClient) blockHeader(
 	}
 
 	if err == nil && header == nil {
-		return nil, ethereum.NotFound
+		return nil, goEthereum.NotFound
 	}
 	return header, err
 }
@@ -804,7 +804,7 @@ func (ec *SDKClient) GetBaseFee(ctx context.Context) (*big.Int, error) {
 		return nil, err
 	}
 	if head == nil {
-		return nil, ethereum.NotFound
+		return nil, goEthereum.NotFound
 	}
 	return head.BaseFee.ToInt(), nil
 }
@@ -825,7 +825,7 @@ func (ec *SDKClient) GetErc20TransferGasLimit(
 	// the To address in EstimateGas is the contract address
 	contractAddress := common.HexToAddress(contract.(string))
 	data := GenerateErc20TransferData(toAddress, value)
-	gasLimit, err := ec.EstimateGas(ctx, ethereum.CallMsg{
+	gasLimit, err := ec.EstimateGas(ctx, goEthereum.CallMsg{
 		From: common.HexToAddress(fromAddress),
 		To:   &contractAddress,
 		Data: data,
@@ -844,7 +844,7 @@ func (ec *SDKClient) GetContractCallGasLimit(
 ) (uint64, error) {
 	// ToAddress for contract address is the contract address
 	contractAddress := common.HexToAddress(toAddress)
-	gasLimit, err := ec.EstimateGas(ctx, ethereum.CallMsg{
+	gasLimit, err := ec.EstimateGas(ctx, goEthereum.CallMsg{
 		From: common.HexToAddress(fromAddress),
 		To:   &contractAddress,
 		Data: data,

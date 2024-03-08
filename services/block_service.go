@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum"
+	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
@@ -204,7 +204,7 @@ func (s *BlockAPIService) GetBlock(
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("block fetch failed: %w", err)
 	} else if len(raw) == 0 {
-		return nil, nil, nil, ethereum.NotFound
+		return nil, nil, nil, goEthereum.NotFound
 	}
 
 	// Decode header and transactions

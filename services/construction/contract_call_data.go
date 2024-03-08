@@ -108,7 +108,7 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 	for i, v := range splitSigByComma {
 		typed, _ := abi.NewType(v, v, nil)
 		argument := abi.Arguments{
-			{
+			abi.Argument{
 				Type: typed,
 			},
 		}
