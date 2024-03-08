@@ -1,7 +1,7 @@
 .PHONY: deps test mocks lint format check-license add-license \
 		shorten-lines salus check-format
 
-GO_PACKAGES=./services/... ./client/... ./configuration/... ./utils/... ./examples/...
+GO_PACKAGES=./services/... ./client/... ./configuration/... ./utils/... ./examples/... ./contracts/... ./types/...
 TEST_SCRIPT=go test ${GO_PACKAGES}
 LINT_CONFIG=.golangci.yml
 GOIMPORTS_INSTALL=go install golang.org/x/tools/cmd/goimports@latest
@@ -16,6 +16,9 @@ GOLINES_CMD=golines
 
 deps:
 	go get ./...
+
+build:
+	go build ${GO_PACKAGES}
 
 test:
 	${TEST_SCRIPT}

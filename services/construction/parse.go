@@ -29,6 +29,7 @@ import (
 	"github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 	"golang.org/x/crypto/sha3"
 )
@@ -67,11 +68,11 @@ func (s *APIService) ConstructionParse(
 		tx.ChainID = t.ChainId()
 		tx.Currency = wrappedTx.Currency
 
-		msg, err := t.AsMessage(EthTypes.LatestSignerForChainID(t.ChainId()), nil)
+		msg, err := core.TransactionToMessage(&t, EthTypes.LatestSignerForChainID(t.ChainId()), nil)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, err)
 		}
-		tx.From = msg.From().Hex()
+		tx.From = msg.From.Hex()
 	}
 
 	//TODO: add logic for contract call parsing
