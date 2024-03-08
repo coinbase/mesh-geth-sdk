@@ -76,10 +76,16 @@ func NewRPCClient(endpoint string) (*RPCClient, error) {
 	defaultTransport.MaxIdleConns = DefaultMaxConnections
 	defaultTransport.MaxIdleConnsPerHost = DefaultMaxConnections
 
-	client, err := rpc.DialHTTPWithClient(endpoint, &http.Client{
+	clientOptions := rpc.WithHTTPClient(&http.Client{
 		Timeout:   gethHTTPTimeout,
 		Transport: defaultTransport,
 	})
+	ctx := context.Background()
+	client, err := rpc.DialOptions(ctx, endpoint, clientOptions)
+	/*client, err := rpc.DialHTTPWithClient(endpoint, &http.Client{
+		Timeout:   gethHTTPTimeout,
+		Transport: defaultTransport,
+	})*/
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial node: %w", err)
 	}

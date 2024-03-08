@@ -616,7 +616,6 @@ func (ec *SDKClient) BlockRewardTransaction(
 		minerReward.Add(minerReward, uint256.MustFromBig(rewardInt))
 	}
 
-	const base = 10
 	miningRewardOp := &RosettaTypes.Operation{
 		OperationIdentifier: &RosettaTypes.OperationIdentifier{
 			Index: 0,
