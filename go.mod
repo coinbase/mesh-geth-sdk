@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/coinbase/rosetta-sdk-go v0.8.2
-	github.com/ethereum/go-ethereum v1.13.14
+	github.com/ethereum/go-ethereum v1.13.8
 	github.com/holiman/uint256 v1.2.4
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.4
