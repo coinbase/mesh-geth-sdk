@@ -95,8 +95,11 @@ func (s APIService) ConstructionMetadata( //nolint
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrInvalidInput, err)
 			}
 
+			value := new(big.Int)
+			value.SetString(input.Value, 10) // nolint:gomnd
+
 			// Override the destination address to be the contract address
-			gasLimit, err = s.client.GetContractCallGasLimit(ctx, contractAddress, input.From, contractData)
+			gasLimit, err = s.client.GetContractCallGasLimit(ctx, contractAddress, input.From, value, contractData)
 			if err != nil {
 				return nil, sdkTypes.WrapErr(sdkTypes.ErrERC20GasLimitError, err)
 			}

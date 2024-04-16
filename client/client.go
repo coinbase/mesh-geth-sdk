@@ -837,14 +837,16 @@ func (ec *SDKClient) GetContractCallGasLimit(
 	ctx context.Context,
 	toAddress string,
 	fromAddress string,
+	value *big.Int,
 	data []byte,
 ) (uint64, error) {
 	// ToAddress for contract address is the contract address
 	contractAddress := common.HexToAddress(toAddress)
 	gasLimit, err := ec.EstimateGas(ctx, goEthereum.CallMsg{
-		From: common.HexToAddress(fromAddress),
-		To:   &contractAddress,
-		Data: data,
+		From:  common.HexToAddress(fromAddress),
+		To:    &contractAddress,
+		Value: value,
+		Data:  data,
 	})
 	if err != nil {
 		return 0, err
