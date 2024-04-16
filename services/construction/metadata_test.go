@@ -33,7 +33,7 @@ import (
 
 var (
 	transferValue            = "1"
-	transferContractValue    = "0"
+	transferContractValue    = "2"
 	transferGasPrice         = uint64(5000000000)
 	transferGasLimit         = uint64(21000)
 	transferGasTipCap        = uint64(100000000)
@@ -83,7 +83,9 @@ func TestMetadata(t *testing.T) {
 					Return(big.NewInt(int64(transferGasPrice)), nil)
 
 				contractData, _ := hexutil.Decode(metadataGenericData)
-				client.On("GetContractCallGasLimit", ctx, tokenContractAddress, testingFromAddress, contractData).
+				testValue := new(big.Int)
+				testValue.SetString(transferContractValue, 10)
+				client.On("GetContractCallGasLimit", ctx, tokenContractAddress, testingFromAddress, testValue, contractData).
 					Return(transferGasLimitContract, nil)
 
 				client.On("GetGasTipCap", ctx, mock.Anything).

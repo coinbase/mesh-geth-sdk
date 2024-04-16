@@ -186,6 +186,7 @@ type Client interface {
 		ctx context.Context,
 		toAddress string,
 		fromAddress string,
+		value *big.Int,
 		data []byte,
 	) (uint64, error)
 
