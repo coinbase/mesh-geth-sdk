@@ -13,7 +13,7 @@ make run-geth-mainnet
 make run-geth-testnet
 ```
 
-### Run rosetta-ethereum example
+### Run mesh-ethereum example
 ```
-make run-rosetta
+make run-mesh
 ```

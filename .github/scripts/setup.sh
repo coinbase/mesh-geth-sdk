@@ -1,9 +1,9 @@
 #!/bin/bash
 
 cd examples/ethereum
-nohup make run-rosetta > /dev/null 2>&1 &
+nohup make run-mesh > /dev/null 2>&1 &
 
-nohup make run-rosetta-offline > /dev/null 2>&1 &
+nohup make run-mesh-offline > /dev/null 2>&1 &
 
 sleep 120
 
