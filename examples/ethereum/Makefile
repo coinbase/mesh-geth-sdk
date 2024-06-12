@@ -28,18 +28,18 @@ test:
 	${TEST_SCRIPT}
 
 build-geth:
-	docker build -t rosetta-ethereum:latest .
+	docker build -t mesh-ethereum:latest .
 
 run-geth-mainnet:
-	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -e "NETWORK=MAINNET" -p 8545:8545 -p 30303:30303 rosetta-ethereum:latest
+	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -e "NETWORK=MAINNET" -p 8545:8545 -p 30303:30303 mesh-ethereum:latest
 
 run-geth-testnet:
-	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -e "NETWORK=TESTNET" -p 8545:8545 -p 30303:30303 rosetta-ethereum:latest
+	docker run -d --rm --ulimit "nofile=${NOFILE}:${NOFILE}" -e "NETWORK=TESTNET" -p 8545:8545 -p 30303:30303 mesh-ethereum:latest
 
-run-rosetta:
+run-mesh:
 	MODE=ONLINE NETWORK=MAINNET PORT=8080 FILTER=false go run *.go
 
-run-rosetta-offline:
+run-mesh-offline:
 	MODE=OFFLINE NETWORK=MAINNET PORT=8081 FILTER=false go run *.go
 
 local-geth:

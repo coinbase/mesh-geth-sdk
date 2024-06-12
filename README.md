@@ -1,10 +1,10 @@
 <p align="center">
-  <a href="https://www.rosetta-api.org">
-    <img width="90%" alt="Rosetta" src="https://www.rosetta-api.org/img/rosetta_header.png">
+  <a href="https://www.mesh-api.org">
+    <img width="90%" alt="Mesh" src="https://www.mesh-api.org/img/mesh_header.png">
   </a>
 </p>
 <h3 align="center">
-Rosetta Generic go-ethereum-based SDK
+Mesh Generic go-ethereum-based SDK
 </h3>
 <!-- add shields here after publication -->
 <p align="center">
@@ -14,9 +14,9 @@ Integrate your blockchain everywhere.
 
 ## Overview
 
-The `rosetta-geth-sdk` repository provides a collection of packages used for interaction with the Rosetta API specification. The goal of this SDK is to help accelerate Rosetta API implementation on go-ethereum based chains. 
+The `mesh-geth-sdk` repository provides a collection of packages used for interaction with the Mesh API specification. The goal of this SDK is to help accelerate Mesh API implementation on go-ethereum based chains. 
 
-[Rosetta](https://www.rosetta-api.org/docs/welcome.html) is an open-source specification and set of tools that makes integrating with blockchains simpler, faster, and more reliable. The Rosetta API is specified in the [OpenAPI 3.0 format](https://www.openapis.org).
+[Mesh](https://www.mesh-api.org/docs/welcome.html) is an open-source specification and set of tools that makes integrating with blockchains simpler, faster, and more reliable. The Mesh API is specified in the [OpenAPI 3.0 format](https://www.openapis.org).
 
 Jump to:
 
@@ -30,7 +30,7 @@ Jump to:
 
 ### Complete SDK Example
 
-This [ethereum example](examples/ethereum/) provides a reference implementation of the Rosetta API for Ethereum in Golang. This example highlights how to load a configuration, load supported operation types and errors, create a new Ethereum client, and start the Rosetta server.
+This [ethereum example](examples/ethereum/) provides a reference implementation of the Mesh API for Ethereum in Golang. This example highlights how to load a configuration, load supported operation types and errors, create a new Ethereum client, and start the Mesh server.
 
 ```go
 package main
@@ -38,10 +38,10 @@ package main
 import (
 	"log"
 
-	"github.com/coinbase/rosetta-geth-sdk/examples/ethereum/client"
-	"github.com/coinbase/rosetta-geth-sdk/examples/ethereum/config"
-	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
-	"github.com/coinbase/rosetta-geth-sdk/utils"
+	"github.com/coinbase/mesh-geth-sdk/examples/ethereum/client"
+	"github.com/coinbase/mesh-geth-sdk/examples/ethereum/config"
+	sdkTypes "github.com/coinbase/mesh-geth-sdk/types"
+	"github.com/coinbase/mesh-geth-sdk/utils"
 )
 
 func main() {
@@ -61,15 +61,15 @@ func main() {
 		log.Fatalln("cannot initialize client: %w", err)
 	}
 
-	// Bootstrap to start the Rosetta API server
+	// Bootstrap to start the Mesh API server
 	err = utils.BootStrap(cfg, types, errors, client)
 	if err != nil {
-		log.Fatalln("unable to bootstrap Rosetta server: %w", err)
+		log.Fatalln("unable to bootstrap Mesh server: %w", err)
 	}
 }
 ```
 
-The [LoadConfiguration](examples/ethereum/config/config.go) file loads all the Blockchain metadata and Rosetta configuration.
+The [LoadConfiguration](examples/ethereum/config/config.go) file loads all the Blockchain metadata and Mesh configuration.
 
 The [NewEthereumClient](examples/ethereum/client/client.go) file creates a new service client, which leverages SDK functionalities, and implements a few gas related interfaces.
 
@@ -80,22 +80,22 @@ See (examples/tokenList.json) for a list of supported ERC20 tokens.
 ### SDK Packages
 
 * [Client](client): Low-level communication with any `go-ethereum` based blockchain
-* [Services](services): Rosetta RESTful services for Data and Construction APIs
-* [Utils](utils): Bootstrap code for starting up a Rosetta API server
-* [Examples](examples): Examples of how to build your Rosetta integration with the SDK
+* [Services](services): Mesh RESTful services for Data and Construction APIs
+* [Utils](utils): Bootstrap code for starting up a Mesh API server
+* [Examples](examples): Examples of how to build your Mesh integration with the SDK
 
 ### Configuring the SDK
 
 See the [Configuration](configuration/configuration.go) file for more information on how to configure the SDK.
 
 ### SDK interfaces and method overriding
-The SDK defines a list of [Client interfaces](services/construction/types.go), which allows the Rosetta service to interact with a go-ethereum based blockchain.
+The SDK defines a list of [Client interfaces](services/construction/types.go), which allows the Mesh service to interact with a go-ethereum based blockchain.
 
 The SDK provides a default implementation of the client module for a quick start. However, these interfaces require custom integration to override:
 <!-- These links will need to be updated when we publish to GitHub -->
-1. [`GetBlockReceipts`](https://github.com/coinbase/rosetta-geth-sdk/blob/1a8ac6c199732ab06a40725ccc07f34b52a2b46e/services/construction/types.go#L124)
-2. [`GetTransactionReceipt`](https://github.com/coinbase/rosetta-geth-sdk/blob/1a8ac6c199732ab06a40725ccc07f34b52a2b46e/services/construction/types.go#L133)
-3. [`GetNativeTransferGasLimit`](https://github.com/coinbase/rosetta-geth-sdk/blob/1a8ac6c199732ab06a40725ccc07f34b52a2b46e/services/construction/types.go#L140)
+1. [`GetBlockReceipts`](https://github.com/coinbase/mesh-geth-sdk/blob/1a8ac6c199732ab06a40725ccc07f34b52a2b46e/services/construction/types.go#L124)
+2. [`GetTransactionReceipt`](https://github.com/coinbase/mesh-geth-sdk/blob/1a8ac6c199732ab06a40725ccc07f34b52a2b46e/services/construction/types.go#L133)
+3. [`GetNativeTransferGasLimit`](https://github.com/coinbase/mesh-geth-sdk/blob/1a8ac6c199732ab06a40725ccc07f34b52a2b46e/services/construction/types.go#L140)
 
 
 ## Development
@@ -134,17 +134,17 @@ make coverage-local
 
 ## Testing
 
-To validate `rosetta-geth-sdk`, [install `rosetta-cli`](https://github.com/coinbase/rosetta-cli#install) and run one of the following commands:
+To validate `mesh-geth-sdk`, [install `mesh-cli`](https://github.com/coinbase/mesh-cli#install) and run one of the following commands:
 
-* `rosetta-cli check:data --configuration-file rosetta-cli-conf/testnet/config.json` - This command validates that the Data API implementation is correct, using the ethereum `testnet` node. It also ensures that the implementation does not miss any balance-changing operations.
-* `rosetta-cli check:construction --configuration-file rosetta-cli-conf/testnet/config.json` - This command validates the Construction API implementation. It also verifies transaction construction, signing, and submissions to the `testnet` network.
-* `rosetta-cli check:data --configuration-file rosetta-cli-conf/mainnet/config.json` - This command validates that the Data API implementation is correct, using the ethereum `mainnet` node. It also ensures that the implementation does not miss any balance-changing operations.
+* `mesh-cli check:data --configuration-file mesh-cli-conf/testnet/config.json` - This command validates that the Data API implementation is correct, using the ethereum `testnet` node. It also ensures that the implementation does not miss any balance-changing operations.
+* `mesh-cli check:construction --configuration-file mesh-cli-conf/testnet/config.json` - This command validates the Construction API implementation. It also verifies transaction construction, signing, and submissions to the `testnet` network.
+* `mesh-cli check:data --configuration-file mesh-cli-conf/mainnet/config.json` - This command validates that the Data API implementation is correct, using the ethereum `mainnet` node. It also ensures that the implementation does not miss any balance-changing operations.
 
-Read the [How to Test your Rosetta Implementation](https://www.rosetta-api.org/docs/rosetta_test.html) documentation for additional details.
+Read the [How to Test your Mesh Implementation](https://www.mesh-api.org/docs/mesh_test.html) documentation for additional details.
 
 ## Contributing
 
-You may contribute to the `rosetta-geth-sdk` project in various ways:
+You may contribute to the `mesh-geth-sdk` project in various ways:
 
 * [Asking Questions](CONTRIBUTING.md/#asking-questions)
 * [Providing Feedback](CONTRIBUTING.md/#providing-feedback)
@@ -152,30 +152,30 @@ You may contribute to the `rosetta-geth-sdk` project in various ways:
 
 Read our [Contributing](CONTRIBUTING.MD) documentation for more information.
 
-When you've finished an implementation for a blockchain, share your work in the [ecosystem category of the community site](https://community.rosetta-api.org/c/ecosystem). Platforms looking for implementations for certain blockchains will be monitoring this section of the website for high-quality implementations they can use for integration. Make sure that your implementation meets the [expectations](https://www.rosetta-api.org/docs/node_deployment.html) of any implementation.
+When you've finished an implementation for a blockchain, share your work in the [ecosystem category of the community site](https://community.mesh-api.org/c/ecosystem). Platforms looking for implementations for certain blockchains will be monitoring this section of the website for high-quality implementations they can use for integration. Make sure that your implementation meets the [expectations](https://www.mesh-api.org/docs/node_deployment.html) of any implementation.
 
-You can also find community implementations for a variety of blockchains in the [rosetta-ecosystem](https://github.com/coinbase/rosetta-ecosystem) repository.
+You can also find community implementations for a variety of blockchains in the [mesh-ecosystem](https://github.com/coinbase/mesh-ecosystem) repository.
 
 ## Documentation
 
-You can find the Rosetta API documentation at [rosetta-api.org](https://www.rosetta-api.org/docs/welcome.html). 
+You can find the Mesh API documentation at [mesh-api.org](https://www.mesh-api.org/docs/welcome.html). 
 
-Check out the [Getting Started](https://www.rosetta-api.org/docs/getting_started.html) section to start diving into Rosetta. 
+Check out the [Getting Started](https://www.mesh-api.org/docs/getting_started.html) section to start diving into Mesh. 
 
 Our documentation is divided into the following sections:
 
-* [Product Overview](https://www.rosetta-api.org/docs/welcome.html)
-* [Getting Started](https://www.rosetta-api.org/docs/getting_started.html)
-* [Rosetta API Spec](https://www.rosetta-api.org/docs/Reference.html)
-* [Testing](https://www.rosetta-api.org/docs/rosetta_cli.html)
-* [Best Practices](https://www.rosetta-api.org/docs/node_deployment.html)
-* [Repositories](https://www.rosetta-api.org/docs/rosetta_specifications.html)
+* [Product Overview](https://www.mesh-api.org/docs/welcome.html)
+* [Getting Started](https://www.mesh-api.org/docs/getting_started.html)
+* [Mesh API Spec](https://www.mesh-api.org/docs/Reference.html)
+* [Testing](https://www.mesh-api.org/docs/mesh_cli.html)
+* [Best Practices](https://www.mesh-api.org/docs/node_deployment.html)
+* [Repositories](https://www.mesh-api.org/docs/mesh_specifications.html)
 
 ## Related Projects
 
-* [rosetta-sdk-go](https://github.com/coinbase/rosetta-sdk-go) — The `rosetta-sdk-go` SDK provides a collection of packages used for interaction with the Rosetta API specification. 
-* [rosetta-specifications](https://github.com/coinbase/rosetta-specifications) — Much of the SDK code is generated from this repository.
-* [rosetta-cli](https://github.com/coinbase/rosetta-cli) — Use the `rosetta-cli` tool to test your Rosetta API implementation. The tool also provides the ability to look up block contents and account balances.
+* [mesh-sdk-go](https://github.com/coinbase/mesh-sdk-go) — The `mesh-sdk-go` SDK provides a collection of packages used for interaction with the Mesh API specification. 
+* [mesh-specifications](https://github.com/coinbase/mesh-specifications) — Much of the SDK code is generated from this repository.
+* [mesh-cli](https://github.com/coinbase/mesh-cli) — Use the `mesh-cli` tool to test your Mesh API implementation. The tool also provides the ability to look up block contents and account balances.
 
 ## License
 
