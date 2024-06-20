@@ -46,10 +46,10 @@ func (c *EthereumClient) ParseOps(
 	var ops []*RosettaTypes.Operation
 
 	// Compute fee operations
-	feeOps := services.FeeOps(tx)
+	feeOps := services.FeeOps(tx, sdkTypes.Currency)
 	ops = append(ops, feeOps...)
 
-	traceOps := services.TraceOps(tx.Trace, len(ops))
+	traceOps := services.TraceOps(tx.Trace, len(ops), sdkTypes.Currency)
 	ops = append(ops, traceOps...)
 
 	return ops, nil
