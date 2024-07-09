@@ -46,6 +46,9 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 
 	// case 1: method args are pre-compiled ABI data. decode the hex and create the call data directly
 	case string:
+		if strings.HasPrefix(methodSig, "0x") {
+			log.Printf("methodArgs is a string; %s", methodArgs)
+		}
 		methodArgs = strings.TrimPrefix(methodArgs, "0x")
 		b, decErr := hex.DecodeString(methodArgs)
 		if decErr != nil {
@@ -69,6 +72,15 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 
 	// case 3: method args are encoded as a list of strings, which will be decoded
 	case []string:
+		if strings.HasPrefix(methodSig, "0x") && len(methodArgs) == 1 {
+			log.Printf("methodArgs is a string array with length 1: %s", methodArgs[0])
+			txData := strings.TrimPrefix(methodArgs[0], "0x")
+			b, decErr := hex.DecodeString(txData)
+			if decErr != nil {
+				return nil, fmt.Errorf("error decoding method args hex data: %w", decErr)
+			}
+			return append(data, b...), nil
+		}
 		return encodeMethodArgsStrings(data, methodSig, methodArgs)
 
 	// case 4: there is no known way to decode the method args
@@ -185,6 +197,15 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 // contractCallMethodID calculates the first 4 bytes of the method
 // signature for function call on contract
 func contractCallMethodID(methodSig string) ([]byte, error) {
+	if strings.HasPrefix(methodSig, "0x") && len(methodSig) == 10 {
+		// method signature is already a 4 byte hex string
+		result, err := hex.DecodeString(methodSig[2:])
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
 	fnSignature := []byte(methodSig)
 	hash := sha3.NewLegacyKeccak256()
 	if _, err := hash.Write(fnSignature); err != nil {

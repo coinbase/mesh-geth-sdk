@@ -5,7 +5,6 @@ go 1.20
 require (
 	github.com/coinbase/rosetta-sdk-go v0.8.2
 	github.com/ethereum/go-ethereum v1.13.8
-	github.com/holiman/uint256 v1.2.4
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.17.0
@@ -49,6 +48,7 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
+	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/klauspost/compress v1.15.15 // indirect
