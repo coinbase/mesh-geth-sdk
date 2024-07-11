@@ -58,6 +58,16 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 
 	// case 2: method args are a list of interface{} which will be converted to string before encoding
 	case []interface{}:
+		if strings.HasPrefix(methodSig, "0x") && len(methodArgs) == 1 {
+			methodArgStr, _ := methodArgs[0].(string)
+			log.Printf("methodArgs is an interface array with length 1: %s", methodArgStr)
+			txData := strings.TrimPrefix(methodArgStr, "0x")
+			b, decErr := hex.DecodeString(txData)
+			if decErr != nil {
+				return nil, fmt.Errorf("error decoding method args hex data: %w", decErr)
+			}
+			return append(data, b...), nil
+		}
 		var strList []string
 		for i, genericVal := range methodArgs {
 			strVal, isStrVal := genericVal.(string)
