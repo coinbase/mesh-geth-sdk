@@ -38,17 +38,20 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 		return nil, err
 	}
 
+	// preprocess method args
+	args, err := preprocessArgs(methodSig, methodArgs)
+	if err != nil {
+		return nil, err
+	}
+
 	// switch on the type of the method args. method args can come in from json as either a string or list of strings
-	switch methodArgs := methodArgs.(type) {
+	switch methodArgs := args.(type) {
 	// case 0: no method arguments, return the selector
 	case nil:
 		return data, nil
 
 	// case 1: method args are pre-compiled ABI data. decode the hex and create the call data directly
 	case string:
-		if strings.HasPrefix(methodSig, "0x") {
-			log.Printf("methodArgs is a string; %s", methodArgs)
-		}
 		methodArgs = strings.TrimPrefix(methodArgs, "0x")
 		b, decErr := hex.DecodeString(methodArgs)
 		if decErr != nil {
@@ -58,16 +61,6 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 
 	// case 2: method args are a list of interface{} which will be converted to string before encoding
 	case []interface{}:
-		if strings.HasPrefix(methodSig, "0x") && len(methodArgs) == 1 {
-			methodArgStr, _ := methodArgs[0].(string)
-			log.Printf("methodArgs is an interface array with length 1: %s", methodArgStr)
-			txData := strings.TrimPrefix(methodArgStr, "0x")
-			b, decErr := hex.DecodeString(txData)
-			if decErr != nil {
-				return nil, fmt.Errorf("error decoding method args hex data: %w", decErr)
-			}
-			return append(data, b...), nil
-		}
 		var strList []string
 		for i, genericVal := range methodArgs {
 			strVal, isStrVal := genericVal.(string)
@@ -78,19 +71,11 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 			}
 			strList = append(strList, strVal)
 		}
+
 		return encodeMethodArgsStrings(data, methodSig, strList)
 
 	// case 3: method args are encoded as a list of strings, which will be decoded
 	case []string:
-		if strings.HasPrefix(methodSig, "0x") && len(methodArgs) == 1 {
-			log.Printf("methodArgs is a string array with length 1: %s", methodArgs[0])
-			txData := strings.TrimPrefix(methodArgs[0], "0x")
-			b, decErr := hex.DecodeString(txData)
-			if decErr != nil {
-				return nil, fmt.Errorf("error decoding method args hex data: %w", decErr)
-			}
-			return append(data, b...), nil
-		}
 		return encodeMethodArgsStrings(data, methodSig, methodArgs)
 
 	// case 4: there is no known way to decode the method args
@@ -99,6 +84,33 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 			"invalid method_args type, accepted values are []string and hex-encoded string."+
 				" type received=%T value=%#v", methodArgs, methodArgs,
 		)
+	}
+}
+
+// preprocessArgs converts methodArgs to a string value if methodSig is a 4-byte hex string.
+// In this case, we expect methodArgs containing the pre-compiled ABI data.
+func preprocessArgs(methodSig string, methodArgs interface{}) (interface{}, error) {
+	if !strings.HasPrefix(methodSig, "0x") || len(methodSig) != 10 {
+		return methodArgs, nil
+	}
+
+	switch args := methodArgs.(type) {
+	case []interface{}:
+		if len(args) > 0 {
+			argStr, isStrVal := args[0].(string)
+			if !isStrVal {
+				return nil, fmt.Errorf("failed to convert method arg \"%T\" to string", args[0])
+			}
+			return argStr, nil
+		}
+		return methodArgs, nil
+	case []string:
+		if len(args) > 0 {
+			return args[0], nil
+		}
+		return methodArgs, nil
+	default:
+		return methodArgs, nil
 	}
 }
 
