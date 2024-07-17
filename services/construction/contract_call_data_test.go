@@ -51,10 +51,15 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodArgs:       []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", "true"},
 			expectedResponse: "0x60d7a2780000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000008626f6f6c20616263000000000000000000000000000000000000000000000000",
 		},
-		"happy path: method sig is hex string and args is a list of interface": {
-			methodSig:        "0xabcdef12",
-			methodArgs:       []interface{}{"34567890"},
-			expectedResponse: "0xabcdef1234567890",
+		"happy path: method sig is an empty string and args is a list of interface": {
+			methodSig:        "",
+			methodArgs:       []interface{}{"0xabcde12345"},
+			expectedResponse: "0xabcde12345",
+		},
+		"happy path: method sig is NO-METHOD-SIG and args is a list of interface": {
+			methodSig:        NoMethodSig,
+			methodArgs:       []interface{}{"0xaabbcc112233"},
+			expectedResponse: "0xaabbcc112233",
 		},
 		"error: case string: invalid method args hex data": {
 			methodSig:     "attest((bytes32,(address,uint64,bool,bytes32,bytes,uint256)))",
@@ -102,29 +107,29 @@ func TestConstruction_preprocessArgs(t *testing.T) {
 				"0",
 				"0x"},
 		},
-		"happy path: method sig is hex string and args is nil": {
-			methodSig:        "0xabcdef12",
+		"happy path: method sig is empty and args is nil": {
+			methodSig:        "",
 			methodArgs:       nil,
 			expectedResponse: nil,
 		},
-		"happy path: method sig is hex string and args is a single string": {
-			methodSig:        "0xabcdef12",
-			methodArgs:       "34567890",
-			expectedResponse: "34567890",
+		"happy path: method sig is NO-METHOD-SIG and args is a single string": {
+			methodSig:        NoMethodSig,
+			methodArgs:       "0x12345",
+			expectedResponse: "0x12345",
 		},
-		"happy path: method sig is hex string and args is a list of interface": {
-			methodSig:        "0xabcdef12",
-			methodArgs:       []interface{}{"34567890"},
-			expectedResponse: "34567890",
+		"happy path: method sig is empty and args is a list of interface": {
+			methodSig:        "",
+			methodArgs:       []interface{}{"0xabcde"},
+			expectedResponse: "0xabcde",
 		},
-		"happy path: method sig is hex string and args is a list of strings": {
-			methodSig:        "0xabcdef12",
-			methodArgs:       []string{"34567890"},
-			expectedResponse: "34567890",
+		"happy path: method sig is NO-METHOD-SIG and args is a list of strings": {
+			methodSig:        NoMethodSig,
+			methodArgs:       []string{"0x1a2b3c"},
+			expectedResponse: "0x1a2b3c",
 		},
 		"unhappy path: args is a list of interface and cannot be converted to strings": {
-			methodSig:     "0xabcdef12",
-			methodArgs:    []interface{}{34567890},
+			methodSig:     "",
+			methodArgs:    []interface{}{34567},
 			expectedError: errors.New("failed to convert method arg \"int\" to string"),
 		},
 	}

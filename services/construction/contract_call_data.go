@@ -29,6 +29,8 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+const NoMethodSig = "NO-METHOD-SIG"
+
 // ConstructContractCallDataGeneric constructs the data field of a transaction.
 // The methodArgs can be already in ABI encoded format in case of a single string
 // It can also be passed in as a slice of args, which requires further encoding.
@@ -38,7 +40,7 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 		return nil, err
 	}
 
-	// preprocess method args
+	// preprocess method args for fallback pattern contract call
 	args, err := preprocessArgs(methodSig, methodArgs)
 	if err != nil {
 		return nil, err
@@ -87,16 +89,16 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 	}
 }
 
-// preprocessArgs converts methodArgs to a string value if methodSig is a 4-byte hex string.
-// In this case, we expect methodArgs containing the pre-compiled ABI data.
+// preprocessArgs converts methodArgs to a string value if methodSig is an empty string.
+// We are calling a contract written with fallback pattern, which has no method signature.
 func preprocessArgs(methodSig string, methodArgs interface{}) (interface{}, error) {
-	if !strings.HasPrefix(methodSig, "0x") || len(methodSig) != 10 {
+	if methodSig != "" && methodSig != NoMethodSig {
 		return methodArgs, nil
 	}
 
 	switch args := methodArgs.(type) {
 	case []interface{}:
-		if len(args) > 0 {
+		if len(args) == 1 {
 			argStr, isStrVal := args[0].(string)
 			if !isStrVal {
 				return nil, fmt.Errorf("failed to convert method arg \"%T\" to string", args[0])
@@ -105,7 +107,7 @@ func preprocessArgs(methodSig string, methodArgs interface{}) (interface{}, erro
 		}
 		return methodArgs, nil
 	case []string:
-		if len(args) > 0 {
+		if len(args) == 1 {
 			return args[0], nil
 		}
 		return methodArgs, nil
@@ -219,13 +221,9 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 // contractCallMethodID calculates the first 4 bytes of the method
 // signature for function call on contract
 func contractCallMethodID(methodSig string) ([]byte, error) {
-	if strings.HasPrefix(methodSig, "0x") && len(methodSig) == 10 {
-		// method signature is already a 4 byte hex string
-		result, err := hex.DecodeString(methodSig[2:])
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	if methodSig == "" || methodSig == NoMethodSig {
+		// contract call without method signature (fallback pattern)
+		return []byte{}, nil
 	}
 
 	fnSignature := []byte(methodSig)
