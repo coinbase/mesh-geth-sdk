@@ -51,6 +51,16 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodArgs:       []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", "true"},
 			expectedResponse: "0x60d7a2780000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000008626f6f6c20616263000000000000000000000000000000000000000000000000",
 		},
+		"happy path: method sig is an empty string and args is a list of interface": {
+			methodSig:        "",
+			methodArgs:       []interface{}{"0xabcde12345"},
+			expectedResponse: "0xabcde12345",
+		},
+		"happy path: method sig is NO-METHOD-SIG and args is a list of interface": {
+			methodSig:        NoMethodSig,
+			methodArgs:       []interface{}{"0xaabbcc112233"},
+			expectedResponse: "0xaabbcc112233",
+		},
 		"error: case string: invalid method args hex data": {
 			methodSig:     "attest((bytes32,(address,uint64,bool,bytes32,bytes,uint256)))",
 			methodArgs:    "!!!",
@@ -71,6 +81,66 @@ func TestConstruction_ContractCallData(t *testing.T) {
 				assert.EqualError(t, err, test.expectedError.Error())
 			} else {
 				assert.Equal(t, test.expectedResponse, hexutil.Encode(bytes))
+			}
+		})
+	}
+}
+
+func TestConstruction_preprocessArgs(t *testing.T) {
+	tests := map[string]struct {
+		methodSig  string
+		methodArgs interface{}
+
+		expectedResponse interface{}
+		expectedError    error
+	}{
+		"happy path: method sig is function name": {
+			methodSig: "withdraw(address,uint256,uint32,bytes)",
+			methodArgs: []interface{}{
+				"0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+				"32941055343948244352",
+				"0",
+				"0x"},
+			expectedResponse: []interface{}{
+				"0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
+				"32941055343948244352",
+				"0",
+				"0x"},
+		},
+		"happy path: method sig is empty and args is nil": {
+			methodSig:        "",
+			methodArgs:       nil,
+			expectedResponse: nil,
+		},
+		"happy path: method sig is NO-METHOD-SIG and args is a single string": {
+			methodSig:        NoMethodSig,
+			methodArgs:       "0x12345",
+			expectedResponse: "0x12345",
+		},
+		"happy path: method sig is empty and args is a list of interface": {
+			methodSig:        "",
+			methodArgs:       []interface{}{"0xabcde"},
+			expectedResponse: "0xabcde",
+		},
+		"happy path: method sig is NO-METHOD-SIG and args is a list of strings": {
+			methodSig:        NoMethodSig,
+			methodArgs:       []string{"0x1a2b3c"},
+			expectedResponse: "0x1a2b3c",
+		},
+		"unhappy path: args is a list of interface and cannot be converted to strings": {
+			methodSig:     "",
+			methodArgs:    []interface{}{34567},
+			expectedError: errors.New("failed to convert method arg \"int\" to string"),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			argsReturned, err := preprocessArgs(test.methodSig, test.methodArgs)
+			if err != nil {
+				assert.EqualError(t, err, test.expectedError.Error())
+			} else {
+				assert.Equal(t, test.expectedResponse, argsReturned)
 			}
 		})
 	}

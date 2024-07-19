@@ -29,6 +29,8 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+const NoMethodSig = "NO-METHOD-SIG"
+
 // ConstructContractCallDataGeneric constructs the data field of a transaction.
 // The methodArgs can be already in ABI encoded format in case of a single string
 // It can also be passed in as a slice of args, which requires further encoding.
@@ -38,8 +40,14 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 		return nil, err
 	}
 
+	// preprocess method args for fallback pattern contract call
+	args, err := preprocessArgs(methodSig, methodArgs)
+	if err != nil {
+		return nil, err
+	}
+
 	// switch on the type of the method args. method args can come in from json as either a string or list of strings
-	switch methodArgs := methodArgs.(type) {
+	switch methodArgs := args.(type) {
 	// case 0: no method arguments, return the selector
 	case nil:
 		return data, nil
@@ -65,6 +73,7 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 			}
 			strList = append(strList, strVal)
 		}
+
 		return encodeMethodArgsStrings(data, methodSig, strList)
 
 	// case 3: method args are encoded as a list of strings, which will be decoded
@@ -78,6 +87,28 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 				" type received=%T value=%#v", methodArgs, methodArgs,
 		)
 	}
+}
+
+// preprocessArgs converts methodArgs to a string value if methodSig is an empty string.
+// We are calling a contract written with fallback pattern, which has no method signature.
+func preprocessArgs(methodSig string, methodArgs interface{}) (interface{}, error) {
+	if methodSig == "" || methodSig == NoMethodSig {
+		switch args := methodArgs.(type) {
+		case []interface{}:
+			if len(args) == 1 {
+				if argStr, ok := args[0].(string); ok {
+					return argStr, nil
+				}
+				return nil, fmt.Errorf("failed to convert method arg \"%T\" to string", args[0])
+			}
+		case []string:
+			if len(args) == 1 {
+				return args[0], nil
+			}
+		}
+	}
+
+	return methodArgs, nil
 }
 
 // encodeMethodArgsStrings constructs the data field of a transaction for a list of string args.
@@ -185,6 +216,11 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 // contractCallMethodID calculates the first 4 bytes of the method
 // signature for function call on contract
 func contractCallMethodID(methodSig string) ([]byte, error) {
+	if methodSig == "" || methodSig == NoMethodSig {
+		// contract call without method signature (fallback pattern)
+		return []byte{}, nil
+	}
+
 	fnSignature := []byte(methodSig)
 	hash := sha3.NewLegacyKeccak256()
 	if _, err := hash.Write(fnSignature); err != nil {
