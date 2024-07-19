@@ -92,28 +92,23 @@ func ConstructContractCallDataGeneric(methodSig string, methodArgs interface{}) 
 // preprocessArgs converts methodArgs to a string value if methodSig is an empty string.
 // We are calling a contract written with fallback pattern, which has no method signature.
 func preprocessArgs(methodSig string, methodArgs interface{}) (interface{}, error) {
-	if methodSig != "" && methodSig != NoMethodSig {
-		return methodArgs, nil
-	}
-
-	switch args := methodArgs.(type) {
-	case []interface{}:
-		if len(args) == 1 {
-			argStr, isStrVal := args[0].(string)
-			if !isStrVal {
+	if methodSig == "" || methodSig == NoMethodSig {
+		switch args := methodArgs.(type) {
+		case []interface{}:
+			if len(args) == 1 {
+				if argStr, ok := args[0].(string); ok {
+					return argStr, nil
+				}
 				return nil, fmt.Errorf("failed to convert method arg \"%T\" to string", args[0])
 			}
-			return argStr, nil
+		case []string:
+			if len(args) == 1 {
+				return args[0], nil
+			}
 		}
-		return methodArgs, nil
-	case []string:
-		if len(args) == 1 {
-			return args[0], nil
-		}
-		return methodArgs, nil
-	default:
-		return methodArgs, nil
 	}
+
+	return methodArgs, nil
 }
 
 // encodeMethodArgsStrings constructs the data field of a transaction for a list of string args.
