@@ -997,3 +997,7 @@ func (ec *SDKClient) GetNativeTransferGasLimit(ctx context.Context, toAddress st
 func (ec *SDKClient) GetL1DataFee(ctx context.Context, ethTxBytes []byte) (*big.Int, error) {
 	return nil, errors.New("GetL1DataFee not implemented")
 }
+
+func (ec *SDKClient) GetCustomizedBlockBody(raw json.RawMessage, body *RPCBlock) error {
+	return errors.New("GetCustomizedBlockBody not implemented")
+}
