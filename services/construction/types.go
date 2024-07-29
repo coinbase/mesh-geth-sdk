@@ -78,6 +78,9 @@ type Client interface {
 	// SkipTxReceiptParsing determines if the tx receipt parsing can be skipped for specific contract address
 	SkipTxReceiptParsing(contractAddress string) bool
 
+	// GetCustomizedBlockBody returns the customized block body
+	GetCustomizedBlockBody(raw json.RawMessage, body *evmClient.RPCBlock) error
+
 	// TraceBlockByHash returns all traces for each transaction in the block
 	// by calling geth debug_traceBlockByHash JSON RPC.
 	// The output is map which key is transaction hash, and the value is list of

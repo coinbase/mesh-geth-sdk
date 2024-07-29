@@ -157,14 +157,28 @@ func (s *BlockAPIService) PopulateTransaction(
 		traceList = append(traceList, traceMap)
 	}
 
+	var gasLimit uint64
+	if tx.Receipt != nil && tx.Receipt.GasUsed != nil {
+		gasLimit = tx.Receipt.GasUsed.Uint64()
+	} else {
+		gasLimit = tx.Transaction.Gas()
+	}
+
+	var gasPrice *big.Int
+	if tx.Receipt != nil && tx.Receipt.GasPrice != nil {
+		gasPrice = tx.Receipt.GasPrice
+	} else {
+		gasPrice = tx.Transaction.GasPrice()
+	}
+
 	populatedTransaction := &RosettaTypes.Transaction{
 		TransactionIdentifier: &RosettaTypes.TransactionIdentifier{
 			Hash: tx.TxHash.String(),
 		},
 		Operations: ops,
 		Metadata: map[string]interface{}{
-			"gas_limit": hexutil.EncodeUint64(tx.Transaction.Gas()),
-			"gas_price": hexutil.EncodeBig(tx.Transaction.GasPrice()),
+			"gas_limit": hexutil.EncodeUint64(gasLimit),
+			"gas_price": hexutil.EncodeBig(gasPrice),
 			"receipt":   receiptMap,
 			"trace":     traceList,
 		},
@@ -217,9 +231,17 @@ func (s *BlockAPIService) GetBlock(
 	if err := json.Unmarshal(raw, &head); err != nil {
 		return nil, nil, nil, err
 	}
-	if err := json.Unmarshal(raw, &body); err != nil {
-		return nil, nil, nil, err
+	if s.config.RosettaCfg.SupportCustomizedBlockBody {
+		err = s.client.GetCustomizedBlockBody(raw, &body)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	} else {
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return nil, nil, nil, err
+		}
 	}
+
 	// Note: We need a full node to return a complete RPCBlock,
 	// otherwise, only body.Hash is populated. body.Transactions is empty.
 	// TODO(xiaying): log warn if len(body.Hash) > 1 && len(body.txs) == 0

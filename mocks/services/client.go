@@ -291,6 +291,24 @@ func (_m *Client) GetContractCurrency(addr common.Address, erc20 bool) (*client.
 	return r0, r1
 }
 
+// GetCustomizedBlockBody provides a mock function with given fields: raw, body
+func (_m *Client) GetCustomizedBlockBody(raw json.RawMessage, body *client.RPCBlock) error {
+	ret := _m.Called(raw, body)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCustomizedBlockBody")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(json.RawMessage, *client.RPCBlock) error); ok {
+		r0 = rf(raw, body)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetErc20TransferGasLimit provides a mock function with given fields: ctx, toAddress, fromAddress, value, currency
 func (_m *Client) GetErc20TransferGasLimit(ctx context.Context, toAddress string, fromAddress string, value *big.Int, currency *types.Currency) (uint64, error) {
 	ret := _m.Called(ctx, toAddress, fromAddress, value, currency)

@@ -118,6 +118,9 @@ type RosettaConfig struct {
 
 	// CustomizedTraceConfig is the blockchain customized trace config
 	CustomizedTraceConfig interface{}
+
+	// SupportCustomizedBlockBody indicates if the blockchain supports customized block body
+	SupportCustomizedBlockBody bool
 }
 
 type Token struct {
