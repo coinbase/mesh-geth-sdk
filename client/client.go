@@ -951,7 +951,7 @@ func (ec *SDKClient) GetLoadedTransaction(
 }
 
 func (ec *SDKClient) GetBlockHash(ctx context.Context, blockIdentifier RosettaTypes.BlockIdentifier) (string, error) {
-	return "", errors.New("GetBlockHash not implemented")
+	return blockIdentifier.Hash, nil
 }
 
 func (ec *SDKClient) SkipTxReceiptParsing(contractAddress string) bool {
