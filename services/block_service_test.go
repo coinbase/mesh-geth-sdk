@@ -142,6 +142,15 @@ func TestBlockService_Online(t *testing.T) {
 			nil,
 		).Once()
 
+		mockClient.On(
+			"GetBlockHash",
+			ctx,
+			mock.Anything,
+		).Return(
+			block.BlockIdentifier.Hash,
+			nil,
+		).Once()
+
 		loadedTxn := make([]*client.LoadedTransaction, 0)
 		rosettaTxs := make([]*RosettaTypes.Transaction, 0)
 		mockClient.On(
@@ -319,6 +328,15 @@ func TestBlockService_Online(t *testing.T) {
 			configuration.RosettaConfig{},
 		)
 
+		mockClient.On(
+			"GetBlockHash",
+			ctx,
+			mock.Anything,
+		).Return(
+			blockWithTxns.BlockIdentifier.Hash,
+			nil,
+		).Once()
+
 		b, err := servicer.Block(ctx, &RosettaTypes.BlockRequest{})
 		assert.Nil(t, err)
 		assert.Equal(t, blockResp.Block.BlockIdentifier, b.Block.BlockIdentifier)
@@ -494,6 +512,22 @@ func TestBlockService_Online(t *testing.T) {
 				TracePrefix:    "arbtrace",
 			},
 		)
+
+		mockClient.On(
+			"GetBlockHash",
+			ctx,
+			mock.Anything,
+		).Return(
+			blockWithTxns.BlockIdentifier.Hash,
+			nil,
+		).Once()
+
+		mockClient.On(
+			"SkipTxReceiptParsing",
+			mock.Anything,
+		).Return(
+			false,
+		).Once()
 
 		b, err := servicer.Block(ctx, &RosettaTypes.BlockRequest{})
 		assert.Nil(t, err)

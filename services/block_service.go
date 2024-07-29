@@ -108,6 +108,10 @@ func (s *BlockAPIService) PopulateTransaction(
 	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
 	var contractCurrencyMap = make(map[string]*client.ContractCurrency)
 	for _, log := range receiptLogs {
+		if s.client.SkipTxReceiptParsing(log.Address.String()) {
+			continue
+		}
+
 		if !s.client.GetRosettaConfig().FilterTokens ||
 			(s.client.GetRosettaConfig().FilterTokens &&
 				client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
@@ -334,6 +338,10 @@ func (s *BlockAPIService) Block(
 	blockIdentifier = &RosettaTypes.BlockIdentifier{
 		Index: block.Number().Int64(),
 		Hash:  block.Hash().String(),
+	}
+	blockIdentifier.Hash, err = s.client.GetBlockHash(ctx, *blockIdentifier)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("could not get block hash given block identifier %v: %w", blockIdentifier, err))
 	}
 
 	parentBlockIdentifier = blockIdentifier

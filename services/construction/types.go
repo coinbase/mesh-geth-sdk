@@ -72,6 +72,12 @@ type Client interface {
 	// GetRosettaConfig returns the Rosetta config we defined for the network
 	GetRosettaConfig() configuration.RosettaConfig
 
+	// GetBlockHash returns the block hash given block identifier
+	GetBlockHash(ctx context.Context, blockIdentifier RosettaTypes.BlockIdentifier) (string, error)
+
+	// SkipTxReceiptParsing determines if the tx receipt parsing can be skipped for specific contract address
+	SkipTxReceiptParsing(contractAddress string) bool
+
 	// TraceBlockByHash returns all traces for each transaction in the block
 	// by calling geth debug_traceBlockByHash JSON RPC.
 	// The output is map which key is transaction hash, and the value is list of
