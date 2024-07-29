@@ -112,6 +112,12 @@ type RosettaConfig struct {
 
 	// PriorityFeeDivisor is the divisor of priority fee for EIP-1559
 	PriorityFeeDivisor *big.Int
+
+	// SupportCustomizedTraceConfig indicates if the blockchain supports customized trace config
+	SupportCustomizedTraceConfig bool
+
+	// CustomizedTraceConfig is the blockchain customized trace config
+	CustomizedTraceConfig interface{}
 }
 
 type Token struct {

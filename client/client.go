@@ -44,8 +44,9 @@ import (
 )
 
 type SDKClient struct {
-	P  *params.ChainConfig
-	tc *tracers.TraceConfig
+	P            *params.ChainConfig
+	tc           *tracers.TraceConfig
+	customizedTc interface{}
 
 	rosettaConfig configuration.RosettaConfig
 
@@ -79,9 +80,15 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 		return nil, fmt.Errorf("unable to load trace config: %w", err)
 	}
 
+	var customizedTc interface{}
+	if cfg.RosettaCfg.SupportCustomizedTraceConfig {
+		customizedTc = cfg.RosettaCfg.CustomizedTraceConfig
+	}
+
 	return &SDKClient{
 		P:              cfg.ChainConfig,
 		tc:             tc,
+		customizedTc:   customizedTc,
 		rosettaConfig:  cfg.RosettaCfg,
 		RPCClient:      c,
 		EthClient:      ec,
@@ -411,7 +418,12 @@ func (ec *SDKClient) TraceBlockByHash(
 
 	var calls []*rpcCall
 	var raw json.RawMessage
-	err := ec.CallContext(ctx, &raw, "debug_traceBlockByHash", blockHash, ec.tc)
+	var err error
+	if ec.rosettaConfig.SupportCustomizedTraceConfig {
+		err = ec.CallContext(ctx, &raw, "debug_traceBlockByHash", blockHash, ec.customizedTc)
+	} else {
+		err = ec.CallContext(ctx, &raw, "debug_traceBlockByHash", blockHash, ec.tc)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -936,6 +948,14 @@ func (ec *SDKClient) GetLoadedTransaction(
 		loadedTx.Miner = MustChecksum(miner)
 	}
 	return loadedTx, nil
+}
+
+func (ec *SDKClient) GetBlockHash(ctx context.Context, blockIdentifier RosettaTypes.BlockIdentifier) (string, error) {
+	return "", errors.New("GetBlockHash not implemented")
+}
+
+func (ec *SDKClient) SkipTxReceiptParsing(contractAddress string) bool {
+	return false
 }
 
 ///////////////////////////////////////////////////////////////////////////
