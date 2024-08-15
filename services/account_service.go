@@ -16,6 +16,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -68,6 +69,12 @@ func (s *AccountAPIService) AccountBalance(
 	)
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
+	}
+
+	// get block hash if the block hash can't be calculated from keccak256 hash of its RLP encoding
+	balanceResponse.BlockIdentifier.Hash, err = s.client.GetBlockHash(ctx, *balanceResponse.BlockIdentifier)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("could not get block hash given block identifier %v: %w", request.BlockIdentifier, err))
 	}
 
 	return balanceResponse, nil

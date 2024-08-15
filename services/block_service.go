@@ -83,7 +83,7 @@ func (s *BlockAPIService) populateTransactions(
 		}
 		transaction, err := s.PopulateTransaction(ctx, tx)
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse %s: %w", tx.Transaction.Hash().Hex(), err)
+			return nil, fmt.Errorf("cannot parse %s: %w", tx.TxHash, err)
 		}
 		transactions = append(transactions, transaction)
 	}
