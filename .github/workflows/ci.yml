@@ -18,6 +18,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install Docker Compose via Package Manager
+      run: |
+        apt-get update
+        apt-get install -y docker-compose
+
+    - name: Verify Docker Compose Installation
+      run: docker-compose --version
+
     - name: Start a private ethereum network
       uses: ./.github/actions/geth
       id: geth
