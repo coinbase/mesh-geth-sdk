@@ -20,11 +20,13 @@ jobs:
 
     - name: Install Docker Compose via Package Manager
       run: |
-        apt-get update
-        apt-get install -y docker-compose
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+      shell: bash
 
     - name: Verify Docker Compose Installation
       run: docker-compose --version
+      shell: bash
 
     - name: Start a private ethereum network
       uses: ./.github/actions/geth
