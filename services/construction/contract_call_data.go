@@ -177,7 +177,7 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 				copy(value[:], bytes)
 				argData = value
 			}
-		// Note: we must handle "bytes[]" before "bytes"
+		// Note: we must handle "bytes[]" before "bytes" because the share the same prefix
 		case v == "bytes[]":
 			{
 				var bytesArgs []string
