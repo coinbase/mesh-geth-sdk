@@ -16,6 +16,7 @@ package construction
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -174,6 +175,24 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 					log.Fatal(err)
 				}
 				copy(value[:], bytes)
+				argData = value
+			}
+		// Note: we must handle "bytes[]" before "bytes" because they both share the same prefix
+		case v == "bytes[]":
+			{
+				var bytesArgs []string
+				if err := json.Unmarshal([]byte(methodArgs[i]), &bytesArgs); err != nil {
+					log.Fatal(err)
+				}
+
+				value := make([][]byte, len(bytesArgs))
+				for j, bytesArg := range bytesArgs {
+					bytes, err := hexutil.Decode(bytesArg)
+					if err != nil {
+						log.Fatal(err)
+					}
+					value[j] = bytes
+				}
 				argData = value
 			}
 		case strings.HasPrefix(v, "bytes"):
