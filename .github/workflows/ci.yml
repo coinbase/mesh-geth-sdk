@@ -32,8 +32,8 @@ jobs:
       uses: ./.github/actions/geth
       id: geth
 
-    - name: Sleep for 20 seconds
-      run: sleep 20s
+    - name: Sleep for 60 seconds
+      run: sleep 60s
       shell: bash
 
     - name: Get latest block from geth node
