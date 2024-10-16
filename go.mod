@@ -4,7 +4,9 @@ go 1.20
 
 require (
 	github.com/coinbase/rosetta-sdk-go v0.8.2
+	github.com/coinbase/rosetta-sdk-go/types v1.0.0
 	github.com/ethereum/go-ethereum v1.13.8
+	github.com/google/uuid v1.6.0
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.17.0
@@ -44,7 +46,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
@@ -58,7 +59,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
-	github.com/mitchellh/mapstructure v1.4.3 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
