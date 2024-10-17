@@ -121,6 +121,13 @@ type RosettaConfig struct {
 
 	// SupportCustomizedBlockBody indicates if the blockchain supports customized block body
 	SupportCustomizedBlockBody bool
+
+	// SupportHeaderForwarding indicates if rosetta should forward rosetta request headers to the
+	// native node, and forward native node response headers to the rosetta caller
+	SupportHeaderForwarding bool
+
+	// ForwardHeaders is the list of headers to forward to and from the native node
+	ForwardHeaders []string
 }
 
 type Token struct {

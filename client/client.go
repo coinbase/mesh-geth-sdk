@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net/http"
 	"strconv"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
@@ -59,8 +60,8 @@ type SDKClient struct {
 }
 
 // NewClient creates a client that connects to the network.
-func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClient, error) {
-	c, err := NewRPCClient(cfg.GethURL)
+func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient, transport http.RoundTripper) (*SDKClient, error) {
+	c, err := NewRPCClient(cfg.GethURL, transport)
 	if err != nil {
 		return nil, err
 	}

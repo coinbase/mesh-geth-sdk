@@ -44,6 +44,7 @@ func BootStrap(
 	types *AssetTypes.Types,
 	errors []*RosettaTypes.Error,
 	client construction.Client,
+	middleware ...func(http.Handler) http.Handler,
 ) error {
 	// The asserter automatically rejects incorrectly formatted requests.
 	asserter, err := asserter.NewServer(
@@ -59,8 +60,16 @@ func BootStrap(
 	}
 
 	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter)
-	loggedRouter := server.LoggerMiddleware(router)
+
+	routerWithMiddleware := router
+	for _, m := range middleware {
+		routerWithMiddleware = m(routerWithMiddleware)
+	}
+
+	// Add this middleware last so that it executes first
+	loggedRouter := server.LoggerMiddleware(routerWithMiddleware)
 	corsRouter := server.CorsMiddleware(loggedRouter)
+
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
 		Handler:           corsRouter,

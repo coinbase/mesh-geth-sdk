@@ -66,19 +66,14 @@ const (
 )
 
 // NewRPCClient connects a SDKClient to the given URL.
-func NewRPCClient(endpoint string) (*RPCClient, error) {
-	// Override transport idle connection settings
-	//
-	// See this conversation around why `.Clone()` is used here:
-	// https://github.com/golang/go/issues/26013
-	defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
-	defaultTransport.IdleConnTimeout = DefaultIdleConnTimeout
-	defaultTransport.MaxIdleConns = DefaultMaxConnections
-	defaultTransport.MaxIdleConnsPerHost = DefaultMaxConnections
+func NewRPCClient(endpoint string, transport http.RoundTripper) (*RPCClient, error) {
+	if transport == nil {
+		transport = NewDefaultHTTPTransport()
+	}
 
 	clientOptions := rpc.WithHTTPClient(&http.Client{
 		Timeout:   gethHTTPTimeout,
-		Transport: defaultTransport,
+		Transport: transport,
 	})
 	ctx := context.Background()
 	client, err := rpc.DialOptions(ctx, endpoint, clientOptions)
