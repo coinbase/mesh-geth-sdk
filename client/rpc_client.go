@@ -76,14 +76,12 @@ func NewRPCClient(endpoint string, transport http.RoundTripper) (*RPCClient, err
 		Transport: transport,
 	})
 	ctx := context.Background()
+
 	client, err := rpc.DialOptions(ctx, endpoint, clientOptions)
-	/*client, err := rpc.DialHTTPWithClient(endpoint, &http.Client{
-		Timeout:   gethHTTPTimeout,
-		Transport: defaultTransport,
-	})*/
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial node: %w", err)
 	}
+
 	return &RPCClient{client}, nil
 }
 

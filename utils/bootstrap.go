@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"time"
 
+	gethSdkClient "github.com/coinbase/rosetta-geth-sdk/client"
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	"github.com/coinbase/rosetta-geth-sdk/services"
 	"github.com/coinbase/rosetta-geth-sdk/services/construction"
@@ -28,6 +29,7 @@ import (
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/asserter"
+	"github.com/coinbase/rosetta-sdk-go/headerforwarder"
 	"github.com/coinbase/rosetta-sdk-go/server"
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/neilotoole/errgroup"
@@ -44,7 +46,6 @@ func BootStrap(
 	types *AssetTypes.Types,
 	errors []*RosettaTypes.Error,
 	client construction.Client,
-	middleware ...func(http.Handler) http.Handler,
 ) error {
 	// The asserter automatically rejects incorrectly formatted requests.
 	asserter, err := asserter.NewServer(
@@ -59,15 +60,40 @@ func BootStrap(
 		return fmt.Errorf("could not initialize server asserter: %w", err)
 	}
 
+	// If header forwarding is turned on, initialize a new client
+	var headerForwarder *headerforwarder.HeaderForwarder
+	if cfg.RosettaCfg.SupportHeaderForwarding {
+		replaceableClient, isReplaceable := client.(gethSdkClient.ReplaceableRPCClient)
+		if !isReplaceable {
+			return fmt.Errorf("SupportHeaderForwarding enabled, but client does not implement ReplaceableRPCClient")
+		}
+
+		headerForwarder = headerforwarder.NewHeaderForwarder(
+			cfg.RosettaCfg.ForwardHeaders,
+			gethSdkClient.NewDefaultHTTPTransport(),
+		)
+
+		replacedClient, err := replaceableClient.WithRPCTransport(cfg.GethURL, headerForwarder)
+		if err != nil {
+			return fmt.Errorf("SupportHeaderForwarding enabled, but client replacement failed: %e", err)
+		}
+
+		convertedClient, ok := replacedClient.(construction.Client)
+		if !ok {
+			return fmt.Errorf("SupportHeaderForwarding enabled, but converting replaced client type failed")
+		}
+
+		client = convertedClient
+	}
+
 	router := services.NewBlockchainRouter(cfg, types, errors, client, asserter)
 
-	routerWithMiddleware := router
-	for _, m := range middleware {
-		routerWithMiddleware = m(routerWithMiddleware)
+	if cfg.RosettaCfg.SupportHeaderForwarding {
+		router = headerForwarder.HeaderForwarderHandler(router)
 	}
 
 	// Add this middleware last so that it executes first
-	loggedRouter := server.LoggerMiddleware(routerWithMiddleware)
+	loggedRouter := server.LoggerMiddleware(router)
 	corsRouter := server.CorsMiddleware(loggedRouter)
 
 	server := &http.Server{
