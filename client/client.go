@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net/http"
 	"strconv"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
@@ -58,9 +59,13 @@ type SDKClient struct {
 	skipAdminCalls bool
 }
 
+type ReplaceableRPCClient interface {
+	WithRPCTransport(string, http.RoundTripper) (ReplaceableRPCClient, error)
+}
+
 // NewClient creates a client that connects to the network.
-func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClient, error) {
-	c, err := NewRPCClient(cfg.GethURL)
+func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient, transport http.RoundTripper) (*SDKClient, error) {
+	c, err := NewRPCClient(cfg.GethURL, transport)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +99,16 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient) (*SDKClie
 		EthClient:      ec,
 		traceSemaphore: semaphore.NewWeighted(maxTraceConcurrency),
 	}, nil
+}
+
+func (ec *SDKClient) WithRPCTransport(endpoint string, transport http.RoundTripper) (ReplaceableRPCClient, error) {
+	newClient, err := NewRPCClient(endpoint, transport)
+	if err != nil {
+		return ec, err
+	}
+
+	ec.RPCClient = newClient
+	return ec, nil
 }
 
 func (ec *SDKClient) PopulateCrossChainTransactions(
