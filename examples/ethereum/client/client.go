@@ -165,7 +165,7 @@ func (c *EthereumClient) GetNativeTransferGasLimit(ctx context.Context, toAddres
 // Ethereum network.
 func NewEthereumClient(cfg *configuration.Configuration) (*EthereumClient, error) {
 	// Use SDK to quickly create a client that support JSON RPC calls
-	evmClient, err := evmClient.NewClient(cfg, nil)
+	evmClient, err := evmClient.NewClient(cfg, nil, nil)
 
 	if err != nil {
 		log.Fatalln("cannot initialize client: %w", err)
