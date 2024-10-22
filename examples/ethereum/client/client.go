@@ -24,7 +24,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
 
 	"log"
 	"math/big"
@@ -66,52 +65,43 @@ func (c *EthereumClient) GetBlockReceipts(
 		return receipts, nil
 	}
 
-	ethReceipts := make([]*EthTypes.Receipt, len(txs))
-	reqs := make([]rpc.BatchElem, len(txs))
-	for i := range reqs {
-		reqs[i] = rpc.BatchElem{
-			Method: "eth_getTransactionReceipt",
-			Args:   []interface{}{txs[i].TxExtraInfo.TxHash.String()},
-			Result: &ethReceipts[i],
-		}
-	}
-	if err := c.BatchCallContext(ctx, reqs); err != nil {
+	var ethReceipts []*EthTypes.Receipt
+	if err := c.CallContext(ctx, &ethReceipts, "eth_getBlockReceipts", blockHash); err != nil {
 		return nil, err
 	}
-	for i := range reqs {
-		if reqs[i].Error != nil {
-			return nil, reqs[i].Error
+
+	if len(ethReceipts) != len(txs) {
+		return nil, fmt.Errorf("got %d receipts but expected %d", len(ethReceipts), len(txs))
+	}
+
+	for i, ethReceipt := range ethReceipts {
+		if ethReceipt == nil {
+			return nil, fmt.Errorf("got empty receipt for %x", txs[i].Tx.Hash().Hex())
+		}
+
+		if ethReceipt.BlockHash != blockHash {
+			return nil, fmt.Errorf(
+				"expected block hash %s for Transaction but got %s: %w",
+				blockHash.Hex(),
+				ethReceipt.BlockHash.Hex(),
+				sdkTypes.ErrClientBlockOrphaned,
+			)
 		}
 
 		gasPrice, err := evmClient.EffectiveGasPrice(txs[i].Tx, baseFee)
 		if err != nil {
 			return nil, err
 		}
-		gasUsed := new(big.Int).SetUint64(ethReceipts[i].GasUsed)
+		gasUsed := new(big.Int).SetUint64(ethReceipt.GasUsed)
 		feeAmount := new(big.Int).Mul(gasUsed, gasPrice)
 
-		receipt := &evmClient.RosettaTxReceipt{
-			Type:           ethReceipts[i].Type,
+		receipts[i] = &evmClient.RosettaTxReceipt{
+			Type:           ethReceipt.Type,
 			GasPrice:       gasPrice,
 			GasUsed:        gasUsed,
-			Logs:           ethReceipts[i].Logs,
+			Logs:           ethReceipt.Logs,
 			RawMessage:     nil,
 			TransactionFee: feeAmount,
-		}
-
-		receipts[i] = receipt
-
-		if ethReceipts[i] == nil {
-			return nil, fmt.Errorf("got empty receipt for %x", txs[i].Tx.Hash().Hex())
-		}
-
-		if ethReceipts[i].BlockHash != blockHash {
-			return nil, fmt.Errorf(
-				"expected block hash %s for Transaction but got %s: %w",
-				blockHash.Hex(),
-				ethReceipts[i].BlockHash.Hex(),
-				sdkTypes.ErrClientBlockOrphaned,
-			)
 		}
 	}
 
