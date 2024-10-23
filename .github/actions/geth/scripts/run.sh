@@ -13,7 +13,7 @@ geth \
     --http.port 8545 \
     --http.vhosts '*' \
     --http.api 'personal,eth,net,web3,txpool,debug' \
-    --networkid '1337' \
+    --networkid '1' \
     --unlock "0,1,2" \
     --password /root/config/password.txt \
     --allow-insecure-unlock
