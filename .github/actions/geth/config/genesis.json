@@ -1,6 +1,6 @@
 {
   "config": {
-    "chainId": 1,
+    "chainId": 1337,
     "homesteadBlock": 0,
     "eip150Block": 0,
     "eip155Block": 0,
@@ -11,14 +11,14 @@
     "istanbulBlock": 0,
     "berlinBlock": 0,
     "londonBlock": 0,
-    "clique": {
-      "period": 0,
-      "epoch": 30000
+    "terminalTotalDifficultyPassed": true,
+    "depositContract": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "abi": ""
     }
   },
   "difficulty": "1",
   "gasLimit": "8000000",
-  "extradata": "0x00000000000000000000000000000000000000000000000000000000000000004cdbd835fe18bd93cca39a262cff72dbac99e24f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
   "alloc": {
     "622Fbe99b3A378FAC736bf29d7e23B85E18816eB": { "balance": "888888888888888888888888" },
     "4cdBd835fE18BD93ccA39A262Cff72dbAC99E24F": { "balance": "888888888888888888888888" },
