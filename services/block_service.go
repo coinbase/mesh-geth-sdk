@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
+	"strings"
 
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -94,6 +96,15 @@ func (s *BlockAPIService) populateTransactions(
 	return transactions, nil
 }
 
+func getWhitelistedToken(whitelist []configuration.Token, address string) *configuration.Token {
+	for _, token := range whitelist {
+		if strings.EqualFold(token.Address, address) {
+			return &token
+		}
+	}
+	return nil
+}
+
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
@@ -115,10 +126,8 @@ func (s *BlockAPIService) PopulateTransaction(
 			continue
 		}
 
-		if !s.client.GetRosettaConfig().FilterTokens ||
-			(s.client.GetRosettaConfig().FilterTokens &&
-				client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
-
+		if !s.client.GetRosettaConfig().FilterTokens {
+			// Process all tokens, need to fetch info from node
 			switch len(log.Topics) {
 			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
 				addressStr := log.Address.String()
@@ -137,6 +146,31 @@ func (s *BlockAPIService) PopulateTransaction(
 				if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
 					continue
 				}
+				erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
+				ops = append(ops, erc20Ops...)
+			}
+		} else {
+			// Only process whitelisted tokens
+			switch len(log.Topics) {
+			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
+				addressStr := log.Address.String()
+
+				// Check if token is whitelisted
+				tokenInfo := getWhitelistedToken(s.client.GetRosettaConfig().TokenWhiteList, addressStr)
+				if tokenInfo == nil {
+					// Token not in whitelist
+					continue
+				}
+
+				if tokenInfo.Decimals > math.MaxInt32 {
+					return nil, fmt.Errorf("token %s has too many decimals: %d", tokenInfo.Symbol, tokenInfo.Decimals)
+				}
+
+				currency := &client.ContractCurrency{
+					Symbol:   tokenInfo.Symbol,
+					Decimals: int32(tokenInfo.Decimals),
+				}
+
 				erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
 				ops = append(ops, erc20Ops...)
 			default:
