@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"strings"
 
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -96,15 +95,6 @@ func (s *BlockAPIService) populateTransactions(
 	return transactions, nil
 }
 
-func getWhitelistedToken(whitelist []configuration.Token, address string) *configuration.Token {
-	for _, token := range whitelist {
-		if strings.EqualFold(token.Address, address) {
-			return &token
-		}
-	}
-	return nil
-}
-
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
@@ -156,7 +146,7 @@ func (s *BlockAPIService) PopulateTransaction(
 				addressStr := log.Address.String()
 
 				// Check if token is whitelisted
-				tokenInfo := getWhitelistedToken(s.client.GetRosettaConfig().TokenWhiteList, addressStr)
+				tokenInfo := client.GetValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, addressStr)
 				if tokenInfo == nil {
 					// Token not in whitelist
 					continue
