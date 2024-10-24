@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 
 	goEthereum "github.com/ethereum/go-ethereum"
@@ -66,6 +67,9 @@ func (s *BlockAPIService) populateTransactions(
 	rosettaCfg := s.client.GetRosettaConfig()
 	transactions := make([]*RosettaTypes.Transaction, 0)
 
+	// Create a shared currency map for all transactions in this block
+	contractCurrencyMap := make(map[string]*client.ContractCurrency)
+
 	if rosettaCfg.SupportRewardTx {
 		// Compute reward transaction (block + uncle reward)
 		rewardTx := s.client.BlockRewardTransaction(
@@ -81,7 +85,7 @@ func (s *BlockAPIService) populateTransactions(
 			// Bridge tx is already handled in PopulateCrossChainTransactions flow
 			continue
 		}
-		transaction, err := s.PopulateTransaction(ctx, tx)
+		transaction, err := s.PopulateTransaction(ctx, tx, contractCurrencyMap)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %s: %w", tx.TxHash, err)
 		}
@@ -94,6 +98,7 @@ func (s *BlockAPIService) populateTransactions(
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
+	contractCurrencyMap map[string]*client.ContractCurrency,
 ) (*RosettaTypes.Transaction, error) {
 	ops, err := s.client.ParseOps(tx)
 	if err != nil {
@@ -106,16 +111,13 @@ func (s *BlockAPIService) PopulateTransaction(
 	}
 
 	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
-	var contractCurrencyMap = make(map[string]*client.ContractCurrency)
 	for _, log := range receiptLogs {
 		if s.client.SkipTxReceiptParsing(log.Address.String()) {
 			continue
 		}
 
-		if !s.client.GetRosettaConfig().FilterTokens ||
-			(s.client.GetRosettaConfig().FilterTokens &&
-				client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
-
+		if !s.client.GetRosettaConfig().FilterTokens {
+			// Process all tokens, need to fetch info from node
 			switch len(log.Topics) {
 			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
 				addressStr := log.Address.String()
@@ -134,6 +136,31 @@ func (s *BlockAPIService) PopulateTransaction(
 				if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
 					continue
 				}
+				erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
+				ops = append(ops, erc20Ops...)
+			}
+		} else {
+			// Only process whitelisted tokens
+			switch len(log.Topics) {
+			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
+				addressStr := log.Address.String()
+
+				// Check if token is whitelisted
+				tokenInfo := client.GetValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, addressStr)
+				if tokenInfo == nil {
+					// Token not in whitelist
+					continue
+				}
+
+				if tokenInfo.Decimals > math.MaxInt32 {
+					return nil, fmt.Errorf("token %s has too many decimals: %d", tokenInfo.Symbol, tokenInfo.Decimals)
+				}
+
+				currency := &client.ContractCurrency{
+					Symbol:   tokenInfo.Symbol,
+					Decimals: int32(tokenInfo.Decimals),
+				}
+
 				erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
 				ops = append(ops, erc20Ops...)
 			default:
@@ -449,7 +476,10 @@ func (s *BlockAPIService) BlockTransaction(
 		loadedTx.FeeBurned = nil
 	}
 
-	transaction, err := s.PopulateTransaction(ctx, loadedTx)
+	// Create a shared currency map for all logs for this transaction
+	contractCurrencyMap := make(map[string]*client.ContractCurrency)
+
+	transaction, err := s.PopulateTransaction(ctx, loadedTx, contractCurrencyMap)
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to populate tx: %w", err))
 	}
