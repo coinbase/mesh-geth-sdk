@@ -66,6 +66,9 @@ func (s *BlockAPIService) populateTransactions(
 	rosettaCfg := s.client.GetRosettaConfig()
 	transactions := make([]*RosettaTypes.Transaction, 0)
 
+	// Create a shared currency map for all transactions in this block
+	contractCurrencyMap := make(map[string]*client.ContractCurrency)
+
 	if rosettaCfg.SupportRewardTx {
 		// Compute reward transaction (block + uncle reward)
 		rewardTx := s.client.BlockRewardTransaction(
@@ -81,7 +84,7 @@ func (s *BlockAPIService) populateTransactions(
 			// Bridge tx is already handled in PopulateCrossChainTransactions flow
 			continue
 		}
-		transaction, err := s.PopulateTransaction(ctx, tx)
+		transaction, err := s.PopulateTransaction(ctx, tx, contractCurrencyMap)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %s: %w", tx.TxHash, err)
 		}
@@ -94,6 +97,7 @@ func (s *BlockAPIService) populateTransactions(
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
+	contractCurrencyMap map[string]*client.ContractCurrency,
 ) (*RosettaTypes.Transaction, error) {
 	ops, err := s.client.ParseOps(tx)
 	if err != nil {
@@ -106,7 +110,6 @@ func (s *BlockAPIService) PopulateTransaction(
 	}
 
 	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
-	var contractCurrencyMap = make(map[string]*client.ContractCurrency)
 	for _, log := range receiptLogs {
 		if s.client.SkipTxReceiptParsing(log.Address.String()) {
 			continue
@@ -449,7 +452,10 @@ func (s *BlockAPIService) BlockTransaction(
 		loadedTx.FeeBurned = nil
 	}
 
-	transaction, err := s.PopulateTransaction(ctx, loadedTx)
+	// Create a shared currency map for all logs for this transaction
+	contractCurrencyMap := make(map[string]*client.ContractCurrency)
+
+	transaction, err := s.PopulateTransaction(ctx, loadedTx, contractCurrencyMap)
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to populate tx: %w", err))
 	}
