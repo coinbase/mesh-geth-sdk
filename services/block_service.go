@@ -19,11 +19,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	lru "github.com/hashicorp/golang-lru"
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
@@ -38,13 +40,17 @@ import (
 )
 
 const (
+	// LRUCacheSize determines how many contract currencies we cache
+	LRUCacheSize = 100
+
 	OpenEthereumTrace = iota // == 2
 )
 
 // BlockAPIService implements the server.BlockAPIServicer interface.
 type BlockAPIService struct {
-	config *configuration.Configuration
-	client construction.Client
+	config        *configuration.Configuration
+	client        construction.Client
+	currencyCache *lru.Cache
 }
 
 // NewBlockAPIService creates a new instance of a BlockAPIService.
@@ -52,9 +58,15 @@ func NewBlockAPIService(
 	cfg *configuration.Configuration,
 	client construction.Client,
 ) *BlockAPIService {
+	currencyCache, err := lru.New(LRUCacheSize)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	return &BlockAPIService{
-		config: cfg,
-		client: client,
+		config:        cfg,
+		client:        client,
+		currencyCache: currencyCache,
 	}
 }
 
@@ -66,9 +78,6 @@ func (s *BlockAPIService) populateTransactions(
 ) ([]*RosettaTypes.Transaction, error) {
 	rosettaCfg := s.client.GetRosettaConfig()
 	transactions := make([]*RosettaTypes.Transaction, 0)
-
-	// Create a shared currency map for all transactions in this block
-	contractCurrencyMap := make(map[string]*client.ContractCurrency)
 
 	if rosettaCfg.SupportRewardTx {
 		// Compute reward transaction (block + uncle reward)
@@ -85,7 +94,7 @@ func (s *BlockAPIService) populateTransactions(
 			// Bridge tx is already handled in PopulateCrossChainTransactions flow
 			continue
 		}
-		transaction, err := s.PopulateTransaction(ctx, tx, contractCurrencyMap)
+		transaction, err := s.PopulateTransaction(ctx, tx)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %s: %w", tx.TxHash, err)
 		}
@@ -98,7 +107,6 @@ func (s *BlockAPIService) populateTransactions(
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
-	contractCurrencyMap map[string]*client.ContractCurrency,
 ) (*RosettaTypes.Transaction, error) {
 	ops, err := s.client.ParseOps(tx)
 	if err != nil {
@@ -124,13 +132,13 @@ func (s *BlockAPIService) PopulateTransaction(
 				var currency *client.ContractCurrency
 				var err error
 
-				if cachedCurrency, found := contractCurrencyMap[addressStr]; found {
-					currency = cachedCurrency
+				if cachedCurrency, found := s.currencyCache.Get(addressStr); found {
+					currency = cachedCurrency.(*client.ContractCurrency)
 				} else {
 					if currency, err = s.client.GetContractCurrency(log.Address, true); err != nil {
 						return nil, err
 					}
-					contractCurrencyMap[addressStr] = currency
+					s.currencyCache.Add(addressStr, currency)
 				}
 
 				if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
@@ -476,10 +484,7 @@ func (s *BlockAPIService) BlockTransaction(
 		loadedTx.FeeBurned = nil
 	}
 
-	// Create a shared currency map for all logs for this transaction
-	contractCurrencyMap := make(map[string]*client.ContractCurrency)
-
-	transaction, err := s.PopulateTransaction(ctx, loadedTx, contractCurrencyMap)
+	transaction, err := s.PopulateTransaction(ctx, loadedTx)
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("unable to populate tx: %w", err))
 	}

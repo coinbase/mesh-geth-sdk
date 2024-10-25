@@ -6,6 +6,7 @@ require (
 	github.com/coinbase/rosetta-sdk-go v0.8.6
 	github.com/coinbase/rosetta-sdk-go/types v1.0.0
 	github.com/ethereum/go-ethereum v1.13.8
+	github.com/hashicorp/golang-lru v0.5.1
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.17.0
