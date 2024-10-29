@@ -100,6 +100,9 @@ type RosettaConfig struct {
 	// TokenWhiteList is a list of ERC20 tokens we only support
 	TokenWhiteList []Token
 
+	// UseTokenWhiteListMetadata indicates whether we use token metadata from token white list or fetch from nodes
+	UseTokenWhiteListMetadata bool
+
 	// DefaultBlockNumber is the default block number if block identifier is not specified
 	// This is mainly used for Optimism and Base, it can be "safe" or "finalized" to avoid reorg issues
 	DefaultBlockNumber string
