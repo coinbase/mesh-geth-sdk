@@ -133,6 +133,7 @@ func (s *BlockAPIService) PopulateTransaction(
 	}
 
 	filterTokens := s.client.GetRosettaConfig().FilterTokens
+	tokenWhiteList := s.client.GetRosettaConfig().TokenWhiteList
 	useTokenWhiteListMetadata := s.client.GetRosettaConfig().UseTokenWhiteListMetadata
 	indexUnknownTokens := s.config.RosettaCfg.IndexUnknownTokens
 
@@ -154,7 +155,7 @@ func (s *BlockAPIService) PopulateTransaction(
 
 		if filterTokens {
 			// Check whitelist first if filtering is enabled
-			tokenInfo := client.GetValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, contractAddress)
+			tokenInfo := client.GetValidERC20Token(tokenWhiteList, contractAddress)
 			if tokenInfo == nil {
 				continue // Token not in whitelist
 			}
