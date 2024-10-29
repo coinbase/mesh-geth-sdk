@@ -97,6 +97,11 @@ const (
 	// using our token white list
 	TokenFilterEnv = "FILTER"
 
+	// UseTokenWhiteListMetadataEnv is the environment variable
+	// read to determine if we will use token metadata
+	// from the token white list or fetch from nodes
+	UseTokenWhiteListMetadataEnv = "USE_TOKEN_WHITE_LIST_METADATA"
+
 	// GethEnv is an optional environment variable
 	// used to connect rosetta-ethereum to an already
 	// running geth node.
@@ -234,6 +239,13 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		return nil, fmt.Errorf("unable to parse token filter %t: %w", tokenFilterValue, err)
 	}
 
+	useTokenWhiteListMetadataValue := false
+	if val := os.Getenv(UseTokenWhiteListMetadataEnv); val != "" {
+		if v, err := strconv.ParseBool(val); err == nil {
+			useTokenWhiteListMetadataValue = v
+		}
+	}
+
 	payload := []configuration.Token{}
 	config.RosettaCfg = configuration.RosettaConfig{
 		SupportRewardTx: true,
@@ -242,9 +254,10 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
-		TracePrefix:    "",
-		FilterTokens:   tokenFilterValue,
-		TokenWhiteList: payload,
+		TracePrefix:               "",
+		FilterTokens:              tokenFilterValue,
+		UseTokenWhiteListMetadata: useTokenWhiteListMetadataValue,
+		TokenWhiteList:            payload,
 	}
 
 	return config, nil

@@ -16,9 +16,9 @@ package client
 
 import (
 	"encoding/json"
+	"log"
 	"math/big"
 	"strings"
-	"log"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 
@@ -166,6 +166,17 @@ func IsValidERC20Token(whiteList []configuration.Token, address string) bool {
 	return false
 }
 
+// GetValidERC20Token checks if the token is in whitelist and returns the token info if found
+func GetValidERC20Token(whiteList []configuration.Token, address string) *configuration.Token {
+	for _, token := range whiteList {
+		// EqualFoldContains checks if the array contains the string regardless of casing
+		if strings.EqualFold(token.Address, address) {
+			return &token
+		}
+	}
+	return nil
+}
+
 func GenerateErc20TransferData(toAddress string, value *big.Int) []byte {
 	to := common.HexToAddress(toAddress)
 	methodID := getTransferMethodID()
@@ -181,7 +192,7 @@ func GenerateErc20TransferData(toAddress string, value *big.Int) []byte {
 }
 
 func (tx *LoadedTransaction) GetMint() *big.Int {
-	if  tx.Mint == "" {
+	if tx.Mint == "" {
 		return big.NewInt(0)
 	}
 	hexString := tx.Mint[2:]

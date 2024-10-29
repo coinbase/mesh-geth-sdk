@@ -19,10 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"math"
 	"math/big"
 
 	goEthereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	lru "github.com/hashicorp/golang-lru"
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
@@ -37,13 +41,17 @@ import (
 )
 
 const (
+	// LRUCacheSize determines how many contract currencies we cache
+	LRUCacheSize = 100
+
 	OpenEthereumTrace = iota // == 2
 )
 
 // BlockAPIService implements the server.BlockAPIServicer interface.
 type BlockAPIService struct {
-	config *configuration.Configuration
-	client construction.Client
+	config        *configuration.Configuration
+	client        construction.Client
+	currencyCache *lru.Cache
 }
 
 // NewBlockAPIService creates a new instance of a BlockAPIService.
@@ -51,9 +59,15 @@ func NewBlockAPIService(
 	cfg *configuration.Configuration,
 	client construction.Client,
 ) *BlockAPIService {
+	currencyCache, err := lru.New(LRUCacheSize)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	return &BlockAPIService{
-		config: cfg,
-		client: client,
+		config:        cfg,
+		client:        client,
+		currencyCache: currencyCache,
 	}
 }
 
@@ -91,6 +105,19 @@ func (s *BlockAPIService) populateTransactions(
 	return transactions, nil
 }
 
+// getCurrencyFromNodeOrCache checks if the currency is in the cache and fetches it from the node if not.
+func (s *BlockAPIService) getCurrencyFromNodeOrCache(address common.Address, addressStr string) (*client.ContractCurrency, error) {
+	if cachedCurrency, found := s.currencyCache.Get(addressStr); found {
+		return cachedCurrency.(*client.ContractCurrency), nil
+	}
+	currency, err := s.client.GetContractCurrency(address, true)
+	if err != nil {
+		return nil, err
+	}
+	s.currencyCache.Add(addressStr, currency)
+	return currency, nil
+}
+
 func (s *BlockAPIService) PopulateTransaction(
 	ctx context.Context,
 	tx *client.LoadedTransaction,
@@ -105,40 +132,65 @@ func (s *BlockAPIService) PopulateTransaction(
 		receiptLogs = tx.Receipt.Logs
 	}
 
+	filterTokens := s.client.GetRosettaConfig().FilterTokens
+	tokenWhiteList := s.client.GetRosettaConfig().TokenWhiteList
+	useTokenWhiteListMetadata := s.client.GetRosettaConfig().UseTokenWhiteListMetadata
+	indexUnknownTokens := s.config.RosettaCfg.IndexUnknownTokens
+
 	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
-	var contractCurrencyMap = make(map[string]*client.ContractCurrency)
 	for _, log := range receiptLogs {
-		if s.client.SkipTxReceiptParsing(log.Address.String()) {
+		contractAddress := log.Address.String()
+
+		if s.client.SkipTxReceiptParsing(contractAddress) {
 			continue
 		}
 
-		if !s.client.GetRosettaConfig().FilterTokens ||
-			(s.client.GetRosettaConfig().FilterTokens &&
-				client.IsValidERC20Token(s.client.GetRosettaConfig().TokenWhiteList, log.Address.String())) {
+		// Only process ERC20 transfers/deposits/withdrawals
+		if len(log.Topics) != TopicsInErc20DepositOrWithdrawal &&
+			len(log.Topics) != TopicsInErc20Transfer {
+			continue
+		}
 
-			switch len(log.Topics) {
-			case TopicsInErc20DepositOrWithdrawal, TopicsInErc20Transfer:
-				addressStr := log.Address.String()
-				var currency *client.ContractCurrency
+		var currency *client.ContractCurrency
+
+		if filterTokens {
+			// Check whitelist first if filtering is enabled
+			tokenInfo := client.GetValidERC20Token(tokenWhiteList, contractAddress)
+			if tokenInfo == nil {
+				continue // Token not in whitelist
+			}
+
+			if useTokenWhiteListMetadata {
+				// Use metadata from whitelist
+				if tokenInfo.Decimals > math.MaxInt32 {
+					return nil, fmt.Errorf("token %s has too many decimals: %d", tokenInfo.Symbol, tokenInfo.Decimals)
+				}
+				currency = &client.ContractCurrency{
+					Symbol:   tokenInfo.Symbol,
+					Decimals: int32(tokenInfo.Decimals),
+				}
+			} else {
 				var err error
-
-				if cachedCurrency, found := contractCurrencyMap[addressStr]; found {
-					currency = cachedCurrency
-				} else {
-					if currency, err = s.client.GetContractCurrency(log.Address, true); err != nil {
-						return nil, err
-					}
-					contractCurrencyMap[addressStr] = currency
+				currency, err = s.getCurrencyFromNodeOrCache(log.Address, contractAddress)
+				if err != nil {
+					return nil, err
 				}
+			}
+		} else {
+			var err error
+			currency, err = s.getCurrencyFromNodeOrCache(log.Address, contractAddress)
+			if err != nil {
+				return nil, err
+			}
 
-				if currency.Symbol == client.UnknownERC20Symbol && !s.config.RosettaCfg.IndexUnknownTokens {
-					continue
-				}
-				erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
-				ops = append(ops, erc20Ops...)
-			default:
+			// Skip unknown tokens if not indexing them
+			if currency.Symbol == client.UnknownERC20Symbol && !indexUnknownTokens {
+				continue
 			}
 		}
+
+		erc20Ops := Erc20Ops(log, currency, int64(len(ops)))
+		ops = append(ops, erc20Ops...)
 	}
 
 	// Marshal receipt and trace data
