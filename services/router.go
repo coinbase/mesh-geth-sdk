@@ -15,11 +15,9 @@
 package services
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
-	"github.com/coinbase/rosetta-geth-sdk/headers"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	"github.com/coinbase/rosetta-sdk-go/types"
 
@@ -37,51 +35,40 @@ func NewBlockchainRouter(
 	client construction.Client,
 	asserter *asserter.Asserter,
 ) http.Handler {
-	var contextFromRequest func(r *http.Request) context.Context = nil
-	if config.RosettaCfg.SupportHeaderForwarding {
-		contextFromRequest = headers.ContextWithHeaders
-	}
-
 	networkAPIService := NewNetworkAPIService(config, types, errors, client)
 	networkAPIController := server.NewNetworkAPIController(
 		networkAPIService,
 		asserter,
-		contextFromRequest,
 	)
 
 	accountAPIService := NewAccountAPIService(config, types, errors, client)
 	accountAPIController := server.NewAccountAPIController(
 		accountAPIService,
 		asserter,
-		contextFromRequest,
 	)
 
 	blockAPIService := NewBlockAPIService(config, client)
 	blockAPIController := server.NewBlockAPIController(
 		blockAPIService,
 		asserter,
-		contextFromRequest,
 	)
 
 	constructionAPIService := construction.NewAPIService(config, types, errors, client)
 	constructionAPIController := server.NewConstructionAPIController(
 		constructionAPIService,
 		asserter,
-		contextFromRequest,
 	)
 
 	// mempoolAPIService := NewMempoolAPIService()
 	// mempoolAPIController := server.NewMempoolAPIController(
 	// 	mempoolAPIService,
 	// 	asserter,
-	//  contextFromRequest,
 	// )
 
 	// callAPIService := NewCallAPIService(config, client)
 	// callAPIController := server.NewCallAPIController(
 	// 	callAPIService,
 	// 	asserter,
-	//  contextFromRequest,
 	// )
 
 	return server.NewRouter(

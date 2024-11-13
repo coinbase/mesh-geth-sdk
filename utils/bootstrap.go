@@ -68,14 +68,17 @@ func BootStrap(
 			return fmt.Errorf("SupportHeaderForwarding enabled, but client does not implement ReplaceableRPCClient")
 		}
 
-		headerForwarder = headerforwarder.NewHeaderForwarder(
+		headerForwarder, err = headerforwarder.NewHeaderForwarder(
 			cfg.RosettaCfg.ForwardHeaders,
 			gethSdkClient.NewDefaultHTTPTransport(),
 		)
+		if err != nil {
+			return fmt.Errorf("SupportHeaderForwarding enabled, but header forwarder creation failed: %w", err)
+		}
 
 		replacedClient, err := replaceableClient.WithRPCTransport(cfg.GethURL, headerForwarder)
 		if err != nil {
-			return fmt.Errorf("SupportHeaderForwarding enabled, but client replacement failed: %e", err)
+			return fmt.Errorf("SupportHeaderForwarding enabled, but client replacement failed: %w", err)
 		}
 
 		convertedClient, ok := replacedClient.(construction.Client)
