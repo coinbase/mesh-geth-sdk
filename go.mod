@@ -3,7 +3,7 @@ module github.com/coinbase/rosetta-geth-sdk
 go 1.20
 
 require (
-	github.com/coinbase/rosetta-sdk-go v0.8.6
+	github.com/coinbase/rosetta-sdk-go v0.8.7
 	github.com/coinbase/rosetta-sdk-go/types v1.0.0
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/hashicorp/golang-lru v0.5.1
@@ -82,10 +82,13 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
+	google.golang.org/grpc v1.61.2 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
