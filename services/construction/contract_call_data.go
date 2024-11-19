@@ -199,11 +199,11 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 			{
 				// No fixed size set as it would make it an "array" instead
 				// of a "slice" when encoding. We want it to be a slice.
-				value := []byte{}
 				bytes, err := hexutil.Decode(methodArgs[i])
 				if err != nil {
 					log.Fatal(err)
 				}
+				value := make([]byte, len(bytes))
 				copy(value[:], bytes) // nolint:gocritic
 				argData = value
 			}
