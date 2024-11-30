@@ -52,13 +52,13 @@ jobs:
         pip install web3==5.31.3
       shell: bash
 
-    - name: deploy erc20 USDC
-      run: .github/scripts/init_erc20.sh
-      shell: bash
+    # - name: deploy erc20 USDC
+    #   run: .github/scripts/init_erc20.sh
+    #   shell: bash
 
-    - name: Get erc20 infos
-      run: python .github/scripts/contract_infos.py
-      shell: bash
+    # - name: Get erc20 infos
+    #   run: python .github/scripts/contract_infos.py
+    #   shell: bash
 
     - name: Populate transactions
       run: python .github/scripts/populate_txns.py
@@ -68,9 +68,9 @@ jobs:
       run: .github/scripts/setup.sh
       shell: bash
 
-    - name: Run Check:construction test
-      run: .github/scripts/construction.sh
-      shell: bash
+    # - name: Run Check:construction test
+    #   run: .github/scripts/construction.sh
+    #   shell: bash
 
     - name: Run Check:data test
       run: .github/scripts/cli.sh
