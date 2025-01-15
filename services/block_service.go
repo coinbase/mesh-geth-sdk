@@ -132,9 +132,21 @@ func (s *BlockAPIService) PopulateTransaction(
 		receiptLogs = tx.Receipt.Logs
 	}
 
-	filterTokens := s.client.GetRosettaConfig().FilterTokens
-	tokenWhiteList := s.client.GetRosettaConfig().TokenWhiteList
-	useTokenWhiteListMetadata := s.client.GetRosettaConfig().UseTokenWhiteListMetadata
+	rosettaConfig := s.client.GetRosettaConfig()
+	filterTokens := rosettaConfig.FilterTokens
+
+	if rosettaConfig.TokenWhitelistAccessor != nil {
+		whitelist, err := rosettaConfig.TokenWhitelistAccessor()
+		if err != nil {
+			return nil, fmt.Errorf("could not get token whitelist: %w", err)
+		}
+
+		rosettaConfig.TokenWhiteList = whitelist
+	}
+
+	tokenWhiteList := rosettaConfig.TokenWhiteList
+
+	useTokenWhiteListMetadata := rosettaConfig.UseTokenWhiteListMetadata
 	indexUnknownTokens := s.config.RosettaCfg.IndexUnknownTokens
 
 	// Compute tx operations via tx.Receipt logs for ERC20 transfer, mint and burn
