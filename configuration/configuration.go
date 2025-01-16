@@ -131,6 +131,10 @@ type RosettaConfig struct {
 
 	// ForwardHeaders is the list of headers to forward to and from the native node
 	ForwardHeaders []string
+
+	// Functor to access allowlisted tokens.
+	// This should be defined in rosetta-xxx implementation if needed
+	TokenWhitelistAccessor func() ([]Token, error)
 }
 
 type Token struct {
