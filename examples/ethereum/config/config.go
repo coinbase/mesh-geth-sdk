@@ -39,9 +39,9 @@ const (
 	// in MainnetNetworkIdentifier.
 	MainnetNetwork string = "Mainnet"
 
-	// GoerliNetwork is the value of the network
-	// in GoerliNetworkNetworkIdentifier.
-	GoerliNetwork string = "Goerli"
+	// HoleskyNetwork is the value of the network
+	// in HoleskyNetworkNetworkIdentifier.
+	HoleskyNetwork string = "Holesky"
 
 	// SepoliaNetwork is the value of the network
 	// in SepoliaNetworkNetworkIdentifier.
@@ -66,8 +66,8 @@ const (
 	// Mainnet is the Ethereum Mainnet.
 	Mainnet string = "MAINNET"
 
-	// Goerli is the Ethereum Görli testnet.
-	Goerli string = "GOERLI"
+	// Holesky is the Ethereum Holesky testnet.
+	Holesky string = "HOLESKY"
 
 	// Sepolia is the Ethereum Sepolia testnet.
 	Sepolia string = "SEPOLIA"
@@ -128,8 +128,8 @@ const (
 )
 
 var (
-	// GoerliGethArguments are the arguments to start a goerli geth instance.
-	GoerliGethArguments = fmt.Sprintf("%s --goerli", MainnetGethArguments)
+	// HoleskyGethArguments are the arguments to start a holesky geth instance.
+	HoleskyGethArguments = fmt.Sprintf("%s --holesky", MainnetGethArguments)
 
 	// SepoliaGethArguments are the arguments to start a sepolia geth instance.
 	SepoliaGethArguments = fmt.Sprintf("%s --sepolia", MainnetGethArguments)
@@ -141,10 +141,10 @@ var (
 		Index: GenesisBlockIndex,
 	}
 
-	// GoerliGenesisBlockIdentifier is the *types.BlockIdentifier
-	// of the Goerli genesis block.
-	GoerliGenesisBlockIdentifier = &types.BlockIdentifier{
-		Hash:  params.GoerliGenesisHash.Hex(),
+	// HoleskyGenesisBlockIdentifier is the *types.BlockIdentifier
+	// of the Holesky genesis block.
+	HoleskyGenesisBlockIdentifier = &types.BlockIdentifier{
+		Hash:  params.HoleskyGenesisHash.Hex(),
 		Index: GenesisBlockIndex,
 	}
 
@@ -185,14 +185,14 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		config.GenesisBlockIdentifier = MainnetGenesisBlockIdentifier
 		config.ChainConfig = params.MainnetChainConfig
 		config.GethArguments = MainnetGethArguments
-	case Goerli:
+	case Holesky:
 		config.Network = &types.NetworkIdentifier{
 			Blockchain: Blockchain,
-			Network:    GoerliNetwork,
+			Network:    HoleskyNetwork,
 		}
-		config.GenesisBlockIdentifier = GoerliGenesisBlockIdentifier
-		config.ChainConfig = params.GoerliChainConfig
-		config.GethArguments = GoerliGethArguments
+		config.GenesisBlockIdentifier = HoleskyGenesisBlockIdentifier
+		config.ChainConfig = params.HoleskyChainConfig
+		config.GethArguments = HoleskyGethArguments
 	case Sepolia:
 		config.Network = &types.NetworkIdentifier{
 			Blockchain: Blockchain,

@@ -368,7 +368,10 @@ func (s *BlockAPIService) GetBlock(
 		}
 	}
 
-	return EthTypes.NewBlockWithHeader(&head).WithBody(txs, uncles), loadedTxs, &body, nil
+	return EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
+		Transactions: txs,
+		Uncles:       uncles,
+	}), loadedTxs, &body, nil
 }
 
 // Block implements the /block endpoint.
