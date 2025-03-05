@@ -1,0 +1,10 @@
+enforced_scanners:
+  - RepoNotEmpty
+  - Brakeman
+  - BundleAudit
+  # - Gosec
+  - NPMAudit
+  - YarnAudit
+  - PatternSearch
+  - Semgrep
+  - CargoAudit
