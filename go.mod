@@ -7,12 +7,12 @@ toolchain go1.24.0
 require (
 	github.com/coinbase/rosetta-sdk-go v0.8.9
 	github.com/coinbase/rosetta-sdk-go/types v1.0.0
-	github.com/ethereum/go-ethereum v1.15.3
+	github.com/ethereum/go-ethereum v1.15.5
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.35.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/crypto v0.36.0
+	golang.org/x/sync v0.12.0
 )
 
 require (
@@ -65,12 +65,12 @@ require (
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
-	google.golang.org/grpc v1.70.0 // indirect
+	golang.org/x/exp v0.0.0-20250228200357-dead58393ab7 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
+	google.golang.org/grpc v1.71.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
