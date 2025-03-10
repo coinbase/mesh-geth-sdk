@@ -247,6 +247,9 @@ func (ec *SDKClient) Status(ctx context.Context) (
 		return nil, -1, nil, nil, err
 	}
 
+	fmt.Printf("header string from node: %s\n", header.Hash())
+	fmt.Printf("hash returned : %s\n", header.Hash().Hex())
+
 	// Get sync status
 	var syncStatus *RosettaTypes.SyncStatus
 	if ec.rosettaConfig.SupportsSyncing {
