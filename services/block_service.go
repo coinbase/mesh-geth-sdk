@@ -22,6 +22,8 @@ import (
 	"log"
 	"math"
 	"math/big"
+	"os"
+	"strconv"
 
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -368,10 +370,21 @@ func (s *BlockAPIService) GetBlock(
 		}
 	}
 
-	return EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
+	block := EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
 		Transactions: txs,
 		Uncles:       uncles,
-	}), loadedTxs, &body, nil
+	})
+
+	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+	if err == nil && runValidation {
+		v := NewEthereumValidator(s.config)
+		err = v.ValidateBlock(ctx, block, body.Hash)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	return block, loadedTxs, &body, nil
 }
 
 // Block implements the /block endpoint.
