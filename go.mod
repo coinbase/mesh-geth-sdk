@@ -5,29 +5,15 @@ go 1.23.7
 toolchain go1.24.0
 
 require (
-	github.cbhq.net/c3/common v0.5.36
 	github.com/coinbase/rosetta-sdk-go v0.8.9
 	github.com/coinbase/rosetta-sdk-go/types v1.0.0
 	github.com/ethereum/go-ethereum v1.15.5
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/neilotoole/errgroup v0.1.6
 	github.com/stretchr/testify v1.10.0
-	github.com/uber-go/tally/v4 v4.1.17
-	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.36.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-	honnef.co/go/tools v0.6.1
-)
-
-require (
-	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
-	github.com/golang/mock v1.6.0 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/twmb/murmur3 v1.1.8 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/tools v0.30.0 // indirect
 )
 
 require (

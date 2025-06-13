@@ -17,11 +17,16 @@ package services
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"os"
+	"strconv"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
+	"github.com/ethereum/go-ethereum/common"
 
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
+	validator "github.com/coinbase/rosetta-geth-sdk/services/validator"
 	"github.com/coinbase/rosetta-sdk-go/types"
 )
 
@@ -75,6 +80,16 @@ func (s *AccountAPIService) AccountBalance(
 	balanceResponse.BlockIdentifier.Hash, err = s.client.GetBlockHash(ctx, *balanceResponse.BlockIdentifier)
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("could not get block hash given block identifier %v: %w", request.BlockIdentifier, err))
+	}
+
+	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+	if err == nil && runValidation {
+		v := validator.NewEthereumValidator(s.config)
+		addr := common.HexToAddress(request.AccountIdentifier.Address)
+		err = v.ValidateAccountState(ctx, addr, common.HexToHash(balanceResponse.BlockIdentifier.Hash), big.NewInt(balanceResponse.BlockIdentifier.Index))
+		if err != nil {
+			return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
+		}
 	}
 
 	return balanceResponse, nil

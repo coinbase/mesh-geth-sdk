@@ -32,6 +32,7 @@ import (
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
+	validator "github.com/coinbase/rosetta-geth-sdk/services/validator"
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
@@ -377,7 +378,7 @@ func (s *BlockAPIService) GetBlock(
 
 	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
 	if err == nil && runValidation {
-		v := NewEthereumValidator(s.config)
+		v := validator.NewEthereumValidator(s.config)
 		err = v.ValidateBlock(ctx, block, body.Hash)
 		if err != nil {
 			return nil, nil, nil, err
