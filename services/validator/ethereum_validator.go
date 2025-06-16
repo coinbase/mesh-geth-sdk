@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"sync"
 
@@ -160,7 +159,8 @@ const (
 
 type TrustlessValidator interface {
 	ValidateBlock(ctx context.Context, block *ethtypes.Block, hash geth.Hash) error
-	ValidateAccountState(ctx context.Context, account geth.Address, stateRoot geth.Hash, blockNumber *big.Int) error
+	ValidateAccountState(ctx context.Context, result AccountResult, stateRoot geth.Hash, blockNumber *big.Int) error
+	GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error)
 }
 type (
 	trustlessValidator struct {
@@ -227,12 +227,17 @@ func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.
 	return nil
 }
 
-func (v *trustlessValidator) ValidateAccountState(ctx context.Context, account geth.Address, stateRoot geth.Hash, blockNumber *big.Int) error {
-	// Connect to the Ethereum node
-	client, err := ethclient.Dial("https://rpc.blaze.soniclabs.com") // TODO: make this configurable
-	if err != nil {
-		return xerrors.Errorf("failed to connect to Ethereum node: %w", err)
+func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error) {
+	// Connect to the configured blockchain node
+	if v.config.GethURL == "" {
+		return AccountResult{}, xerrors.Errorf("GethURL not configured")
 	}
+
+	client, err := ethclient.Dial(v.config.GethURL)
+	if err != nil {
+		return AccountResult{}, xerrors.Errorf("failed to connect to blockchain node at %s: %w", v.config.GethURL, err)
+	}
+	defer client.Close()
 
 	// Convert block number to hex string
 	blockNumberHex := hexutil.EncodeBig(blockNumber)
@@ -241,22 +246,39 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, account g
 	var result AccountResult
 	err = client.Client().CallContext(ctx, &result, "eth_getProof", account, []string{}, blockNumberHex)
 	if err != nil {
-		return xerrors.Errorf("failed to get account proof: %w", err)
+		return AccountResult{}, xerrors.Errorf("failed to get account proof: %w", err)
 	}
 
 	// Verify that this proofResult is for the target account
 	if result.Address != account {
-		return xerrors.Errorf("the input proofResult has different account address, address in proof: %s, expected: %s", result.Address.Hex(), account)
+		return AccountResult{}, xerrors.Errorf("the input proofResult has different account address, address in proof: %s, expected: %s", result.Address.Hex(), account)
 	}
+
+	return result, nil
+}
+
+func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result AccountResult, stateRoot geth.Hash, blockNumber *big.Int) error {
 
 	// Create the in-memory DB state of the state trie proof
 	proofDB := rawdb.NewMemoryDatabase()
 
-	// First, store the state root node
+	if len(result.AccountProof) == 0 {
+		return xerrors.Errorf("no account proof provided: %w", ErrAccountVerifyProofFailure)
+	}
+
+	// First, decode and validate the state root node
 	firstNodeData, err := hexutil.Decode(result.AccountProof[0])
 	if err != nil {
 		return xerrors.Errorf("failed to decode first node: %w", err)
 	}
+
+	// The provided state root should match the hash of the first proof node
+	expectedStateRoot := crypto.Keccak256Hash(firstNodeData)
+	if expectedStateRoot != stateRoot {
+		return xerrors.Errorf("state root mismatch: provided=%s, expected=%s: %w", stateRoot.Hex(), expectedStateRoot.Hex(), ErrAccountVerifyProofFailure)
+	}
+
+	// Store the state root node
 	err = proofDB.Put(stateRoot.Bytes(), firstNodeData)
 	if err != nil {
 		return xerrors.Errorf("failed to store state root node: %w", err)
@@ -276,17 +298,17 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, account g
 	}
 
 	// Calculate the account hash - this is the key in the state trie
-	accountHash := crypto.Keccak256(account[:])
+	accountHash := crypto.Keccak256(result.Address[:])
 
 	// Use state_root_hash to walk through the returned proof to verify the state
 	validAccountState, err := trie.VerifyProof(stateRoot, accountHash, proofDB)
 	if err != nil {
-		return xerrors.Errorf("VerifyProof fails with %v for the account %s: %w", err, account, ErrAccountVerifyProofFailure)
+		return xerrors.Errorf("VerifyProof fails with %v for the account %s: %w", err, result.Address, ErrAccountVerifyProofFailure)
 	}
 
 	// If the err is nil and returned account state is nil, then this means that the state trie doesn't include the target account, and the verification fails.
 	if validAccountState == nil {
-		return xerrors.Errorf("VerifyProof fails, the account %s is not included in the state trie: %w", account, ErrAccountVerifyProofFailure)
+		return xerrors.Errorf("VerifyProof fails, the account %s is not included in the state trie: %w", result.Address, ErrAccountVerifyProofFailure)
 	}
 
 	// If successful, decode the stored account state, and return it.
@@ -479,29 +501,47 @@ func (v *trustlessValidator) GetSigner(block *ethtypes.Block) ethtypes.Signer {
 	fmt.Printf("Block number: %v, Block time: %v\n", bn, bts)
 
 	// Use the chain config from the validator's configuration
-	fmt.Printf("Chain config is nil, falling back to network-based config\n")
-	// Fallback to determining chain config based on network
-	fmt.Printf("Network: %v\n", v.config.Network.Network)
 	cfg := v.config.ChainConfig
-	switch v.config.Network.Blockchain {
-	case NETWORK_ETHEREUM_MAINNET:
-		cfg = MainnetChainConfig
-	case NETWORK_ETHEREUM_GOERLI:
-		cfg = GoerliChainConfig
-	case NETWORK_ETHEREUM_SEPOLIA:
-		cfg = SepoliaChainConfig
-	case NETWORK_ETHEREUM_HOLESKY:
-		cfg = HoleskyChainConfig
-	case NETWORK_SONIC:
-		fmt.Printf("Using Sonic network\n")
-		if v.config.ChainConfig != nil && v.config.ChainConfig.ChainID != nil {
-			fmt.Printf("Chain ID from config: %v\n", v.config.ChainConfig.ChainID)
+	if cfg == nil {
+		fmt.Printf("Chain config is nil, falling back to network-based config\n")
+		// Fallback to determining chain config based on network
+		fmt.Printf("Network: %v\n", v.config.Network.Network)
+		switch v.config.Network.Blockchain {
+		case NETWORK_ETHEREUM_MAINNET:
+			cfg = MainnetChainConfig
+		case NETWORK_ETHEREUM_GOERLI:
+			cfg = GoerliChainConfig
+		case NETWORK_ETHEREUM_SEPOLIA:
+			cfg = SepoliaChainConfig
+		case NETWORK_ETHEREUM_HOLESKY:
+			cfg = HoleskyChainConfig
+		default:
+			fmt.Printf("Unknown network: %v, using generic EVM configuration\n", v.config.Network.Network)
+			// For unknown networks (including Sonic and other EVM chains),
+			// create a generic EVM chain config that supports modern features
+			if v.config.ChainConfig != nil && v.config.ChainConfig.ChainID != nil {
+				fmt.Printf("Using provided chain ID: %v\n", v.config.ChainConfig.ChainID)
+				cfg = &gethparams.ChainConfig{
+					ChainID:             v.config.ChainConfig.ChainID,
+					HomesteadBlock:      big.NewInt(0),
+					DAOForkSupport:      false,
+					EIP150Block:         big.NewInt(0),
+					EIP155Block:         big.NewInt(0),
+					EIP158Block:         big.NewInt(0),
+					ByzantiumBlock:      big.NewInt(0),
+					ConstantinopleBlock: big.NewInt(0),
+					PetersburgBlock:     big.NewInt(0),
+					IstanbulBlock:       big.NewInt(0),
+					BerlinBlock:         big.NewInt(0),
+					LondonBlock:         big.NewInt(0),
+				}
+			} else {
+				fmt.Printf("No chain configuration available\n")
+				return nil
+			}
 		}
-		// Use LondonSigner which supports Type 2 (EIP-1559) transactions
-		return ethtypes.NewLondonSigner(big.NewInt(57054))
-	default:
-		fmt.Printf("Unknown network: %v\n", v.config.Network.Network)
-		return nil
+	} else {
+		fmt.Printf("Using provided chain config with chain ID: %v\n", cfg.ChainID)
 	}
 
 	signer := ethtypes.MakeSigner(cfg, bn, bts)
@@ -516,21 +556,28 @@ func (v *trustlessValidator) validateReceipts(ctx context.Context, transactions 
 	// if v.config.Network.Blockchain == common.Blockchain_BLOCKCHAIN_POLYGON && hasStateSyncTx(transactions) {
 	// 	numTxs = numTxs - 1
 	// }
-	// make receipts list
-	client, err := ethclient.Dial("https://rpc.blaze.soniclabs.com") // TODO: make this dynamic
-	if err != nil {
-		log.Fatal(err)
+
+	// Connect to the configured blockchain node
+	if v.config.GethURL == "" {
+		return xerrors.Errorf("GethURL not configured for receipt validation")
 	}
+
+	client, err := ethclient.Dial(v.config.GethURL)
+	if err != nil {
+		return xerrors.Errorf("failed to connect to blockchain node at %s: %w", v.config.GethURL, err)
+	}
+	defer client.Close()
+
+	// make receipts list
 	gethReceipts := make(ethtypes.Receipts, numTxs)
 	for i := 0; i < numTxs; i++ {
-		receipt, err := client.TransactionReceipt(context.Background(), transactions[i].Hash())
-		gethReceipts[i] = receipt
+		receipt, err := client.TransactionReceipt(ctx, transactions[i].Hash())
 		if err != nil {
-			fmt.Printf("Failed to fetch receipt for tx %s: %v", transactions[i].Hash().Hex(), err)
-			continue
+			fmt.Printf("Failed to fetch receipt for tx %s: %v\n", transactions[i].Hash().Hex(), err)
+			return xerrors.Errorf("failed to fetch receipt for transaction %s: %w", transactions[i].Hash().Hex(), err)
 		}
-
-		fmt.Printf("Tx %s used %d gas", transactions[i].Hash().Hex(), receipt.GasUsed)
+		gethReceipts[i] = receipt
+		fmt.Printf("Tx %s used %d gas\n", transactions[i].Hash().Hex(), receipt.GasUsed)
 	}
 
 	// This is how geth calculates the receipt trie hash. We just leverage this function of geth to recompute it.

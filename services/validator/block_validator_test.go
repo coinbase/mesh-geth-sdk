@@ -163,7 +163,7 @@ func modifyWithdrawals(original *ethtypes.Block, modifyFn func([]*ethtypes.Withd
 	})
 }
 
-func TestEthereumValidator_HeaderFailures(t *testing.T) {
+func TestBlockValidator_HeaderFailures(t *testing.T) {
 	ctx := context.Background()
 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
@@ -228,7 +228,7 @@ func TestEthereumValidator_HeaderFailures(t *testing.T) {
 	}
 }
 
-func TestEthereumValidator_TransactionFailures(t *testing.T) {
+func TestBlockValidator_TransactionFailures(t *testing.T) {
 	ctx := context.Background()
 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
@@ -355,7 +355,7 @@ func TestEthereumValidator_TransactionFailures(t *testing.T) {
 	}
 }
 
-// func TestEthereumValidator_WithdrawalFailures(t *testing.T) {
+// func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 // 	ctx := context.Background()
 // 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
@@ -425,7 +425,7 @@ func TestEthereumValidator_TransactionFailures(t *testing.T) {
 // 	}
 // }
 
-func TestEthereumValidator_ReceiptFailures(t *testing.T) {
+func TestBlockValidator_ReceiptFailures(t *testing.T) {
 	ctx := context.Background()
 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
@@ -458,7 +458,7 @@ func TestEthereumValidator_ReceiptFailures(t *testing.T) {
 			modifyFn: func(h *ethtypes.Header) {
 				h.ReceiptHash = common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 			},
-			wantErr: "Computed receipt root hash invalid.",
+			wantErr: "Block hash invalid",
 		},
 	}
 
@@ -477,7 +477,7 @@ func TestEthereumValidator_ReceiptFailures(t *testing.T) {
 	}
 }
 
-func TestEthereumValidator_Success(t *testing.T) {
+func TestBlockValidator_Success(t *testing.T) {
 	ctx := context.Background()
 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
@@ -504,7 +504,7 @@ func TestEthereumValidator_Success(t *testing.T) {
 	}
 }
 
-func TestEthereumValidator_Failures(t *testing.T) {
+func TestBlockValidator_Failures(t *testing.T) {
 	ctx := context.Background()
 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")

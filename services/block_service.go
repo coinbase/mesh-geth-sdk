@@ -292,6 +292,8 @@ func (s *BlockAPIService) GetBlock(
 		return nil, nil, nil, goEthereum.NotFound
 	}
 
+	fmt.Printf("raw: %s\n", raw)
+
 	// Decode header and transactions
 	var head EthTypes.Header
 	var body client.RPCBlock
