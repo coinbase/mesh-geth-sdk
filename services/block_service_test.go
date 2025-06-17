@@ -61,6 +61,8 @@ func TestBlockService_Offline(t *testing.T) {
 	cfg := &configuration.Configuration{
 		Mode: configuration.ModeOffline,
 	}
+	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "false")
+
 	mockClient := &mockedServices.Client{}
 	servicer := NewBlockAPIService(cfg, mockClient)
 	ctx := context.Background()
@@ -82,6 +84,7 @@ func TestBlockService_Online(t *testing.T) {
 	cfg := &configuration.Configuration{
 		Mode: configuration.ModeOnline,
 	}
+	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "false")
 	mockClient := &mockedServices.Client{}
 	servicer := NewBlockAPIService(cfg, mockClient)
 	ctx := context.Background()

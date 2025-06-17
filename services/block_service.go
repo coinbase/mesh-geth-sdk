@@ -292,7 +292,7 @@ func (s *BlockAPIService) GetBlock(
 		return nil, nil, nil, goEthereum.NotFound
 	}
 
-	fmt.Printf("raw: %s\n", raw)
+	// fmt.Printf("raw: %s\n", raw)
 
 	// Decode header and transactions
 	var head EthTypes.Header
@@ -378,14 +378,14 @@ func (s *BlockAPIService) GetBlock(
 		Uncles:       uncles,
 	})
 
-	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	if err == nil && runValidation {
-		v := validator.NewEthereumValidator(s.config)
-		err = v.ValidateBlock(ctx, block, body.Hash)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-	}
+	// runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+	// if err == nil && runValidation {
+	// 	v := validator.NewEthereumValidator(s.config)
+	// 	err = v.ValidateBlock(ctx, block, body.Hash)
+	// 	if err != nil {
+	// 		return nil, nil, nil, err
+	// 	}
+	// }
 
 	return block, loadedTxs, &body, nil
 }
@@ -437,6 +437,35 @@ func (s *BlockAPIService) Block(
 			tx.FeeBurned = new(big.Int).Mul(tx.Receipt.GasUsed, tx.BaseFee)
 		} else {
 			tx.FeeBurned = baseFee
+		}
+	}
+
+	// Run validation with receipts if enabled
+	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+	if err == nil && runValidation && receipts != nil {
+		// Convert RosettaTxReceipts to ethtypes.Receipts for validation
+		ethReceipts := make(EthTypes.Receipts, len(receipts))
+		var cumulativeGasUsed uint64
+		for i, rosettaReceipt := range receipts {
+			cumulativeGasUsed += rosettaReceipt.GasUsed.Uint64()
+			ethReceipts[i] = &EthTypes.Receipt{
+				Type:              rosettaReceipt.Type,
+				Status:            rosettaReceipt.Status,
+				CumulativeGasUsed: cumulativeGasUsed,
+				GasUsed:           rosettaReceipt.GasUsed.Uint64(),
+				Logs:              rosettaReceipt.Logs,
+				TxHash:            *loadedTxns[i].TxHash,
+				ContractAddress:   common.Address{}, // Set if available in your data
+				BlockHash:         rpcBlock.Hash,
+				BlockNumber:       block.Number(),
+				TransactionIndex:  uint(i),
+			}
+		}
+
+		v := validator.NewEthereumValidator(s.config)
+		err = v.ValidateBlock(ctx, block, ethReceipts, rpcBlock.Hash)
+		if err != nil {
+			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
 		}
 	}
 

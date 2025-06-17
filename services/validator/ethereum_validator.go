@@ -18,112 +18,10 @@ import (
 	config "github.com/coinbase/rosetta-geth-sdk/configuration"
 	geth "github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	gethparams "github.com/ethereum/go-ethereum/params"
 )
 
 // Although we use a pinned version of the geth respository, these configs are the up to date configs from the geth
 // repository.
-var (
-	MainnetTerminalTotalDifficulty, _ = new(big.Int).SetString("58_750_000_000_000_000_000_000", 0)
-
-	// MainnetChainConfig is the chain parameters to run a node on the main network.
-	MainnetChainConfig = &gethparams.ChainConfig{
-		ChainID:                 big.NewInt(1),
-		HomesteadBlock:          big.NewInt(1_150_000),
-		DAOForkBlock:            big.NewInt(1_920_000),
-		DAOForkSupport:          true,
-		EIP150Block:             big.NewInt(2_463_000),
-		EIP155Block:             big.NewInt(2_675_000),
-		EIP158Block:             big.NewInt(2_675_000),
-		ByzantiumBlock:          big.NewInt(4_370_000),
-		ConstantinopleBlock:     big.NewInt(7_280_000),
-		PetersburgBlock:         big.NewInt(7_280_000),
-		IstanbulBlock:           big.NewInt(9_069_000),
-		MuirGlacierBlock:        big.NewInt(9_200_000),
-		BerlinBlock:             big.NewInt(12_244_000),
-		LondonBlock:             big.NewInt(12_965_000),
-		ArrowGlacierBlock:       big.NewInt(13_773_000),
-		GrayGlacierBlock:        big.NewInt(15_050_000),
-		TerminalTotalDifficulty: MainnetTerminalTotalDifficulty, // 58_750_000_000_000_000_000_000
-		ShanghaiTime:            newUint64(1681338455),
-		CancunTime:              newUint64(1710338135),
-		DepositContractAddress:  geth.HexToAddress("0x00000000219ab540356cbb839cbe05303d7705fa"),
-		Ethash:                  new(gethparams.EthashConfig),
-	}
-	// HoleskyChainConfig contains the chain parameters to run a node on the Holesky test network.
-	HoleskyChainConfig = &gethparams.ChainConfig{
-		ChainID:                 big.NewInt(17000),
-		HomesteadBlock:          big.NewInt(0),
-		DAOForkBlock:            nil,
-		DAOForkSupport:          true,
-		EIP150Block:             big.NewInt(0),
-		EIP155Block:             big.NewInt(0),
-		EIP158Block:             big.NewInt(0),
-		ByzantiumBlock:          big.NewInt(0),
-		ConstantinopleBlock:     big.NewInt(0),
-		PetersburgBlock:         big.NewInt(0),
-		IstanbulBlock:           big.NewInt(0),
-		MuirGlacierBlock:        nil,
-		BerlinBlock:             big.NewInt(0),
-		LondonBlock:             big.NewInt(0),
-		ArrowGlacierBlock:       nil,
-		GrayGlacierBlock:        nil,
-		TerminalTotalDifficulty: big.NewInt(0),
-		MergeNetsplitBlock:      nil,
-		ShanghaiTime:            newUint64(1696000704),
-		CancunTime:              newUint64(1707305664),
-		Ethash:                  new(gethparams.EthashConfig),
-	}
-	// SepoliaChainConfig contains the chain parameters to run a node on the Sepolia test network.
-	SepoliaChainConfig = &gethparams.ChainConfig{
-		ChainID:                 big.NewInt(11155111),
-		HomesteadBlock:          big.NewInt(0),
-		DAOForkBlock:            nil,
-		DAOForkSupport:          true,
-		EIP150Block:             big.NewInt(0),
-		EIP155Block:             big.NewInt(0),
-		EIP158Block:             big.NewInt(0),
-		ByzantiumBlock:          big.NewInt(0),
-		ConstantinopleBlock:     big.NewInt(0),
-		PetersburgBlock:         big.NewInt(0),
-		IstanbulBlock:           big.NewInt(0),
-		MuirGlacierBlock:        big.NewInt(0),
-		BerlinBlock:             big.NewInt(0),
-		LondonBlock:             big.NewInt(0),
-		ArrowGlacierBlock:       nil,
-		GrayGlacierBlock:        nil,
-		TerminalTotalDifficulty: big.NewInt(17_000_000_000_000_000),
-		MergeNetsplitBlock:      big.NewInt(1735371),
-		ShanghaiTime:            newUint64(1677557088),
-		CancunTime:              newUint64(1706655072),
-		Ethash:                  new(gethparams.EthashConfig),
-	}
-	// GoerliChainConfig contains the chain parameters to run a node on the Görli test network.
-	GoerliChainConfig = &gethparams.ChainConfig{
-		ChainID:                 big.NewInt(5),
-		HomesteadBlock:          big.NewInt(0),
-		DAOForkBlock:            nil,
-		DAOForkSupport:          true,
-		EIP150Block:             big.NewInt(0),
-		EIP155Block:             big.NewInt(0),
-		EIP158Block:             big.NewInt(0),
-		ByzantiumBlock:          big.NewInt(0),
-		ConstantinopleBlock:     big.NewInt(0),
-		PetersburgBlock:         big.NewInt(0),
-		IstanbulBlock:           big.NewInt(1_561_651),
-		MuirGlacierBlock:        nil,
-		BerlinBlock:             big.NewInt(4_460_644),
-		LondonBlock:             big.NewInt(5_062_605),
-		ArrowGlacierBlock:       nil,
-		TerminalTotalDifficulty: big.NewInt(10_790_000),
-		ShanghaiTime:            newUint64(1678832736),
-		CancunTime:              newUint64(1705473120),
-		Clique: &gethparams.CliqueConfig{
-			Period: 15,
-			Epoch:  30000,
-		},
-	}
-)
 
 // Result structs for eth_getProof
 type (
@@ -145,20 +43,22 @@ type (
 
 const (
 	NETWORK_ETHEREUM_MAINNET = "ethereum"
-	NETWORK_ETHEREUM_GOERLI  = "goerli"
-	NETWORK_ETHEREUM_SEPOLIA = "sepolia"
-	NETWORK_ETHEREUM_HOLESKY = "holesky"
 	NETWORK_SONIC            = "sonic"
+	NETWORK_COREDAO          = "coredao"
 )
 
-func newUint64(val uint64) *uint64 { return &val }
+const (
+	BLOCKCHAIN_ETHEREUM = "ethereum"
+	BLOCKCHAIN_SONIC    = "sonic"
+	BLOCKCHAIN_COREDAO  = "coredao"
+)
 
 const (
 	maxFromValidationRoutines = 10
 )
 
 type TrustlessValidator interface {
-	ValidateBlock(ctx context.Context, block *ethtypes.Block, hash geth.Hash) error
+	ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error
 	ValidateAccountState(ctx context.Context, result AccountResult, stateRoot geth.Hash, blockNumber *big.Int) error
 	GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error)
 }
@@ -188,17 +88,7 @@ func NewEthereumValidator(cfg *config.Configuration) TrustlessValidator {
 	}
 }
 
-func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.Block, hash geth.Hash) error {
-	// if block.Skipped {
-	// 	// By definition skipped blocks do not need to be validated.
-	// 	return nil
-	// }
-
-	// ethereumBlock := block.GetEthereum()
-	// if ethereumBlock == nil {
-	// 	return xerrors.New("not an ethereum block")
-	// }
-
+func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error {
 	// Verify the block header.
 	err := v.validateBlockHeader(ctx, block.Header(), hash)
 	if err != nil {
@@ -218,11 +108,10 @@ func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.
 	}
 
 	// Verify the receipts in the block.
-	err = v.validateReceipts(ctx, block.Transactions(), block.Header().ReceiptHash)
+	err = v.validateReceipts(ctx, receipts, block.Header().ReceiptHash)
 	if err != nil {
 		return xerrors.Errorf("receipts validation error: %w", err)
 	}
-	fmt.Println("valid!")
 
 	return nil
 }
@@ -376,7 +265,7 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 	transactions := block.Transactions()
 	numTxs := len(transactions)
 
-	fmt.Printf("validateTransactions: numTxs=%d, chainID=%v\n", numTxs, v.config.ChainConfig.ChainID)
+	// fmt.Printf("validateTransactions: numTxs=%d, chainID=%v\n", numTxs, v.config.ChainConfig.ChainID)
 	// case common.Blockchain_BLOCKCHAIN_POLYGON:
 	// 	// For Polygon, it is possible that there is a state-sync transaction at the end of transaction array.
 	// 	// It is an internal transaction used to read data from Ethereum in Polygon. It is an internal transaction, and
@@ -413,11 +302,11 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 				// Get transaction
 				tx := transactions[idx]
 
-				fmt.Printf("Transaction %d: Type=%d\n", idx, tx.Type())
+				// fmt.Printf("Transaction %d: Type=%d\n", idx, tx.Type())
 
 				// Skip validation for unsupported transaction types
 				if tx.Type() == ethtypes.SetCodeTxType {
-					fmt.Printf("Transaction %d: Skipping SetCode transaction\n", idx)
+					// fmt.Printf("Transaction %d: Skipping SetCode transaction\n", idx)
 					return
 				}
 
@@ -452,7 +341,7 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 		}
 	}
 
-	fmt.Println("All transactions validated successfully!")
+	// fmt.Println("All transactions validated successfully!")
 	return nil
 }
 
@@ -495,90 +384,25 @@ func (v *trustlessValidator) GetSigner(block *ethtypes.Block) ethtypes.Signer {
 		return nil
 	}
 
-	bn := block.Header().Number
-	bts := uint64(block.Time())
-
-	fmt.Printf("Block number: %v, Block time: %v\n", bn, bts)
-
 	// Use the chain config from the validator's configuration
 	cfg := v.config.ChainConfig
-	if cfg == nil {
-		fmt.Printf("Chain config is nil, falling back to network-based config\n")
-		// Fallback to determining chain config based on network
-		fmt.Printf("Network: %v\n", v.config.Network.Network)
-		switch v.config.Network.Blockchain {
-		case NETWORK_ETHEREUM_MAINNET:
-			cfg = MainnetChainConfig
-		case NETWORK_ETHEREUM_GOERLI:
-			cfg = GoerliChainConfig
-		case NETWORK_ETHEREUM_SEPOLIA:
-			cfg = SepoliaChainConfig
-		case NETWORK_ETHEREUM_HOLESKY:
-			cfg = HoleskyChainConfig
-		default:
-			fmt.Printf("Unknown network: %v, using generic EVM configuration\n", v.config.Network.Network)
-			// For unknown networks (including Sonic and other EVM chains),
-			// create a generic EVM chain config that supports modern features
-			if v.config.ChainConfig != nil && v.config.ChainConfig.ChainID != nil {
-				fmt.Printf("Using provided chain ID: %v\n", v.config.ChainConfig.ChainID)
-				cfg = &gethparams.ChainConfig{
-					ChainID:             v.config.ChainConfig.ChainID,
-					HomesteadBlock:      big.NewInt(0),
-					DAOForkSupport:      false,
-					EIP150Block:         big.NewInt(0),
-					EIP155Block:         big.NewInt(0),
-					EIP158Block:         big.NewInt(0),
-					ByzantiumBlock:      big.NewInt(0),
-					ConstantinopleBlock: big.NewInt(0),
-					PetersburgBlock:     big.NewInt(0),
-					IstanbulBlock:       big.NewInt(0),
-					BerlinBlock:         big.NewInt(0),
-					LondonBlock:         big.NewInt(0),
-				}
-			} else {
-				fmt.Printf("No chain configuration available\n")
-				return nil
-			}
-		}
-	} else {
-		fmt.Printf("Using provided chain config with chain ID: %v\n", cfg.ChainID)
-	}
 
-	signer := ethtypes.MakeSigner(cfg, bn, bts)
+	signer := ethtypes.LatestSignerForChainID(cfg.ChainID)
 	fmt.Printf("Created signer of type %T with chain ID %v\n", signer, signer.ChainID())
 	return signer
 }
 
 // Verify all the receipts in the block with the receipt trie root hash.
-func (v *trustlessValidator) validateReceipts(ctx context.Context, transactions []*ethtypes.Transaction, receiptsRoot geth.Hash) error {
+func (v *trustlessValidator) validateReceipts(ctx context.Context, receipts ethtypes.Receipts, receiptsRoot geth.Hash) error {
+	numTxs := len(receipts)
+
 	// Similar to validateTransactions(), we need to handle the receipts in state-sync transactions of Polygon.
-	numTxs := len(transactions)
 	// if v.config.Network.Blockchain == common.Blockchain_BLOCKCHAIN_POLYGON && hasStateSyncTx(transactions) {
 	// 	numTxs = numTxs - 1
 	// }
 
-	// Connect to the configured blockchain node
-	if v.config.GethURL == "" {
-		return xerrors.Errorf("GethURL not configured for receipt validation")
-	}
-
-	client, err := ethclient.Dial(v.config.GethURL)
-	if err != nil {
-		return xerrors.Errorf("failed to connect to blockchain node at %s: %w", v.config.GethURL, err)
-	}
-	defer client.Close()
-
-	// make receipts list
-	gethReceipts := make(ethtypes.Receipts, numTxs)
-	for i := 0; i < numTxs; i++ {
-		receipt, err := client.TransactionReceipt(ctx, transactions[i].Hash())
-		if err != nil {
-			fmt.Printf("Failed to fetch receipt for tx %s: %v\n", transactions[i].Hash().Hex(), err)
-			return xerrors.Errorf("failed to fetch receipt for transaction %s: %w", transactions[i].Hash().Hex(), err)
-		}
-		gethReceipts[i] = receipt
-		fmt.Printf("Tx %s used %d gas\n", transactions[i].Hash().Hex(), receipt.GasUsed)
-	}
+	// Use the provided receipts directly instead of fetching via RPC
+	gethReceipts := receipts[:numTxs]
 
 	// This is how geth calculates the receipt trie hash. We just leverage this function of geth to recompute it.
 	if actualHash := ethtypes.DeriveSha(gethReceipts, trie.NewStackTrie(nil)); actualHash != receiptsRoot {
