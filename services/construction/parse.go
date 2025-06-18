@@ -18,10 +18,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
-
-	"errors"
 
 	"github.com/coinbase/rosetta-geth-sdk/client"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -68,14 +67,14 @@ func (s *APIService) ConstructionParse(
 		tx.ChainID = t.ChainId()
 		tx.Currency = wrappedTx.Currency
 
-		msg, err := core.TransactionToMessage(&t, EthTypes.LatestSignerForChainID(t.ChainId()), nil)
+		msg, err := core.TransactionToMessage(&t, EthTypes.LatestSignerForChainID(t.ChainId()), nil, core.MessageReplayMode)
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, err)
 		}
 		tx.From = msg.From.Hex()
 	}
 
-	//TODO: add logic for contract call parsing
+	// TODO: add logic for contract call parsing
 
 	value := tx.Value
 	opMethod := sdkTypes.CallOpType

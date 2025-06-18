@@ -933,7 +933,7 @@ func (ec *SDKClient) GetLoadedTransaction(
 	}
 
 	signer := EthTypes.LatestSignerForChainID(ec.P.ChainID)
-	msg, err := core.TransactionToMessage(tx, signer, header.BaseFee)
+	msg, err := core.TransactionToMessage(tx, signer, header.BaseFee, core.MessageReplayMode)
 	if err != nil {
 		return nil, err
 	}
@@ -1005,7 +1005,8 @@ func (ec *SDKClient) GetBlockReceipts(
 }
 
 func (ec *SDKClient) GetNativeTransferGasLimit(ctx context.Context, toAddress string,
-	fromAddress string, value *big.Int) (uint64, error) {
+	fromAddress string, value *big.Int,
+) (uint64, error) {
 	return 0, errors.New("GetNativeTransferGasLimit not implemented")
 }
 
