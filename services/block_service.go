@@ -431,6 +431,7 @@ func (s *BlockAPIService) Block(
 	// Run validation with full receipts if enabled
 	runValidation := s.config.RosettaCfg.EnableEthereumTrustlessValidation
 	if runValidation && len(loadedTxns) > 0 {
+		log.Printf("Running validation for block %s", block.Hash().String())
 		// Fetch full ethtypes.Receipt objects for proper Merkle tree validation
 		// We need the complete receipt data including Bloom filters
 		ethReceipts := make(EthTypes.Receipts, len(loadedTxns))

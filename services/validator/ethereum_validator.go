@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 
@@ -83,24 +84,28 @@ func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.
 	if err != nil {
 		return xerrors.Errorf("block header validation error: %w", err)
 	}
+	log.Printf("Block header validated for block %s", block.Hash().String())
 
 	// Verify the Withdrawals in the block.
 	err = v.validateWithdrawals(ctx, block.Withdrawals(), block.Header().WithdrawalsHash, block.Time())
 	if err != nil {
 		return xerrors.Errorf("withdrawals validation error: %w", err)
 	}
+	log.Printf("Block withdrawals validated for block %s", block.Hash().String())
 
 	// Verify the transactions in the block.
 	err = v.validateTransactions(ctx, block, block.Header().TxHash)
 	if err != nil {
 		return xerrors.Errorf("transactions validation error: %w", err)
 	}
+	log.Printf("Block transactions validated for block %s", block.Hash().String())
 
 	// Verify the receipts in the block.
 	err = v.validateReceipts(ctx, receipts, block.Header().ReceiptHash)
 	if err != nil {
 		return xerrors.Errorf("receipts validation error: %w", err)
 	}
+	log.Printf("Block receipts validated for block %s", block.Hash().String())
 
 	return nil
 }
@@ -131,6 +136,7 @@ func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.A
 	if result.Address != account {
 		return AccountResult{}, xerrors.Errorf("the input proofResult has different account address, address in proof: %s, expected: %s", result.Address.Hex(), account)
 	}
+	log.Printf("Account proof retrieved for account %s", account.String())
 
 	return result, nil
 }
@@ -208,6 +214,8 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 	if !bytes.Equal(result.CodeHash.Bytes(), verifiedAccountState.CodeHash) {
 		return xerrors.Errorf("account code hash is not matched, (code hash in proof=%v, code hash in verified result=%v): %w", result.CodeHash.Bytes(), verifiedAccountState.CodeHash, ErrAccountCodeHashNotMatched)
 	}
+
+	log.Printf("Account state validated for account %s", result.Address.String())
 
 	return nil
 }

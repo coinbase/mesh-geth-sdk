@@ -17,6 +17,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"strings"
 
@@ -83,6 +84,7 @@ func (s *AccountAPIService) AccountBalance(
 	}
 	runValidation := s.config.RosettaCfg.EnableEthereumTrustlessValidation
 	if runValidation {
+		log.Printf("Running account validation for block %s and account %s", balanceResponse.BlockIdentifier.Hash, request.AccountIdentifier.Address)
 		v := validator.NewEthereumValidator(s.config)
 		addr := common.HexToAddress(request.AccountIdentifier.Address)
 
