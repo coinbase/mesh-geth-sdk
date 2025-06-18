@@ -41,6 +41,7 @@ import (
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/utils"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
@@ -292,8 +293,6 @@ func (s *BlockAPIService) GetBlock(
 		return nil, nil, nil, goEthereum.NotFound
 	}
 
-	// fmt.Printf("raw: %s\n", raw)
-
 	// Decode header and transactions
 	var head EthTypes.Header
 	var body client.RPCBlock
@@ -378,15 +377,6 @@ func (s *BlockAPIService) GetBlock(
 		Uncles:       uncles,
 	})
 
-	// runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	// if err == nil && runValidation {
-	// 	v := validator.NewEthereumValidator(s.config)
-	// 	err = v.ValidateBlock(ctx, block, body.Hash)
-	// 	if err != nil {
-	// 		return nil, nil, nil, err
-	// 	}
-	// }
-
 	return block, loadedTxs, &body, nil
 }
 
@@ -440,25 +430,37 @@ func (s *BlockAPIService) Block(
 		}
 	}
 
-	// Run validation with receipts if enabled
+	// Run validation with full receipts if enabled
 	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	if err == nil && runValidation && receipts != nil {
-		// Convert RosettaTxReceipts to ethtypes.Receipts for validation
-		ethReceipts := make(EthTypes.Receipts, len(receipts))
-		var cumulativeGasUsed uint64
-		for i, rosettaReceipt := range receipts {
-			cumulativeGasUsed += rosettaReceipt.GasUsed.Uint64()
-			ethReceipts[i] = &EthTypes.Receipt{
-				Type:              rosettaReceipt.Type,
-				Status:            rosettaReceipt.Status,
-				CumulativeGasUsed: cumulativeGasUsed,
-				GasUsed:           rosettaReceipt.GasUsed.Uint64(),
-				Logs:              rosettaReceipt.Logs,
-				TxHash:            *loadedTxns[i].TxHash,
-				ContractAddress:   common.Address{}, // Set if available in your data
-				BlockHash:         rpcBlock.Hash,
-				BlockNumber:       block.Number(),
-				TransactionIndex:  uint(i),
+	if err == nil && runValidation && len(loadedTxns) > 0 {
+		// Fetch full ethtypes.Receipt objects for proper Merkle tree validation
+		// We need the complete receipt data including Bloom filters
+		ethReceipts := make(EthTypes.Receipts, len(loadedTxns))
+		reqs := make([]rpc.BatchElem, len(loadedTxns))
+
+		for i, tx := range loadedTxns {
+			reqs[i] = rpc.BatchElem{
+				Method: "eth_getTransactionReceipt",
+				Args:   []interface{}{tx.TxHash.String()},
+				Result: &ethReceipts[i],
+			}
+		}
+
+		// Execute batch RPC call to get complete receipts
+		if err := s.client.CallContext(ctx, &ethReceipts, "eth_getBlockReceipts", rpcBlock.Hash); err != nil {
+			// Fallback to individual receipt fetching if eth_getBlockReceipts is not available
+			if err := s.client.BatchCallContext(ctx, reqs); err != nil {
+				return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("failed to fetch receipts for validation: %w", err))
+			}
+
+			// Check for any errors in the batch
+			for i := range reqs {
+				if reqs[i].Error != nil {
+					return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("failed to fetch receipt %d: %w", i, reqs[i].Error))
+				}
+				if ethReceipts[i] == nil {
+					return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("got nil receipt for transaction %d", i))
+				}
 			}
 		}
 

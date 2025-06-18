@@ -42,19 +42,8 @@ type (
 )
 
 const (
-	NETWORK_ETHEREUM_MAINNET = "ethereum"
-	NETWORK_SONIC            = "sonic"
-	NETWORK_COREDAO          = "coredao"
-)
-
-const (
-	BLOCKCHAIN_ETHEREUM = "ethereum"
-	BLOCKCHAIN_SONIC    = "sonic"
-	BLOCKCHAIN_COREDAO  = "coredao"
-)
-
-const (
 	maxFromValidationRoutines = 10
+	StorageHash               = "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
 )
 
 type TrustlessValidator interface {
@@ -242,12 +231,13 @@ func (v *trustlessValidator) validateBlockHeader(ctx context.Context, header *et
 func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawals ethtypes.Withdrawals, withdrawalsRoot *geth.Hash, blockTimestamp uint64) error {
 	if withdrawalsRoot != nil {
 		// https://github.com/ethereum-optimism/op-geth/blame/36501a7023fd85f3492a1af6f1474a0113bb83fe//core/block_validator.go#L76-L79
-		// if isOptimismIsthmus(v.config.Network(), blockTimestamp) {
-		// 	if len(withdrawals) > 0 {
-		// 		return xerrors.Errorf("no withdrawal block-operations allowed, withdrawalsRoot is set to storage root")
-		// 	}
-		// 	return nil
-		// }
+		// Optimism based chains use the storage root as the withdrawals root and do not have withdrawals.
+		if isOptimismWithdrawal(withdrawals, withdrawalsRoot) {
+			// For Optimism, we trust the withdrawalsRoot from the block header
+			// as they use a different withdrawal format that doesn't follow standard Ethereum
+			fmt.Printf("Detected Optimism-style withdrawal, skipping standard validation\n")
+			return nil
+		}
 
 		// This is how geth calculates the withdrawals trie hash. We just leverage this function of geth to recompute it.
 		if actualHash := ethtypes.DeriveSha(withdrawals, trie.NewStackTrie(nil)); actualHash != *withdrawalsRoot {
@@ -260,12 +250,23 @@ func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawal
 	return nil
 }
 
+// isOptimismWithdrawal checks if the withdrawals follow Optimism's non-standard format
+// Optimism uses 0xffffffffffffffff (max uint64) for both index and validatorIndex
+// Berachain is an example of an Optimism based chain.
+func isOptimismWithdrawal(withdrawals ethtypes.Withdrawals, withdrawalsRoot *geth.Hash) bool {
+	const OptimismWithdrawalsRoot = "0xdaaca84d096cebe9194d542b918abce37bc8e2d9cc85d5be4d6a9c947552a6ef"
+	if len(withdrawals) == 0 && (withdrawalsRoot.String() == OptimismWithdrawalsRoot) {
+		return true
+	}
+
+	return false
+}
+
 // Verify all the transactions in the block with the transaction trie root hash.
 func (v *trustlessValidator) validateTransactions(ctx context.Context, block *ethtypes.Block, transactionsRoot geth.Hash) error {
 	transactions := block.Transactions()
 	numTxs := len(transactions)
 
-	// fmt.Printf("validateTransactions: numTxs=%d, chainID=%v\n", numTxs, v.config.ChainConfig.ChainID)
 	// case common.Blockchain_BLOCKCHAIN_POLYGON:
 	// 	// For Polygon, it is possible that there is a state-sync transaction at the end of transaction array.
 	// 	// It is an internal transaction used to read data from Ethereum in Polygon. It is an internal transaction, and
@@ -282,7 +283,6 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 	}
 
 	signer := v.GetSigner(block)
-	fmt.Printf("signer type: %T, chainID: %v\n", signer, signer.ChainID())
 	if signer != nil {
 		// Create channels for error handling and throttling
 		errCh := make(chan error, numTxs)
@@ -302,11 +302,8 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 				// Get transaction
 				tx := transactions[idx]
 
-				// fmt.Printf("Transaction %d: Type=%d\n", idx, tx.Type())
-
 				// Skip validation for unsupported transaction types
 				if tx.Type() == ethtypes.SetCodeTxType {
-					// fmt.Printf("Transaction %d: Skipping SetCode transaction\n", idx)
 					return
 				}
 
@@ -332,7 +329,6 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 		var errs []error
 		for err := range errCh {
 			errs = append(errs, err)
-			fmt.Printf("Validation error: %v\n", err)
 		}
 
 		// Return combined errors if any
@@ -380,7 +376,6 @@ func (v *trustlessValidator) isValidFromField(actualFrom geth.Address, gethTrans
 
 func (v *trustlessValidator) GetSigner(block *ethtypes.Block) ethtypes.Signer {
 	if v.config == nil {
-		fmt.Printf("Config is nil!\n")
 		return nil
 	}
 
@@ -388,7 +383,6 @@ func (v *trustlessValidator) GetSigner(block *ethtypes.Block) ethtypes.Signer {
 	cfg := v.config.ChainConfig
 
 	signer := ethtypes.LatestSignerForChainID(cfg.ChainID)
-	fmt.Printf("Created signer of type %T with chain ID %v\n", signer, signer.ChainID())
 	return signer
 }
 

@@ -20,6 +20,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
@@ -59,9 +60,9 @@ func (s *AccountAPIService) AccountBalance(
 	ctx context.Context,
 	request *types.AccountBalanceRequest,
 ) (*types.AccountBalanceResponse, *types.Error) {
-	// if s.config.Mode != AssetTypes.Online {
-	// 	return nil, AssetTypes.ErrUnavailableOffline
-	// }
+	if s.config.Mode != AssetTypes.Online {
+		return nil, AssetTypes.ErrUnavailableOffline
+	}
 
 	if request.AccountIdentifier == nil {
 		return nil, AssetTypes.ErrInvalidInput
@@ -86,14 +87,20 @@ func (s *AccountAPIService) AccountBalance(
 	if err == nil && runValidation {
 		v := validator.NewEthereumValidator(s.config)
 		addr := common.HexToAddress(request.AccountIdentifier.Address)
+
 		result, err := v.GetAccountProof(ctx, addr, big.NewInt(balanceResponse.BlockIdentifier.Index))
 		if err != nil {
-			return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, xerrors.Errorf("%w", err))
-		}
-		fmt.Printf("result: %+v\n", result)
-		err = v.ValidateAccountState(ctx, result, common.HexToHash(balanceResponse.BlockIdentifier.Hash), big.NewInt(balanceResponse.BlockIdentifier.Index))
-		if err != nil {
-			return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
+			// Check if this is a proof window error - if so, skip validation gracefully
+			if isProofWindowError(err) {
+				fmt.Printf("Skipping account validation: block %d is outside proof window\n", balanceResponse.BlockIdentifier.Index)
+			} else {
+				return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, xerrors.Errorf("%w", err))
+			}
+		} else {
+			err = v.ValidateAccountState(ctx, result, common.HexToHash(balanceResponse.BlockIdentifier.Hash), big.NewInt(balanceResponse.BlockIdentifier.Index))
+			if err != nil {
+				return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
+			}
 		}
 	}
 
@@ -106,4 +113,18 @@ func (s *AccountAPIService) AccountCoins(
 	request *types.AccountCoinsRequest,
 ) (*types.AccountCoinsResponse, *types.Error) {
 	return nil, AssetTypes.WrapErr(AssetTypes.ErrUnimplemented, nil)
+}
+
+// isProofWindowError checks if the error is related to proof window limitations
+func isProofWindowError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for common proof window error messages
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "distance to target block exceeds maximum proof window") ||
+		strings.Contains(errMsg, "proof window") ||
+		strings.Contains(errMsg, "too far from head") ||
+		strings.Contains(errMsg, "block too old")
 }

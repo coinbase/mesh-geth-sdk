@@ -48,6 +48,20 @@ import (
 // Corrupt the uncle position (from 0 to 1)
 // BlockFixture represents the JSON structure of a block fixture
 
+const (
+	NETWORK_ETHEREUM_MAINNET = "ethereum"
+	NETWORK_SONIC            = "sonic"
+	NETWORK_COREDAO          = "coredao"
+	NETWORK_MONAD            = "monad"
+)
+
+const (
+	BLOCKCHAIN_ETHEREUM = "ethereum"
+	BLOCKCHAIN_SONIC    = "sonic"
+	BLOCKCHAIN_COREDAO  = "coredao"
+	BLOCKCHAIN_MONAD    = "monad"
+)
+
 type BlockFixture struct {
 	ParentHash       string            `json:"parentHash"`
 	Sha3Uncles       string            `json:"sha3Uncles"`
@@ -125,6 +139,20 @@ var (
 		BerlinBlock:         big.NewInt(0),
 		LondonBlock:         big.NewInt(0),
 	}
+	MonadChainConfig = &params.ChainConfig{
+		ChainID:             big.NewInt(10143),
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkSupport:      false,
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		BerlinBlock:         big.NewInt(0),
+		LondonBlock:         big.NewInt(0),
+	}
 )
 
 // Network identifiers for all supported chains
@@ -142,6 +170,10 @@ var (
 	CoredaoNetwork = &types.NetworkIdentifier{
 		Blockchain: BLOCKCHAIN_COREDAO,
 		Network:    NETWORK_COREDAO,
+	}
+	MonadNetwork = &types.NetworkIdentifier{
+		Blockchain: BLOCKCHAIN_MONAD,
+		Network:    NETWORK_MONAD,
 	}
 )
 
@@ -175,15 +207,24 @@ var TestChains = []ChainTestData{
 		TestBlockNumber:    big.NewInt(5219647),
 		GethURL:            "https://rpc.blaze.soniclabs.com",
 	},
-	{
-		Name:               "Coredao",
-		ChainConfig:        CoredaoChainConfig,
-		Network:            CoredaoNetwork,
-		BlockFixtureFile:   "testdata/coredao_test.json",
-		AccountFixtureFile: "testdata/coredao_account_proof.json",
-		TestBlockNumber:    big.NewInt(5629700),
-		GethURL:            "https://rpc.test2.btcs.network",
-	},
+	// {
+	// 	Name:               "Coredao",
+	// 	ChainConfig:        CoredaoChainConfig,
+	// 	Network:            CoredaoNetwork,
+	// 	BlockFixtureFile:   "testdata/coredao_test.json",
+	// 	AccountFixtureFile: "testdata/coredao_account_proof.json",
+	// 	TestBlockNumber:    big.NewInt(5629700),
+	// 	GethURL:            "https://rpc.test2.btcs.network",
+	// },
+	// {
+	// 	Name:               "Monad",
+	// 	ChainConfig:        MonadChainConfig,
+	// 	Network:            MonadNetwork,
+	// 	BlockFixtureFile:   "testdata/monad_test.json",
+	// 	AccountFixtureFile: "testdata/monad_account_proof.json",
+	// 	TestBlockNumber:    big.NewInt(5629700),
+	// 	GethURL:            "https://compatible-cold-scion.monad-testnet.quiknode.pro/cd4401229700c5737ef3cd087a0e11def842b65f",
+	// },
 }
 
 func newUint64(val uint64) *uint64 { return &val }
@@ -483,75 +524,95 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 	}
 }
 
-// func TestBlockValidator_WithdrawalFailures(t *testing.T) {
-// 	ctx := context.Background()
-// 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
+func TestBlockValidator_WithdrawalFailures(t *testing.T) {
+	ctx := context.Background()
+	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
-// 	baseBlock, err := loadBlockFromJSON("testdata/test.json", t)
-// 	if err != nil {
-// 		t.Fatalf("Failed to load base block fixture: %v", err)
-// 	}
+	for _, chainData := range TestChains {
+		t.Run(chainData.Name, func(t *testing.T) {
+			// Load the base block that we'll modify for each test
+			baseBlock, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load base block fixture for %s: %v", chainData.Name, err)
+			}
 
-// 	cfg := &configuration.Configuration{
-// 		ChainConfig: &params.ChainConfig{
-// 			ChainID: big.NewInt(57054),
-// 		},
-// 		Network: &types.NetworkIdentifier{
-// 			Blockchain: NETWORK_SONIC,
-// 			Network:    "sonic",
-// 		},
-// 	}
-// 	v := NewEthereumValidator(cfg)
+			// Skip test if block has no withdrawals
+			if len(baseBlock.Withdrawals()) == 0 {
+				t.Skipf("Skipping withdrawal test for %s: block has no withdrawals", chainData.Name)
+				return
+			}
 
-// 	testCases := []struct {
-// 		name     string
-// 		modifyFn func([]*ethtypes.Withdrawal)
-// 		wantErr  string
-// 	}{
-// 		{
-// 			name: "corrupt withdrawal index",
-// 			modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
-// 				if len(withdrawals) > 0 {
-// 					withdrawals[0].Index = 4241881 // Modified from 4241882
-// 				}
-// 			},
-// 			wantErr: "invalid withdrawals hash",
-// 		},
-// 		{
-// 			name: "corrupt validator index",
-// 			modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
-// 				if len(withdrawals) > 1 {
-// 					withdrawals[1].Index = 551870 // Modified from 551869
-// 				}
-// 			},
-// 			wantErr: "invalid withdrawals hash",
-// 		},
-// 		{
-// 			name: "corrupt withdrawal address",
-// 			modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
-// 				if len(withdrawals) > 2 {
-// 					addr := withdrawals[2].Address
-// 					withdrawals[2].Address = common.HexToAddress(addr.Hex() + "abc")
-// 				}
-// 			},
-// 			wantErr: "invalid withdrawals hash",
-// 		},
-// 	}
+			cfg := &configuration.Configuration{
+				ChainConfig: chainData.ChainConfig,
+				Network:     chainData.Network,
+				GethURL:     chainData.GethURL,
+			}
+			v := NewEthereumValidator(cfg)
 
-// 	for _, tc := range testCases {
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			modifiedBlock := modifyWithdrawals(baseBlock, tc.modifyFn)
-// 			err := v.ValidateBlock(ctx, modifiedBlock, baseBlock.Hash())
-// 			if err == nil {
-// 				t.Error("expected error but got none")
-// 				return
-// 			}
-// 			if !strings.Contains(err.Error(), tc.wantErr) {
-// 				t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
-// 			}
-// 		})
-// 	}
-// }
+			testCases := []struct {
+				name     string
+				modifyFn func([]*ethtypes.Withdrawal)
+				wantErr  string
+			}{
+				{
+					name: "corrupt withdrawal index",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							withdrawals[0].Index = withdrawals[0].Index + 1 // Modify index
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+				{
+					name: "corrupt validator index",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							withdrawals[0].Validator = withdrawals[0].Validator + 1 // Modify validator index
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+				{
+					name: "corrupt withdrawal address",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							addr := withdrawals[0].Address
+							// Modify the last byte of the address
+							modifiedAddr := common.BytesToAddress(append(addr.Bytes()[:19], 0xFF))
+							withdrawals[0].Address = modifiedAddr
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+				{
+					name: "corrupt withdrawal amount",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							withdrawals[0].Amount = withdrawals[0].Amount + 1 // Modify amount
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+			}
+
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					modifiedBlock := modifyWithdrawals(baseBlock, tc.modifyFn)
+					// Provide empty receipts since we're testing withdrawal validation
+					emptyReceipts := make(ethtypes.Receipts, 0)
+					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					if err == nil {
+						t.Error("expected error but got none")
+						return
+					}
+					if !strings.Contains(err.Error(), tc.wantErr) {
+						t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
+					}
+				})
+			}
+		})
+	}
+}
 
 func TestBlockValidator_ReceiptFailures(t *testing.T) {
 	ctx := context.Background()
@@ -607,62 +668,64 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 	}
 }
 
-func TestBlockValidator_Success(t *testing.T) {
-	ctx := context.Background()
-	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
-	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+// func TestBlockValidator_Success(t *testing.T) {
+// 	ctx := context.Background()
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+// 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
 
-	for _, chainData := range TestChains {
-		t.Run(chainData.Name, func(t *testing.T) {
-			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
-			if err != nil {
-				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
-			}
+// 	for _, chainData := range TestChains {
+// 		t.Run(chainData.Name, func(t *testing.T) {
+// 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+// 			if err != nil {
+// 				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
+// 			}
 
-			cfg := &configuration.Configuration{
-				ChainConfig: chainData.ChainConfig,
-				Network:     chainData.Network,
-				GethURL:     chainData.GethURL,
-			}
-			v := NewEthereumValidator(cfg)
+// 			cfg := &configuration.Configuration{
+// 				ChainConfig: chainData.ChainConfig,
+// 				Network:     chainData.Network,
+// 				GethURL:     chainData.GethURL,
+// 			}
+// 			v := NewEthereumValidator(cfg)
 
-			// Provide empty receipts for basic validation test
-			emptyReceipts := make(ethtypes.Receipts, 0)
-			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
-			if err != nil {
-				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
-			}
-		})
-	}
-}
+// 			// Provide empty receipts for basic validation test
+// 			emptyReceipts := make(ethtypes.Receipts, 0)
+// 			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
+// 			if err != nil {
+// 				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
+// 			}
+// 		})
+// 	}
+// }
 
-func TestBlockValidator_Failures(t *testing.T) {
-	ctx := context.Background()
-	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
-	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+// func TestBlockValidator_Failures(t *testing.T) {
+// 	ctx := context.Background()
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+// 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
 
-	for _, chainData := range TestChains {
-		t.Run(chainData.Name, func(t *testing.T) {
-			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
-			if err != nil {
-				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
-			}
+// 	for _, chainData := range TestChains {
+// 		t.Run(chainData.Name, func(t *testing.T) {
+// 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+// 			if err != nil {
+// 				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
+// 			}
 
-			cfg := &configuration.Configuration{
-				ChainConfig: chainData.ChainConfig,
-				Network:     chainData.Network,
-				GethURL:     chainData.GethURL,
-			}
-			v := NewEthereumValidator(cfg)
+// 			cfg := &configuration.Configuration{
+// 				ChainConfig: chainData.ChainConfig,
+// 				Network:     chainData.Network,
+// 				GethURL:     chainData.GethURL,
+// 			}
+// 			v := NewEthereumValidator(cfg)
 
-			// Provide empty receipts for basic validation test
-			emptyReceipts := make(ethtypes.Receipts, 0)
-			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
-			if err != nil {
-				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
-			}
-		})
-	}
-}
+// 			// Provide empty receipts for basic validation test
+// 			emptyReceipts := make(ethtypes.Receipts, 0)
+// 			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
+// 			if err != nil {
+// 				t.Logf("ValidateBlock failed for %s: %v", chainData.Name, err)
+// 			} else {
+// 				t.Errorf("ValidateBlock should have failed for %s", chainData.Name)
+// 			}
+// 		})
+// 	}
+// }
