@@ -246,6 +246,15 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 		}
 	}
 
+	enableEvmBlockValidation := false
+	if val := os.Getenv("ENABLE_EVM_BLOCK_VALIDATION"); val != "" {
+		if v, err := strconv.ParseBool(val); err == nil {
+			enableEvmBlockValidation = v
+		}
+	}
+
+	enableEvmBlockValidation = true // TODO: remove this
+
 	payload := []configuration.Token{}
 	config.RosettaCfg = configuration.RosettaConfig{
 		SupportRewardTx: true,
@@ -254,10 +263,11 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Symbol:   "ETH",
 			Decimals: 18,
 		},
-		TracePrefix:               "",
-		FilterTokens:              tokenFilterValue,
-		UseTokenWhiteListMetadata: useTokenWhiteListMetadataValue,
-		TokenWhiteList:            payload,
+		TracePrefix:                       "",
+		FilterTokens:                      tokenFilterValue,
+		UseTokenWhiteListMetadata:         useTokenWhiteListMetadataValue,
+		TokenWhiteList:                    payload,
+		EnableEthereumTrustlessValidation: enableEvmBlockValidation,
 	}
 
 	return config, nil

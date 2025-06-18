@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
@@ -83,8 +81,8 @@ func (s *AccountAPIService) AccountBalance(
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("could not get block hash given block identifier %v: %w", request.BlockIdentifier, err))
 	}
-	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	if err == nil && runValidation {
+	runValidation := s.config.RosettaCfg.EnableEthereumTrustlessValidation
+	if runValidation {
 		v := validator.NewEthereumValidator(s.config)
 		addr := common.HexToAddress(request.AccountIdentifier.Address)
 

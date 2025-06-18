@@ -22,8 +22,6 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"os"
-	"strconv"
 
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -431,8 +429,8 @@ func (s *BlockAPIService) Block(
 	}
 
 	// Run validation with full receipts if enabled
-	runValidation, err := strconv.ParseBool(os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-	if err == nil && runValidation && len(loadedTxns) > 0 {
+	runValidation := s.config.RosettaCfg.EnableEthereumTrustlessValidation
+	if runValidation && len(loadedTxns) > 0 {
 		// Fetch full ethtypes.Receipt objects for proper Merkle tree validation
 		// We need the complete receipt data including Bloom filters
 		ethReceipts := make(EthTypes.Receipts, len(loadedTxns))
