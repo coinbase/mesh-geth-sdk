@@ -132,8 +132,11 @@ type RosettaConfig struct {
 	// ForwardHeaders is the list of headers to forward to and from the native node
 	ForwardHeaders []string
 
-	// EnableEthereumTrustlessValidation determines whether we will try to enable block and account validation
-	EnableEthereumTrustlessValidation bool
+	// EnableTrustlessBlockValidation determines whether we will try to enable block validation
+	EnableTrustlessBlockValidation bool
+
+	// EnableTrustlessAccountValidation determines whether we will try to enable account validation
+	EnableTrustlessAccountValidation bool
 
 	// Functor to access allowlisted tokens.
 	// This should be defined in rosetta-xxx implementation if needed
@@ -198,7 +201,12 @@ func (c Configuration) IsTokenListEmpty() bool {
 	return len(c.RosettaCfg.TokenWhiteList) == 0
 }
 
-// IsTrustlessValidationEnabled returns true if trustless validation is enabled
-func (c Configuration) IsTrustlessValidationEnabled() bool {
-	return c.RosettaCfg.EnableEthereumTrustlessValidation
+// IsTrustlessBlockValidationEnabled returns true if trustless block validation is enabled
+func (c Configuration) IsTrustlessBlockValidationEnabled() bool {
+	return c.RosettaCfg.EnableTrustlessBlockValidation
+}
+
+// IsTrustlessAccountValidationEnabled returns true if trustless account validation is enabled
+func (c Configuration) IsTrustlessAccountValidationEnabled() bool {
+	return c.RosettaCfg.EnableTrustlessAccountValidation
 }

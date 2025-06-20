@@ -59,9 +59,9 @@ func (s *AccountAPIService) AccountBalance(
 	ctx context.Context,
 	request *types.AccountBalanceRequest,
 ) (*types.AccountBalanceResponse, *types.Error) {
-	if s.config.Mode != AssetTypes.Online {
-		return nil, AssetTypes.ErrUnavailableOffline
-	}
+	// if s.config.Mode != AssetTypes.Online {
+	// 	return nil, AssetTypes.ErrUnavailableOffline
+	// }
 
 	if request.AccountIdentifier == nil {
 		return nil, AssetTypes.ErrInvalidInput
@@ -82,7 +82,7 @@ func (s *AccountAPIService) AccountBalance(
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("could not get block hash given block identifier %v: %w", request.BlockIdentifier, err))
 	}
-	runValidation := s.config.RosettaCfg.EnableEthereumTrustlessValidation
+	runValidation := s.config.IsTrustlessAccountValidationEnabled()
 	if runValidation {
 		log.Printf("Running account validation for block %s and account %s", balanceResponse.BlockIdentifier.Hash, request.AccountIdentifier.Address)
 		v := validator.NewEthereumValidator(s.config)

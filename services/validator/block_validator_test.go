@@ -344,7 +344,7 @@ func TestBlockValidator_HeaderFailures(t *testing.T) {
 				Network:     chainData.Network,
 				GethURL:     chainData.GethURL,
 				RosettaCfg: configuration.RosettaConfig{
-					EnableEthereumTrustlessValidation: true,
+					EnableTrustlessBlockValidation: true,
 				},
 			}
 			v := NewEthereumValidator(cfg)
@@ -414,7 +414,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 				Network:     chainData.Network,
 				GethURL:     chainData.GethURL,
 				RosettaCfg: configuration.RosettaConfig{
-					EnableEthereumTrustlessValidation: true,
+					EnableTrustlessBlockValidation: true,
 				},
 			}
 			v := NewEthereumValidator(cfg)
@@ -552,7 +552,7 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 				Network:     chainData.Network,
 				GethURL:     chainData.GethURL,
 				RosettaCfg: configuration.RosettaConfig{
-					EnableEthereumTrustlessValidation: true,
+					EnableTrustlessBlockValidation: true,
 				},
 			}
 			v := NewEthereumValidator(cfg)
@@ -638,7 +638,7 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 				Network:     chainData.Network,
 				GethURL:     chainData.GethURL,
 				RosettaCfg: configuration.RosettaConfig{
-					EnableEthereumTrustlessValidation: true,
+					EnableTrustlessBlockValidation: true,
 				},
 			}
 			v := NewEthereumValidator(cfg)

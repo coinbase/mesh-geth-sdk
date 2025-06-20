@@ -25,7 +25,7 @@ func TestValidateAccountState_Success(t *testing.T) {
 				Network:     chainData.Network,
 				GethURL:     chainData.GethURL,
 				RosettaCfg: configuration.RosettaConfig{
-					EnableEthereumTrustlessValidation: true,
+					EnableTrustlessAccountValidation: true,
 				},
 			}
 			v := NewEthereumValidator(cfg)
@@ -319,7 +319,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 				Network:     chainData.Network,
 				GethURL:     chainData.GethURL,
 				RosettaCfg: configuration.RosettaConfig{
-					EnableEthereumTrustlessValidation: true,
+					EnableTrustlessAccountValidation: true,
 				},
 			}
 			v := NewEthereumValidator(cfg)
