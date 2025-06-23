@@ -84,28 +84,26 @@ func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.
 	if err != nil {
 		return xerrors.Errorf("block header validation error: %w", err)
 	}
-	log.Printf("Block header validated for block %s", block.Hash().String())
 
 	// Verify the Withdrawals in the block.
 	err = v.validateWithdrawals(ctx, block.Withdrawals(), block.Header().WithdrawalsHash, block.Time())
 	if err != nil {
 		return xerrors.Errorf("withdrawals validation error: %w", err)
 	}
-	log.Printf("Block withdrawals validated for block %s", block.Hash().String())
 
 	// Verify the transactions in the block.
 	err = v.validateTransactions(ctx, block, block.Header().TxHash)
 	if err != nil {
 		return xerrors.Errorf("transactions validation error: %w", err)
 	}
-	log.Printf("Block transactions validated for block %s", block.Hash().String())
 
 	// Verify the receipts in the block.
 	err = v.validateReceipts(ctx, receipts, block.Header().ReceiptHash)
 	if err != nil {
 		return xerrors.Errorf("receipts validation error: %w", err)
 	}
-	log.Printf("Block receipts validated for block %s", block.Hash().String())
+
+	log.Printf("Block %s successfully validated", block.Hash().String())
 
 	return nil
 }
@@ -195,7 +193,7 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 		return xerrors.Errorf("VerifyProof fails, the account %s is not included in the state trie: %w", result.Address, ErrAccountVerifyProofFailure)
 	}
 
-	// If successful, decode the stored account state, and return it.
+	// If successful, decode the stored account state.
 	var verifiedAccountState ethtypes.StateAccount
 	if err := rlp.DecodeBytes(validAccountState, &verifiedAccountState); err != nil {
 		return xerrors.Errorf("failed to rlp decode the verified account state: %w", err)

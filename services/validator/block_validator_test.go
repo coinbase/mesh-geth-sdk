@@ -51,14 +51,12 @@ import (
 const (
 	NETWORK_ETHEREUM_MAINNET = "ethereum"
 	NETWORK_SONIC            = "sonic"
-	NETWORK_COREDAO          = "coredao"
 	NETWORK_MONAD            = "monad"
 )
 
 const (
 	BLOCKCHAIN_ETHEREUM = "ethereum"
 	BLOCKCHAIN_SONIC    = "sonic"
-	BLOCKCHAIN_COREDAO  = "coredao"
 	BLOCKCHAIN_MONAD    = "monad"
 )
 
@@ -124,21 +122,6 @@ var (
 		LondonBlock:         big.NewInt(0),
 	}
 
-	// CoredaoChainConfig is the chain parameters for Core DAO network
-	CoredaoChainConfig = &params.ChainConfig{
-		ChainID:             big.NewInt(1114),
-		HomesteadBlock:      big.NewInt(0),
-		DAOForkSupport:      false,
-		EIP150Block:         big.NewInt(0),
-		EIP155Block:         big.NewInt(0),
-		EIP158Block:         big.NewInt(0),
-		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: big.NewInt(0),
-		PetersburgBlock:     big.NewInt(0),
-		IstanbulBlock:       big.NewInt(0),
-		BerlinBlock:         big.NewInt(0),
-		LondonBlock:         big.NewInt(0),
-	}
 	MonadChainConfig = &params.ChainConfig{
 		ChainID:             big.NewInt(10143),
 		HomesteadBlock:      big.NewInt(0),
@@ -167,10 +150,6 @@ var (
 		Network:    NETWORK_SONIC,
 	}
 
-	CoredaoNetwork = &types.NetworkIdentifier{
-		Blockchain: BLOCKCHAIN_COREDAO,
-		Network:    NETWORK_COREDAO,
-	}
 	MonadNetwork = &types.NetworkIdentifier{
 		Blockchain: BLOCKCHAIN_MONAD,
 		Network:    NETWORK_MONAD,
@@ -207,15 +186,6 @@ var TestChains = []ChainTestData{
 		TestBlockNumber:    big.NewInt(5219647),
 		GethURL:            "https://rpc.blaze.soniclabs.com",
 	},
-	// {
-	// 	Name:               "Coredao",
-	// 	ChainConfig:        CoredaoChainConfig,
-	// 	Network:            CoredaoNetwork,
-	// 	BlockFixtureFile:   "testdata/coredao_test.json",
-	// 	AccountFixtureFile: "testdata/coredao_account_proof.json",
-	// 	TestBlockNumber:    big.NewInt(5629700),
-	// 	GethURL:            "https://rpc.test2.btcs.network",
-	// },
 	// {
 	// 	Name:               "Monad",
 	// 	ChainConfig:        MonadChainConfig,
@@ -399,7 +369,6 @@ func TestBlockValidator_HeaderFailures(t *testing.T) {
 
 func TestBlockValidator_TransactionFailures(t *testing.T) {
 	ctx := context.Background()
-	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
@@ -531,7 +500,6 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 
 func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 	ctx := context.Background()
-	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
@@ -624,7 +592,6 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 
 func TestBlockValidator_ReceiptFailures(t *testing.T) {
 	ctx := context.Background()
-	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
@@ -682,7 +649,6 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 // func TestBlockValidator_Success(t *testing.T) {
 // 	ctx := context.Background()
 // 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-// 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
 // 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
 
 // 	for _, chainData := range TestChains {

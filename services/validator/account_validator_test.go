@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math/big"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -68,9 +69,11 @@ func TestValidateAccountState_Success(t *testing.T) {
 				t.Run("DifferentBlockNumbers", func(t *testing.T) {
 					blockNumbers := []*big.Int{
 						chainData.TestBlockNumber,
-						new(big.Int).Add(chainData.TestBlockNumber, big.NewInt(1)),
-						new(big.Int).Add(chainData.TestBlockNumber, big.NewInt(1000000)),
-						big.NewInt(0),
+						big.NewInt(rand.Int63n(chainData.TestBlockNumber.Int64())),
+						new(big.Int).Add(chainData.TestBlockNumber, big.NewInt(rand.Int63n(1000000))),
+						new(big.Int).Sub(chainData.TestBlockNumber, big.NewInt(rand.Int63n(1000))),
+						big.NewInt(rand.Int63n(chainData.TestBlockNumber.Int64())),
+						big.NewInt(rand.Int63n(chainData.TestBlockNumber.Int64())),
 					}
 
 					for _, blockNumber := range blockNumbers {
@@ -305,6 +308,16 @@ func TestValidateAccountState_Success(t *testing.T) {
 					}
 				})
 			})
+			// 9. Add extra proof node
+			t.Run("ExtraProofNode", func(t *testing.T) {
+				corruptResult := baseAccountResult
+				corruptResult.AccountProof = make([]string, len(baseAccountResult.AccountProof)+1)
+				copy(corruptResult.AccountProof, baseAccountResult.AccountProof)
+				corruptResult.AccountProof[len(baseAccountResult.AccountProof)] = "0x1234567890abcdef"
+
+				err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
+				assert.NoError(t, err, "Validation should not fail with extra proof node")
+			})
 		})
 	}
 }
@@ -347,7 +360,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 				// Test with completely wrong state root
 				t.Run("WrongStateRoot", func(t *testing.T) {
 					wrongStateRoot := common.HexToHash("0x7adc7dbc4c36299fc65fd1dc3798a6a58c29c171b79584bfc3512f5ad82a59d4")
-					err := v.ValidateAccountState(ctx, baseAccountResult, wrongStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, baseAccountResult, wrongStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with wrong state root")
 					assert.Contains(t, err.Error(), "state root mismatch")
 				})
@@ -355,7 +368,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 				// Test with zero state root
 				t.Run("ZeroStateRoot", func(t *testing.T) {
 					zeroStateRoot := common.Hash{}
-					err := v.ValidateAccountState(ctx, baseAccountResult, zeroStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, baseAccountResult, zeroStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with zero state root")
 					assert.Contains(t, err.Error(), "state root mismatch")
 				})
@@ -364,7 +377,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 				t.Run("OnebitDifferentStateRoot", func(t *testing.T) {
 					corruptedStateRoot := correctStateRoot
 					corruptedStateRoot[0] ^= 0x01 // Flip the least significant bit of first byte
-					err := v.ValidateAccountState(ctx, baseAccountResult, corruptedStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, baseAccountResult, corruptedStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with one bit different state root")
 					assert.Contains(t, err.Error(), "state root mismatch")
 				})
@@ -382,7 +395,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					copy(corruptResult.AccountProof, baseAccountResult.AccountProof)
 					corruptResult.AccountProof[0] = corruptProof
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with corrupted first proof node")
 				})
 
@@ -397,7 +410,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 						originalProof := corruptResult.AccountProof[midIndex]
 						corruptResult.AccountProof[midIndex] = originalProof[:len(originalProof)-4] + "0000"
 
-						err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+						err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 						assert.Error(t, err, "Validation should fail with corrupted middle proof node")
 					}
 				})
@@ -408,21 +421,11 @@ func TestValidateAccountState_Failure(t *testing.T) {
 						corruptResult := baseAccountResult
 						corruptResult.AccountProof = baseAccountResult.AccountProof[:len(baseAccountResult.AccountProof)-1]
 
-						err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+						err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 						assert.Error(t, err, "Validation should fail with missing proof node")
 					}
 				})
 
-				// Add extra proof node
-				t.Run("ExtraProofNode", func(t *testing.T) {
-					corruptResult := baseAccountResult
-					corruptResult.AccountProof = make([]string, len(baseAccountResult.AccountProof)+1)
-					copy(corruptResult.AccountProof, baseAccountResult.AccountProof)
-					corruptResult.AccountProof[len(baseAccountResult.AccountProof)] = "0x1234567890abcdef"
-
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
-					assert.NoError(t, err, "Validation should not fail with extra proof node")
-				})
 			})
 
 			// 3. Test account state field corruption failures
@@ -432,7 +435,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					corruptResult := baseAccountResult
 					corruptResult.Nonce = hexutil.Uint64(uint64(corruptResult.Nonce) + 1)
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with corrupted nonce")
 					assert.Contains(t, err.Error(), "account nonce is not matched")
 				})
@@ -444,7 +447,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					newBalance := new(big.Int).Sub(originalBalance, big.NewInt(1))
 					corruptResult.Balance = (*hexutil.Big)(newBalance)
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with corrupted balance")
 					assert.Contains(t, err.Error(), "account balance is not matched")
 				})
@@ -454,7 +457,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					corruptResult := baseAccountResult
 					corruptResult.StorageHash[31] ^= 0x01 // Flip last byte
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with corrupted storage hash")
 					assert.Contains(t, err.Error(), "account storage hash is not matched")
 				})
@@ -464,7 +467,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					corruptResult := baseAccountResult
 					corruptResult.CodeHash[0] ^= 0x01 // Flip first byte
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with corrupted code hash")
 					assert.Contains(t, err.Error(), "account code hash is not matched")
 				})
@@ -474,7 +477,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					corruptResult := baseAccountResult
 					corruptResult.Address = common.HexToAddress("0x1234567890123456789012345678901234567890")
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with corrupted address")
 				})
 			})
@@ -486,7 +489,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					corruptResult := baseAccountResult
 					corruptResult.AccountProof = []string{}
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with empty account proof")
 				})
 
@@ -497,7 +500,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					copy(corruptResult.AccountProof, baseAccountResult.AccountProof)
 					corruptResult.AccountProof[0] = "0xGGGGGGGG" // Invalid hex
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					assert.Error(t, err, "Validation should fail with invalid hex in proof")
 					assert.Contains(t, err.Error(), "failed to decode first node")
 				})
@@ -509,7 +512,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 					corruptResult := baseAccountResult
 					corruptResult.Balance = (*hexutil.Big)(big.NewInt(0))
 
-					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, big.NewInt(5219647))
+					err := v.ValidateAccountState(ctx, corruptResult, correctStateRoot, chainData.TestBlockNumber)
 					// This might pass or fail depending on whether the proof matches the modified balance
 					// The important thing is it doesn't panic and handles the zero value
 					if err != nil {
@@ -520,7 +523,7 @@ func TestValidateAccountState_Failure(t *testing.T) {
 
 			// 5. Test successful validation for comparison
 			t.Run("SuccessfulValidation", func(t *testing.T) {
-				err := v.ValidateAccountState(ctx, baseAccountResult, correctStateRoot, big.NewInt(5219647))
+				err := v.ValidateAccountState(ctx, baseAccountResult, correctStateRoot, chainData.TestBlockNumber)
 				assert.NoError(t, err, "Validation should succeed with correct data")
 			})
 		})
