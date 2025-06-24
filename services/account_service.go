@@ -97,7 +97,12 @@ func (s *AccountAPIService) AccountBalance(
 				return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, xerrors.Errorf("%w", err))
 			}
 		} else {
-			err = v.ValidateAccountState(ctx, result, common.HexToHash(balanceResponse.BlockIdentifier.Hash), big.NewInt(balanceResponse.BlockIdentifier.Index))
+			// Get the state root from the block
+			stateRoot, err := v.GetBlockStateRoot(ctx, big.NewInt(balanceResponse.BlockIdentifier.Index))
+			if err != nil {
+				return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, xerrors.Errorf("failed to get block state root: %w", err))
+			}
+			err = v.ValidateAccountState(ctx, result, stateRoot, big.NewInt(balanceResponse.BlockIdentifier.Index))
 			if err != nil {
 				return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
 			}

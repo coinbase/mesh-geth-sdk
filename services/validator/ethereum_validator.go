@@ -51,6 +51,7 @@ type TrustlessValidator interface {
 	ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error
 	ValidateAccountState(ctx context.Context, result AccountResult, stateRoot geth.Hash, blockNumber *big.Int) error
 	GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error)
+	GetBlockStateRoot(ctx context.Context, blockNumber *big.Int) (geth.Hash, error)
 }
 type (
 	trustlessValidator struct {
@@ -410,4 +411,30 @@ func (v *trustlessValidator) validateReceipts(ctx context.Context, receipts etht
 	}
 
 	return nil
+}
+
+func (v *trustlessValidator) GetBlockStateRoot(ctx context.Context, blockNumber *big.Int) (geth.Hash, error) {
+	// Connect to the configured blockchain node
+	if v.config.GethURL == "" {
+		return geth.Hash{}, xerrors.Errorf("GethURL not configured")
+	}
+
+	client, err := ethclient.Dial(v.config.GethURL)
+	if err != nil {
+		return geth.Hash{}, xerrors.Errorf("failed to connect to blockchain node at %s: %w", v.config.GethURL, err)
+	}
+	defer client.Close()
+
+	// Get the block by number
+	block, err := client.BlockByNumber(ctx, blockNumber)
+	if err != nil {
+		return geth.Hash{}, xerrors.Errorf("failed to get block: %w", err)
+	}
+
+	// Extract state root from block header
+	stateRoot := block.Header().Root
+
+	log.Printf("Block state root retrieved for block %d: %s", blockNumber, stateRoot.Hex())
+
+	return stateRoot, nil
 }
