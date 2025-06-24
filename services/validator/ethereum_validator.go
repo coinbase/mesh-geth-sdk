@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/holiman/uint256"
 	"golang.org/x/xerrors"
 
 	config "github.com/coinbase/rosetta-geth-sdk/configuration"
@@ -29,11 +30,19 @@ type (
 	AccountResult struct {
 		Address      geth.Address    `json:"address"`
 		AccountProof []string        `json:"accountProof"`
-		Balance      *hexutil.Big    `json:"balance"`
 		CodeHash     geth.Hash       `json:"codeHash"`
 		Nonce        hexutil.Uint64  `json:"nonce"`
 		StorageHash  geth.Hash       `json:"storageHash"`
 		StorageProof []StorageResult `json:"storageProof"`
+
+		// This will be omitted if it is on Blast
+		Balance *hexutil.Big `json:"balance,omitempty"`
+
+		// Blast-specific fields (optional, omitted if not populated)
+		Fixed     *hexutil.Big    `json:"fixed,omitempty"`
+		Shares    *hexutil.Big    `json:"shares,omitempty"`
+		Remainder *hexutil.Big    `json:"remainder,omitempty"`
+		Flags     *hexutil.Uint64 `json:"flags,omitempty"`
 	}
 	StorageResult struct {
 		Key   string       `json:"key"`
@@ -51,6 +60,7 @@ type TrustlessValidator interface {
 	ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error
 	ValidateAccountState(ctx context.Context, result AccountResult, stateRoot geth.Hash, blockNumber *big.Int) error
 	GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error)
+	GetBlockStateRoot(ctx context.Context, blockNumber *big.Int) (geth.Hash, error)
 }
 type (
 	trustlessValidator struct {
@@ -80,6 +90,7 @@ func NewEthereumValidator(cfg *config.Configuration) TrustlessValidator {
 
 func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error {
 	// Verify the block header.
+	log.Printf("Validating block header")
 	err := v.validateBlockHeader(ctx, block.Header(), hash)
 	if err != nil {
 		return xerrors.Errorf("block header validation error: %w", err)
@@ -135,6 +146,8 @@ func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.A
 		return AccountResult{}, xerrors.Errorf("the input proofResult has different account address, address in proof: %s, expected: %s", result.Address.Hex(), account)
 	}
 	log.Printf("Account proof retrieved for account %s", account.String())
+
+	log.Printf("Account proof %s", result)
 
 	return result, nil
 }
@@ -193,19 +206,46 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 		return xerrors.Errorf("VerifyProof fails, the account %s is not included in the state trie: %w", result.Address, ErrAccountVerifyProofFailure)
 	}
 
-	// If successful, decode the stored account state.
 	var verifiedAccountState ethtypes.StateAccount
-	if err := rlp.DecodeBytes(validAccountState, &verifiedAccountState); err != nil {
-		return xerrors.Errorf("failed to rlp decode the verified account state: %w", err)
+
+	// Check if this is Blast chain which uses an extended account format
+	isBlast := v.config != nil && v.config.ChainConfig != nil && v.config.ChainConfig.ChainID != nil &&
+		v.config.ChainConfig.ChainID.Uint64() == 81457 // Blast mainnet chain ID
+
+	if isBlast {
+		err := decodeBlastAccountProofState(validAccountState, &verifiedAccountState)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Standard Ethereum account format
+		if err := rlp.DecodeBytes(validAccountState, &verifiedAccountState); err != nil {
+			return xerrors.Errorf("failed to rlp decode the verified account state: %w", err)
+		}
 	}
 
 	// After the verification is successful, we further check the input account proof is the same as the returned verified account state.
 	if result.Nonce != hexutil.Uint64(verifiedAccountState.Nonce) {
 		return xerrors.Errorf("account nonce is not matched, (nonce in proof=%v, nonce in verified result=%v): %w", result.Nonce, hexutil.Uint64(verifiedAccountState.Nonce), ErrAccountNonceNotMatched)
 	}
-	if verifiedAccountState.Balance.CmpBig(result.Balance.ToInt()) != 0 {
-		return xerrors.Errorf("account balance is not matched, (balance in proof=%v, balance in verified result=%v): %w", result.Balance.ToInt(), verifiedAccountState.Balance, ErrAccountBalanceNotMatched)
+
+	// For balance comparison, convert verifiedAccountState.Balance back to big.Int for comparison
+	if isBlast {
+		// For Blast, we need to handle the case where Balance might be nil in the result
+		expectedBalance := big.NewInt(0)
+		if result.Balance != nil {
+			expectedBalance = result.Balance.ToInt()
+		}
+		if verifiedAccountState.Balance.ToBig().Cmp(expectedBalance) != 0 {
+			return xerrors.Errorf("account balance is not matched, (balance in proof=%v, balance in verified result=%v): %w", expectedBalance, verifiedAccountState.Balance.ToBig(), ErrAccountBalanceNotMatched)
+		}
+	} else {
+		// Standard Ethereum validation
+		if verifiedAccountState.Balance.CmpBig(result.Balance.ToInt()) != 0 {
+			return xerrors.Errorf("account balance is not matched, (balance in proof=%v, balance in verified result=%v): %w", result.Balance.ToInt(), verifiedAccountState.Balance, ErrAccountBalanceNotMatched)
+		}
 	}
+
 	if result.StorageHash != verifiedAccountState.Root {
 		return xerrors.Errorf("account storage hash is not matched, (storage hash in proof=%v, storage hash in verified result=%v): %w", result.StorageHash, verifiedAccountState.Root, ErrAccountStorageHashNotMatched)
 	}
@@ -214,6 +254,65 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 	}
 
 	log.Printf("Account state validated for account %s", result.Address.String())
+
+	return nil
+}
+
+func decodeBlastAccountProofState(validAccountState []byte, verifiedAccountState *ethtypes.StateAccount) error {
+	// Blast uses an extended account format with 7 fields
+	// Try to decode as generic items first to extract the relevant fields
+	var items []interface{}
+	if err := rlp.DecodeBytes(validAccountState, &items); err != nil {
+		return xerrors.Errorf("failed to rlp decode the verified account state as items: %w", err)
+	}
+
+	// Blast account format has 7 fields:
+	// 0: nonce, 1: balance, 2: empty, 3: unknown, 4: unknown, 5: storage root, 6: code hash
+	if len(items) != 7 {
+		return xerrors.Errorf("expected 7 fields in Blast account state, got %d: %w", len(items), ErrAccountVerifyProofFailure)
+	}
+
+	// Extract nonce (field 0)
+	var nonce uint64
+	if nonceBytes, ok := items[0].([]byte); ok && len(nonceBytes) > 0 {
+		nonce = new(big.Int).SetBytes(nonceBytes).Uint64()
+	}
+
+	// Extract balance (field 1, can be empty which means 0)
+	balance := new(big.Int)
+	if balanceBytes, ok := items[1].([]byte); ok && len(balanceBytes) > 0 {
+		balance.SetBytes(balanceBytes)
+	}
+
+	// Convert balance to uint256.Int as required by StateAccount
+	balanceUint256, overflow := uint256.FromBig(balance)
+	if overflow {
+		return xerrors.Errorf("balance overflow in Blast account state: %w", ErrAccountVerifyProofFailure)
+	}
+
+	// Extract storage root (field 5)
+	var storageRoot geth.Hash
+	if rootBytes, ok := items[5].([]byte); ok && len(rootBytes) == 32 {
+		storageRoot = geth.BytesToHash(rootBytes)
+	} else {
+		return xerrors.Errorf("invalid storage root in Blast account state: %w", ErrAccountVerifyProofFailure)
+	}
+
+	// Extract code hash (field 6)
+	var codeHash []byte
+	if hashBytes, ok := items[6].([]byte); ok && len(hashBytes) == 32 {
+		codeHash = hashBytes
+	} else {
+		return xerrors.Errorf("invalid code hash in Blast account state: %w", ErrAccountVerifyProofFailure)
+	}
+
+	// Create a standard StateAccount structure for validation
+	*verifiedAccountState = ethtypes.StateAccount{
+		Nonce:    nonce,
+		Balance:  balanceUint256,
+		Root:     storageRoot,
+		CodeHash: codeHash,
+	}
 
 	return nil
 }
@@ -410,4 +509,30 @@ func (v *trustlessValidator) validateReceipts(ctx context.Context, receipts etht
 	}
 
 	return nil
+}
+
+func (v *trustlessValidator) GetBlockStateRoot(ctx context.Context, blockNumber *big.Int) (geth.Hash, error) {
+	// Connect to the configured blockchain node
+	if v.config.GethURL == "" {
+		return geth.Hash{}, xerrors.Errorf("GethURL not configured")
+	}
+
+	client, err := ethclient.Dial(v.config.GethURL)
+	if err != nil {
+		return geth.Hash{}, xerrors.Errorf("failed to connect to blockchain node at %s: %w", v.config.GethURL, err)
+	}
+	defer client.Close()
+
+	// Get the block by number
+	block, err := client.BlockByNumber(ctx, blockNumber)
+	if err != nil {
+		return geth.Hash{}, xerrors.Errorf("failed to get block: %w", err)
+	}
+
+	// Extract state root from block header
+	stateRoot := block.Header().Root
+
+	log.Printf("Block state root retrieved for block %d: %s", blockNumber, stateRoot.Hex())
+
+	return stateRoot, nil
 }

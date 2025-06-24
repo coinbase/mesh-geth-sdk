@@ -370,6 +370,7 @@ func (s *BlockAPIService) GetBlock(
 		}
 	}
 
+	log.Printf("Raw: %s", raw)
 	block := EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
 		Transactions: txs,
 		Uncles:       uncles,
