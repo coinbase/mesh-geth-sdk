@@ -147,8 +147,6 @@ func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.A
 	}
 	log.Printf("Account proof retrieved for account %s", account.String())
 
-	log.Printf("Account proof %s", result)
-
 	return result, nil
 }
 
