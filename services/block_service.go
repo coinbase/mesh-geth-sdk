@@ -30,6 +30,7 @@ import (
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
+	validator "github.com/coinbase/rosetta-geth-sdk/services/validator"
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
@@ -38,6 +39,7 @@ import (
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
 	"github.com/coinbase/rosetta-sdk-go/utils"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
@@ -368,10 +370,13 @@ func (s *BlockAPIService) GetBlock(
 		}
 	}
 
-	return EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
+	log.Printf("Raw: %s", raw)
+	block := EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
 		Transactions: txs,
 		Uncles:       uncles,
-	}), loadedTxs, &body, nil
+	})
+
+	return block, loadedTxs, &body, nil
 }
 
 // Block implements the /block endpoint.
@@ -421,6 +426,48 @@ func (s *BlockAPIService) Block(
 			tx.FeeBurned = new(big.Int).Mul(tx.Receipt.GasUsed, tx.BaseFee)
 		} else {
 			tx.FeeBurned = baseFee
+		}
+	}
+
+	// Run validation with full receipts if enabled
+	runValidation := s.config.IsTrustlessBlockValidationEnabled()
+	if runValidation && len(loadedTxns) > 0 {
+		log.Printf("Running validation for block %s", block.Hash().String())
+		// Fetch full ethtypes.Receipt objects for proper Merkle tree validation
+		// We need the complete receipt data including Bloom filters
+		ethReceipts := make(EthTypes.Receipts, len(loadedTxns))
+		reqs := make([]rpc.BatchElem, len(loadedTxns))
+
+		for i, tx := range loadedTxns {
+			reqs[i] = rpc.BatchElem{
+				Method: "eth_getTransactionReceipt",
+				Args:   []interface{}{tx.TxHash.String()},
+				Result: &ethReceipts[i],
+			}
+		}
+
+		// Execute batch RPC call to get complete receipts
+		if err := s.client.CallContext(ctx, &ethReceipts, "eth_getBlockReceipts", rpcBlock.Hash); err != nil {
+			// Fallback to individual receipt fetching if eth_getBlockReceipts is not available
+			if err := s.client.BatchCallContext(ctx, reqs); err != nil {
+				return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("failed to fetch receipts for validation: %w", err))
+			}
+
+			// Check for any errors in the batch
+			for i := range reqs {
+				if reqs[i].Error != nil {
+					return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("failed to fetch receipt %d: %w", i, reqs[i].Error))
+				}
+				if ethReceipts[i] == nil {
+					return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("got nil receipt for transaction %d", i))
+				}
+			}
+		}
+
+		v := validator.NewEthereumValidator(s.config)
+		err = v.ValidateBlock(ctx, block, ethReceipts, rpcBlock.Hash)
+		if err != nil {
+			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
 		}
 	}
 

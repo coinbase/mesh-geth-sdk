@@ -1,0 +1,759 @@
+package validator
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+
+	client "github.com/coinbase/rosetta-geth-sdk/client"
+	"github.com/coinbase/rosetta-geth-sdk/configuration"
+	"github.com/coinbase/rosetta-sdk-go/types"
+	"github.com/ethereum/go-ethereum/common"
+	geth "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
+)
+
+// cases we need to check for:
+// 1. Modify the block headers in different ways and fail the block header verification.
+// Corrupt the transactions root (use a different root hash).
+// Corrupt the block number (from 17000000 to 16000000)
+// Corrupt the miner (drop the last 3 chars)
+// Corrupt the amount of blob gas used (from 131072 to 100)
+// Corrupt the beacon block root (drop the last 5 chars)
+// 2. Modify the transactions in different ways and fail the transactions verification.
+// Corrupt the chain id (from 1 to 100).
+// Corrupt the gasUsed (from 1395940 to 1395941).
+// Corrupt the from field (from 0x086d426f8b653b88a2d6d03051c8b4ab8783be2b to 0x086d426f8b653b88a2d6d03051c8b4ab8783be2c).
+// Corrupt the to field (from 0x086d426f8b653b88a2d6d03051c8b4ab8783be2b to 0x086d426f8b653b88a2d6d03051c8b4ab8783be2c).
+// Corrupt the value field (from 0x0 to 0x1).
+// Corrupt the data field (from 0x0 to 0x1).
+// Corrupt the blob hashes (add a new blob hash)
+// 3. Modify the receipts in different ways and fail the receipts verification.
+// Corrupt the cumulative gas used (from 73385 to 73384)
+// Corrupt the status (from 1 to 0)
+// Corrupt the logs (drop the last 4 bytes of logs[0].data)
+// 4. Modify the withdrawals in different ways and fail the withdrawals verification.
+// Corrupt the index of the first Withdrawals (from 4241882 to 4241881)
+// Corrupt the validatorIndex of the second Withdrawals (from 551869 to 551870)
+// Corrupt the address of the third Withdrawals (add "abc" at the end)
+// 5. Modify the uncles in different ways and fail the uncles verification.
+// Corrupt the uncle hash (use a different hash)
+// Corrupt the uncle number (from 1 to 2)
+// Corrupt the uncle position (from 0 to 1)
+// BlockFixture represents the JSON structure of a block fixture
+
+const (
+	NETWORK_ETHEREUM_MAINNET = "ethereum"
+	NETWORK_SONIC            = "sonic"
+	NETWORK_MONAD            = "monad"
+	NETWORK_BLAST            = "blast"
+)
+
+const (
+	BLOCKCHAIN_ETHEREUM = "ethereum"
+	BLOCKCHAIN_SONIC    = "sonic"
+	BLOCKCHAIN_MONAD    = "monad"
+	BLOCKCHAIN_BLAST    = "blast"
+)
+
+type BlockFixture struct {
+	ParentHash       string            `json:"parentHash"`
+	Sha3Uncles       string            `json:"sha3Uncles"`
+	Miner            string            `json:"miner"`
+	StateRoot        string            `json:"stateRoot"`
+	TransactionsRoot string            `json:"transactionsRoot"`
+	ReceiptsRoot     string            `json:"receiptsRoot"`
+	Number           string            `json:"number"`
+	GasLimit         string            `json:"gasLimit"`
+	GasUsed          string            `json:"gasUsed"`
+	Timestamp        string            `json:"timestamp"`
+	ExtraData        string            `json:"extraData"`
+	MixHash          string            `json:"mixHash"`
+	Nonce            string            `json:"nonce"`
+	Transactions     []json.RawMessage `json:"transactions"`
+}
+
+var MainnetTerminalTotalDifficulty, _ = new(big.Int).SetString("58_750_000_000_000_000_000_000", 0)
+
+// Chain configurations for all supported chains
+var (
+	// MainnetChainConfig is the chain parameters to run a node on the main network.
+	MainnetChainConfig = &params.ChainConfig{
+		ChainID:                 big.NewInt(1),
+		HomesteadBlock:          big.NewInt(1_150_000),
+		DAOForkBlock:            big.NewInt(1_920_000),
+		DAOForkSupport:          true,
+		EIP150Block:             big.NewInt(2_463_000),
+		EIP155Block:             big.NewInt(2_675_000),
+		EIP158Block:             big.NewInt(2_675_000),
+		ByzantiumBlock:          big.NewInt(4_370_000),
+		ConstantinopleBlock:     big.NewInt(7_280_000),
+		PetersburgBlock:         big.NewInt(7_280_000),
+		IstanbulBlock:           big.NewInt(9_069_000),
+		MuirGlacierBlock:        big.NewInt(9_200_000),
+		BerlinBlock:             big.NewInt(12_244_000),
+		LondonBlock:             big.NewInt(12_965_000),
+		ArrowGlacierBlock:       big.NewInt(13_773_000),
+		GrayGlacierBlock:        big.NewInt(15_050_000),
+		TerminalTotalDifficulty: MainnetTerminalTotalDifficulty, // 58_750_000_000_000_000_000_000
+		ShanghaiTime:            newUint64(1681338455),
+		CancunTime:              newUint64(1710338135),
+		DepositContractAddress:  geth.HexToAddress("0x00000000219ab540356cbb839cbe05303d7705fa"),
+		Ethash:                  new(params.EthashConfig),
+	}
+
+	// SonicChainConfig is the chain parameters for Sonic network
+	SonicChainConfig = &params.ChainConfig{
+		ChainID:             big.NewInt(57054),
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkSupport:      false,
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		BerlinBlock:         big.NewInt(0),
+		LondonBlock:         big.NewInt(0),
+	}
+
+	MonadChainConfig = &params.ChainConfig{
+		ChainID:             big.NewInt(10143),
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkSupport:      false,
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		BerlinBlock:         big.NewInt(0),
+		LondonBlock:         big.NewInt(0),
+	}
+
+	BlastChainConfig = &params.ChainConfig{
+		ChainID:                 big.NewInt(81457),
+		HomesteadBlock:          big.NewInt(1_150_000),
+		DAOForkBlock:            big.NewInt(1_920_000),
+		DAOForkSupport:          true,
+		EIP150Block:             big.NewInt(2_463_000),
+		EIP155Block:             big.NewInt(2_675_000),
+		EIP158Block:             big.NewInt(2_675_000),
+		ByzantiumBlock:          big.NewInt(4_370_000),
+		ConstantinopleBlock:     big.NewInt(7_280_000),
+		PetersburgBlock:         big.NewInt(7_280_000),
+		IstanbulBlock:           big.NewInt(9_069_000),
+		MuirGlacierBlock:        big.NewInt(9_200_000),
+		BerlinBlock:             big.NewInt(12_244_000),
+		LondonBlock:             big.NewInt(12_965_000),
+		ArrowGlacierBlock:       big.NewInt(13_773_000),
+		GrayGlacierBlock:        big.NewInt(15_050_000),
+		TerminalTotalDifficulty: MainnetTerminalTotalDifficulty, // 58_750_000_000_000_000_000_000
+		ShanghaiTime:            newUint64(1681338455),
+		CancunTime:              newUint64(1710338135),
+		DepositContractAddress:  geth.HexToAddress("0x00000000219ab540356cbb839cbe05303d7705fa"),
+		Ethash:                  new(params.EthashConfig),
+	}
+)
+
+// Network identifiers for all supported chains
+var (
+	EthereumMainnetNetwork = &types.NetworkIdentifier{
+		Blockchain: BLOCKCHAIN_ETHEREUM,
+		Network:    NETWORK_ETHEREUM_MAINNET,
+	}
+
+	SonicNetwork = &types.NetworkIdentifier{
+		Blockchain: BLOCKCHAIN_SONIC,
+		Network:    NETWORK_SONIC,
+	}
+
+	MonadNetwork = &types.NetworkIdentifier{
+		Blockchain: BLOCKCHAIN_MONAD,
+		Network:    NETWORK_MONAD,
+	}
+
+	BlastNetwork = &types.NetworkIdentifier{
+		Blockchain: BLOCKCHAIN_BLAST,
+		Network:    NETWORK_BLAST,
+	}
+)
+
+// ChainTestData holds configuration for each chain's tests
+type ChainTestData struct {
+	Name               string
+	ChainConfig        *params.ChainConfig
+	Network            *types.NetworkIdentifier
+	BlockFixtureFile   string
+	AccountFixtureFile string
+	TestBlockNumber    *big.Int
+	GethURL            string
+}
+
+// All supported chains for testing
+var TestChains = []ChainTestData{
+	// {
+	// 	Name:               "Ethereum",
+	// 	ChainConfig:        MainnetChainConfig,
+	// 	Network:            EthereumMainnetNetwork,
+	// 	BlockFixtureFile:   "testdata/ethereum_test.json",
+	// 	AccountFixtureFile: "testdata/ethereum_account_proof.json",
+	// 	TestBlockNumber:    big.NewInt(5219647),
+	// },
+	{
+		Name:               "Sonic",
+		ChainConfig:        SonicChainConfig,
+		Network:            SonicNetwork,
+		BlockFixtureFile:   "testdata/sonic_test.json",
+		AccountFixtureFile: "testdata/sonic_account_proof.json",
+		TestBlockNumber:    big.NewInt(5219647),
+		GethURL:            "https://rpc.blaze.soniclabs.com",
+	},
+	// {
+	// 	Name:               "Monad",
+	// 	ChainConfig:        MonadChainConfig,
+	// 	Network:            MonadNetwork,
+	// 	BlockFixtureFile:   "testdata/monad_test.json",
+	// 	AccountFixtureFile: "testdata/monad_account_proof.json",
+	// 	TestBlockNumber:    big.NewInt(5629700),
+	// 	GethURL:            "https://compatible-cold-scion.monad-testnet.quiknode.pro/cd4401229700c5737ef3cd087a0e11def842b65f",
+	// },
+	{
+		Name:               "Blast",
+		ChainConfig:        BlastChainConfig,
+		Network:            BlastNetwork,
+		BlockFixtureFile:   "testdata/blast_test.json",
+		AccountFixtureFile: "testdata/blast_account_proof.json",
+		TestBlockNumber:    big.NewInt(8612904),
+		GethURL:            "https://rpc.blast.io",
+	},
+}
+
+func newUint64(val uint64) *uint64 { return &val }
+
+// loadBlockFromJSON loads a block from a JSON fixture file
+func loadBlockFromJSON(filepath string, t *testing.T) (*ethtypes.Block, error) {
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read fixture file: %w", err)
+	}
+
+	var fixture BlockFixture
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal fixture: %w", err)
+	}
+
+	// Helper function to decode hex values
+	decodeHex := func(hex string) uint64 {
+		// Remove "0x" prefix if present
+		hex = strings.TrimPrefix(hex, "0x")
+		// Remove leading zeros
+		hex = strings.TrimLeft(hex, "0")
+		if hex == "" {
+			return 0
+		}
+		val, err := strconv.ParseUint(hex, 16, 64)
+		if err != nil {
+			t.Logf("Error decoding hex %s: %v", hex, err)
+			return 0
+		}
+		return val
+	}
+
+	// Create header from fixture data
+	header := &ethtypes.Header{
+		ParentHash:  common.HexToHash(fixture.ParentHash),
+		UncleHash:   common.HexToHash(fixture.Sha3Uncles),
+		Coinbase:    common.HexToAddress(fixture.Miner),
+		Root:        common.HexToHash(fixture.StateRoot),
+		TxHash:      common.HexToHash(fixture.TransactionsRoot),
+		ReceiptHash: common.HexToHash(fixture.ReceiptsRoot),
+		Number:      new(big.Int).SetUint64(decodeHex(fixture.Number)),
+		GasLimit:    decodeHex(fixture.GasLimit),
+		GasUsed:     decodeHex(fixture.GasUsed),
+		Time:        decodeHex(fixture.Timestamp),
+		Extra:       common.FromHex(fixture.ExtraData),
+		MixDigest:   common.HexToHash(fixture.MixHash),
+		Nonce:       ethtypes.EncodeNonce(decodeHex(fixture.Nonce)),
+	}
+
+	// Create transactions from fixture data
+	var transactions []*ethtypes.Transaction
+	for i, txData := range fixture.Transactions {
+		var tx client.RPCTransaction
+		if err := json.Unmarshal(txData, &tx); err != nil {
+			t.Logf("Error unmarshaling transaction %d: %v", i, err)
+			continue // Skip invalid transactions
+		}
+		if tx.Tx != nil {
+			transactions = append(transactions, tx.Tx)
+		}
+	}
+
+	return ethtypes.NewBlockWithHeader(header).WithBody(ethtypes.Body{
+		Transactions: transactions,
+		Uncles:       []*ethtypes.Header{},
+	}), nil
+}
+
+// Helper functions to modify block values
+func modifyBlockHeader(original *ethtypes.Block, modifyFn func(*ethtypes.Header)) *ethtypes.Block {
+	header := *original.Header() // Create a copy
+	modifyFn(&header)
+	return ethtypes.NewBlockWithHeader(&header).WithBody(ethtypes.Body{
+		Transactions: original.Transactions(),
+		Uncles:       original.Uncles(),
+		Withdrawals:  original.Withdrawals(),
+	})
+}
+
+func modifyTransaction(original *ethtypes.Block, txIndex int, modifyFn func(*ethtypes.Transaction)) *ethtypes.Block {
+	transactions := make([]*ethtypes.Transaction, len(original.Transactions()))
+	copy(transactions, original.Transactions())
+
+	// Check bounds and nil pointer safety
+	if txIndex < len(transactions) && transactions[txIndex] != nil {
+		tx := transactions[txIndex]
+		modifyFn(tx)
+	}
+
+	return ethtypes.NewBlockWithHeader(original.Header()).WithBody(ethtypes.Body{
+		Transactions: transactions,
+		Uncles:       original.Uncles(),
+		Withdrawals:  original.Withdrawals(),
+	})
+}
+
+func modifyWithdrawals(original *ethtypes.Block, modifyFn func([]*ethtypes.Withdrawal)) *ethtypes.Block {
+	withdrawals := make([]*ethtypes.Withdrawal, len(original.Withdrawals()))
+	copy(withdrawals, original.Withdrawals())
+	modifyFn(withdrawals)
+	return ethtypes.NewBlockWithHeader(original.Header()).WithBody(ethtypes.Body{
+		Transactions: original.Transactions(),
+		Uncles:       original.Uncles(),
+		Withdrawals:  withdrawals,
+	})
+}
+
+func TestBlockValidator_HeaderFailures(t *testing.T) {
+	ctx := context.Background()
+
+	for _, chainData := range TestChains {
+		t.Run(chainData.Name, func(t *testing.T) {
+			// Load the base block that we'll modify for each test
+			baseBlock, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load base block fixture for %s: %v", chainData.Name, err)
+			}
+
+			cfg := &configuration.Configuration{
+				ChainConfig: chainData.ChainConfig,
+				Network:     chainData.Network,
+				GethURL:     chainData.GethURL,
+				RosettaCfg: configuration.RosettaConfig{
+					EnableTrustlessBlockValidation: true,
+				},
+			}
+			v := NewEthereumValidator(cfg)
+
+			testCases := []struct {
+				name     string
+				modifyFn func(*ethtypes.Header)
+				wantErr  string
+			}{
+				{
+					name: "corrupt transactions root",
+					modifyFn: func(h *ethtypes.Header) {
+						h.TxHash = common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+					},
+					wantErr: "Block hash invalid",
+				},
+				{
+					name: "corrupt block number",
+					modifyFn: func(h *ethtypes.Header) {
+						h.Number = big.NewInt(16000000)
+					},
+					wantErr: "Block hash invalid",
+				},
+				{
+					name: "corrupt miner",
+					modifyFn: func(h *ethtypes.Header) {
+						h.Coinbase = common.HexToAddress("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+					},
+					wantErr: "Block hash invalid",
+				},
+				// Add more header test cases here
+			}
+
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					modifiedBlock := modifyBlockHeader(baseBlock, tc.modifyFn)
+					// Provide empty receipts since we're testing header validation
+					emptyReceipts := make(ethtypes.Receipts, 0)
+					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					if err == nil {
+						t.Error("expected error but got none")
+						return
+					}
+					if !strings.Contains(err.Error(), tc.wantErr) {
+						t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestBlockValidator_TransactionFailures(t *testing.T) {
+	ctx := context.Background()
+
+	for _, chainData := range TestChains {
+		t.Run(chainData.Name, func(t *testing.T) {
+			// Load the base block that we'll modify for each test
+			baseBlock, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load base block fixture for %s: %v", chainData.Name, err)
+			}
+
+			// Skip test if block has no transactions
+			if len(baseBlock.Transactions()) == 0 {
+				t.Skipf("Skipping transaction test for %s: block has no valid transactions", chainData.Name)
+				return
+			}
+
+			cfg := &configuration.Configuration{
+				ChainConfig: chainData.ChainConfig,
+				Network:     chainData.Network,
+				GethURL:     chainData.GethURL,
+				RosettaCfg: configuration.RosettaConfig{
+					EnableTrustlessBlockValidation: true,
+				},
+			}
+			v := NewEthereumValidator(cfg)
+
+			testCases := []struct {
+				name     string
+				txIndex  int
+				modifyFn func(*ethtypes.Transaction)
+				wantErr  string
+			}{
+				{
+					name:    "corrupt chain id",
+					txIndex: 0,
+					modifyFn: func(tx *ethtypes.Transaction) {
+						// This requires modifying the underlying transaction data
+						// We'll need to create a new transaction with modified values
+						newTx := ethtypes.NewTransaction(
+							tx.Nonce(),
+							*tx.To(),
+							tx.Value(),
+							tx.Gas(),
+							tx.GasPrice(),
+							tx.Data(),
+						)
+						*tx = *newTx
+					},
+					wantErr: "Computed transaction root hash invalid.",
+				},
+				{
+					name:    "corrupt gas used",
+					txIndex: 0,
+					modifyFn: func(tx *ethtypes.Transaction) {
+						newTx := ethtypes.NewTransaction(
+							tx.Nonce(),
+							*tx.To(),
+							tx.Value(),
+							1395941, // Modified gas
+							tx.GasPrice(),
+							tx.Data(),
+						)
+						*tx = *newTx
+					},
+					wantErr: "Computed transaction root hash invalid.",
+				},
+				{
+					name:    "corrupt to field",
+					txIndex: 0,
+					modifyFn: func(tx *ethtypes.Transaction) {
+						addr := common.HexToAddress("0x086d426f8b653b88a2d6d03051c8b4ab8783be2c") // Modified last char
+						newTx := ethtypes.NewTransaction(
+							tx.Nonce(),
+							addr,
+							tx.Value(),
+							tx.Gas(),
+							tx.GasPrice(),
+							tx.Data(),
+						)
+						*tx = *newTx
+					},
+					wantErr: "Computed transaction root hash invalid.",
+				},
+				{
+					name:    "corrupt value field",
+					txIndex: 0,
+					modifyFn: func(tx *ethtypes.Transaction) {
+						newTx := ethtypes.NewTransaction(
+							tx.Nonce(),
+							*tx.To(),
+							big.NewInt(1), // Modified from 0 to 1
+							tx.Gas(),
+							tx.GasPrice(),
+							tx.Data(),
+						)
+						*tx = *newTx
+					},
+					wantErr: "Computed transaction root hash invalid.",
+				},
+				{
+					name:    "corrupt data field",
+					txIndex: 0,
+					modifyFn: func(tx *ethtypes.Transaction) {
+						newTx := ethtypes.NewTransaction(
+							tx.Nonce(),
+							*tx.To(),
+							tx.Value(),
+							tx.Gas(),
+							tx.GasPrice(),
+							[]byte{0x1}, // Modified data
+						)
+						*tx = *newTx
+					},
+					wantErr: "Computed transaction root hash invalid.",
+				},
+			}
+
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					modifiedBlock := modifyTransaction(baseBlock, tc.txIndex, tc.modifyFn)
+					// Provide empty receipts since we're testing header validation
+					emptyReceipts := make(ethtypes.Receipts, 0)
+					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					if err == nil {
+						t.Error("expected error but got none")
+						return
+					}
+					if !strings.Contains(err.Error(), tc.wantErr) {
+						t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestBlockValidator_WithdrawalFailures(t *testing.T) {
+	ctx := context.Background()
+
+	for _, chainData := range TestChains {
+		t.Run(chainData.Name, func(t *testing.T) {
+			// Load the base block that we'll modify for each test
+			baseBlock, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load base block fixture for %s: %v", chainData.Name, err)
+			}
+
+			// Skip test if block has no withdrawals
+			if len(baseBlock.Withdrawals()) == 0 {
+				t.Skipf("Skipping withdrawal test for %s: block has no withdrawals", chainData.Name)
+				return
+			}
+
+			cfg := &configuration.Configuration{
+				ChainConfig: chainData.ChainConfig,
+				Network:     chainData.Network,
+				GethURL:     chainData.GethURL,
+				RosettaCfg: configuration.RosettaConfig{
+					EnableTrustlessBlockValidation: true,
+				},
+			}
+			v := NewEthereumValidator(cfg)
+
+			testCases := []struct {
+				name     string
+				modifyFn func([]*ethtypes.Withdrawal)
+				wantErr  string
+			}{
+				{
+					name: "corrupt withdrawal index",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							withdrawals[0].Index = withdrawals[0].Index + 1 // Modify index
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+				{
+					name: "corrupt validator index",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							withdrawals[0].Validator = withdrawals[0].Validator + 1 // Modify validator index
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+				{
+					name: "corrupt withdrawal address",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							addr := withdrawals[0].Address
+							// Modify the last byte of the address
+							modifiedAddr := common.BytesToAddress(append(addr.Bytes()[:19], 0xFF))
+							withdrawals[0].Address = modifiedAddr
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+				{
+					name: "corrupt withdrawal amount",
+					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
+						if len(withdrawals) > 0 {
+							withdrawals[0].Amount = withdrawals[0].Amount + 1 // Modify amount
+						}
+					},
+					wantErr: "invalid withdrawals hash",
+				},
+			}
+
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					modifiedBlock := modifyWithdrawals(baseBlock, tc.modifyFn)
+					// Provide empty receipts since we're testing withdrawal validation
+					emptyReceipts := make(ethtypes.Receipts, 0)
+					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					if err == nil {
+						t.Error("expected error but got none")
+						return
+					}
+					if !strings.Contains(err.Error(), tc.wantErr) {
+						t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestBlockValidator_ReceiptFailures(t *testing.T) {
+	ctx := context.Background()
+
+	for _, chainData := range TestChains {
+		t.Run(chainData.Name, func(t *testing.T) {
+			baseBlock, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load base block fixture for %s: %v", chainData.Name, err)
+			}
+
+			cfg := &configuration.Configuration{
+				ChainConfig: chainData.ChainConfig,
+				Network:     chainData.Network,
+				GethURL:     chainData.GethURL,
+				RosettaCfg: configuration.RosettaConfig{
+					EnableTrustlessBlockValidation: true,
+				},
+			}
+			v := NewEthereumValidator(cfg)
+
+			// Note: Receipt validation requires modifying the actual receipts in the RPC response
+			// This is more complex as it requires mocking the RPC client
+			// For now we'll just test that the receipt hash validation works
+			testCases := []struct {
+				name     string
+				modifyFn func(*ethtypes.Header)
+				wantErr  string
+			}{
+				{
+					name: "corrupt receipts root",
+					modifyFn: func(h *ethtypes.Header) {
+						h.ReceiptHash = common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+					},
+					wantErr: "Block hash invalid",
+				},
+			}
+
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					modifiedBlock := modifyBlockHeader(baseBlock, tc.modifyFn)
+					// Provide empty receipts since we're testing header validation
+					emptyReceipts := make(ethtypes.Receipts, 0)
+					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					if err == nil {
+						t.Error("expected error but got none")
+						return
+					}
+					if !strings.Contains(err.Error(), tc.wantErr) {
+						t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
+					}
+				})
+			}
+		})
+	}
+}
+
+// func TestBlockValidator_Success(t *testing.T) {
+// 	ctx := context.Background()
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+
+// 	for _, chainData := range TestChains {
+// 		t.Run(chainData.Name, func(t *testing.T) {
+// 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+// 			if err != nil {
+// 				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
+// 			}
+
+// 			cfg := &configuration.Configuration{
+// 				ChainConfig: chainData.ChainConfig,
+// 				Network:     chainData.Network,
+// 				GethURL:     chainData.GethURL,
+// 			}
+// 			v := NewEthereumValidator(cfg)
+
+// 			// Provide empty receipts for basic validation test
+// 			emptyReceipts := make(ethtypes.Receipts, 0)
+// 			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
+// 			if err != nil {
+// 				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
+// 			}
+// 		})
+// 	}
+// }
+
+// func TestBlockValidator_Failures(t *testing.T) {
+// 	ctx := context.Background()
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+// 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
+// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+
+// 	for _, chainData := range TestChains {
+// 		t.Run(chainData.Name, func(t *testing.T) {
+// 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+// 			if err != nil {
+// 				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
+// 			}
+
+// 			cfg := &configuration.Configuration{
+// 				ChainConfig: chainData.ChainConfig,
+// 				Network:     chainData.Network,
+// 				GethURL:     chainData.GethURL,
+// 			}
+// 			v := NewEthereumValidator(cfg)
+
+// 			// Provide empty receipts for basic validation test
+// 			emptyReceipts := make(ethtypes.Receipts, 0)
+// 			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
+// 			if err != nil {
+// 				t.Logf("ValidateBlock failed for %s: %v", chainData.Name, err)
+// 			} else {
+// 				t.Errorf("ValidateBlock should have failed for %s", chainData.Name)
+// 			}
+// 		})
+// 	}
+// }
