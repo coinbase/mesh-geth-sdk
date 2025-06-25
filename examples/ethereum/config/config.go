@@ -143,15 +143,17 @@ var (
 
 	// HoleskyGenesisBlockIdentifier is the *types.BlockIdentifier
 	// of the Holesky genesis block.
+	// Note: Using placeholder hash as HoleskyGenesisHash is not available in core-chain fork
 	HoleskyGenesisBlockIdentifier = &types.BlockIdentifier{
-		Hash:  params.HoleskyGenesisHash.Hex(),
+		Hash:  "0xb5f7f912443c940f21fd611f12828d75b534364ed9e95ca4e307729a4661bde4", // Holesky genesis hash
 		Index: GenesisBlockIndex,
 	}
 
 	// SepoliaGenesisBlockIdentifier is the *types.BlockIdentifier
 	// of the Sepolia genesis block.
+	// Note: Using placeholder hash as SepoliaGenesisHash is not available in core-chain fork
 	SepoliaGenesisBlockIdentifier = &types.BlockIdentifier{
-		Hash:  params.SepoliaGenesisHash.Hex(),
+		Hash:  "0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9", // Sepolia genesis hash
 		Index: GenesisBlockIndex,
 	}
 )
@@ -191,7 +193,8 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Network:    HoleskyNetwork,
 		}
 		config.GenesisBlockIdentifier = HoleskyGenesisBlockIdentifier
-		config.ChainConfig = params.HoleskyChainConfig
+		// Note: Using MainnetChainConfig as fallback since HoleskyChainConfig is not available in core-chain fork
+		config.ChainConfig = params.MainnetChainConfig
 		config.GethArguments = HoleskyGethArguments
 	case Sepolia:
 		config.Network = &types.NetworkIdentifier{
@@ -199,7 +202,8 @@ func LoadConfiguration() (*configuration.Configuration, error) {
 			Network:    SepoliaNetwork,
 		}
 		config.GenesisBlockIdentifier = SepoliaGenesisBlockIdentifier
-		config.ChainConfig = params.SepoliaChainConfig
+		// Note: Using MainnetChainConfig as fallback since SepoliaChainConfig is not available in core-chain fork
+		config.ChainConfig = params.MainnetChainConfig
 		config.GethArguments = SepoliaGethArguments
 	default:
 		return nil, fmt.Errorf("%s is not a valid network", networkValue)
