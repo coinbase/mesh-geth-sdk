@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,9 +17,12 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"golang.org/x/xerrors"
 
+	"strings"
+
 	config "github.com/coinbase/rosetta-geth-sdk/configuration"
+	"github.com/coinbase/rosetta-sdk-go/types"
 	geth "github.com/ethereum/go-ethereum/common"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	EthTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Although we use a pinned version of the geth respository, these configs are the up to date configs from the geth
@@ -48,7 +52,8 @@ const (
 )
 
 type TrustlessValidator interface {
-	ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error
+	ValidateBlock(ctx context.Context, block *EthTypes.Block, receipts EthTypes.Receipts, hash geth.Hash) error
+	ValidateAccount(ctx context.Context, balanceResponse *types.AccountBalanceResponse, address string) error
 	ValidateAccountState(ctx context.Context, result AccountResult, stateRoot geth.Hash, blockNumber *big.Int) error
 	GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error)
 	GetBlockStateRoot(ctx context.Context, blockNumber *big.Int) (geth.Hash, error)
@@ -79,26 +84,22 @@ func NewEthereumValidator(cfg *config.Configuration) TrustlessValidator {
 	}
 }
 
-func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.Block, receipts ethtypes.Receipts, hash geth.Hash) error {
-	// Verify the block header.
+func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *EthTypes.Block, receipts EthTypes.Receipts, hash geth.Hash) error {
 	err := v.validateBlockHeader(ctx, block.Header(), hash)
 	if err != nil {
 		return xerrors.Errorf("block header validation error: %w", err)
 	}
 
-	// Verify the Withdrawals in the block.
 	err = v.validateWithdrawals(ctx, block.Withdrawals(), block.Header().WithdrawalsHash, block.Time())
 	if err != nil {
 		return xerrors.Errorf("withdrawals validation error: %w", err)
 	}
 
-	// Verify the transactions in the block.
 	err = v.validateTransactions(ctx, block, block.Header().TxHash)
 	if err != nil {
 		return xerrors.Errorf("transactions validation error: %w", err)
 	}
 
-	// Verify the receipts in the block.
 	err = v.validateReceipts(ctx, receipts, block.Header().ReceiptHash)
 	if err != nil {
 		return xerrors.Errorf("receipts validation error: %w", err)
@@ -109,8 +110,50 @@ func (v *trustlessValidator) ValidateBlock(ctx context.Context, block *ethtypes.
 	return nil
 }
 
+func (v *trustlessValidator) ValidateAccount(ctx context.Context, balanceResponse *types.AccountBalanceResponse, address string) error {
+	log.Printf("Running account validation for block %d and account %s", balanceResponse.BlockIdentifier.Index, address)
+	addr := common.HexToAddress(address)
+
+	result, err := v.GetAccountProof(ctx, addr, big.NewInt(balanceResponse.BlockIdentifier.Index))
+	if err != nil {
+		// Check if this is a proof window error - if so, skip validation gracefully
+		// This is caused if we are using a node with a low proof window, will not be a case
+		// On production and mainnet environments
+		if isProofWindowError(err) {
+			fmt.Printf("Skipping account validation: block %d is outside proof window\n", balanceResponse.BlockIdentifier.Index)
+		} else {
+			return xerrors.Errorf("%w", err)
+		}
+	} else {
+		// Get the state root from the block
+		stateRoot, err := v.GetBlockStateRoot(ctx, big.NewInt(balanceResponse.BlockIdentifier.Index))
+		if err != nil {
+			return xerrors.Errorf("failed to get block state root: %w", err)
+		}
+
+		// Run a Merkle Tree Proof on the state root and account
+		err = v.ValidateAccountState(ctx, result, stateRoot, big.NewInt(balanceResponse.BlockIdentifier.Index))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// isProofWindowError checks if the error is related to proof window limitations
+func isProofWindowError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "distance to target block exceeds maximum proof window") ||
+		strings.Contains(errMsg, "proof window") ||
+		strings.Contains(errMsg, "too far from head") ||
+		strings.Contains(errMsg, "block too old")
+}
+
 func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.Address, blockNumber *big.Int) (AccountResult, error) {
-	// Connect to the configured blockchain node
 	if v.config.GethURL == "" {
 		return AccountResult{}, xerrors.Errorf("GethURL not configured")
 	}
@@ -121,7 +164,6 @@ func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.A
 	}
 	defer client.Close()
 
-	// Convert block number to hex string
 	blockNumberHex := hexutil.EncodeBig(blockNumber)
 
 	// Get the account proof using eth_getProof
@@ -149,25 +191,24 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 		return xerrors.Errorf("no account proof provided: %w", ErrAccountVerifyProofFailure)
 	}
 
-	// First, decode and validate the state root node
-	firstNodeData, err := hexutil.Decode(result.AccountProof[0])
+	// decode the state root node
+	stateRootNode, err := hexutil.Decode(result.AccountProof[0])
 	if err != nil {
 		return xerrors.Errorf("failed to decode first node: %w", err)
 	}
 
-	// The provided state root should match the hash of the first proof node
-	expectedStateRoot := crypto.Keccak256Hash(firstNodeData)
+	// state root should match the hash of the first proof node
+	expectedStateRoot := crypto.Keccak256Hash(stateRootNode)
 	if expectedStateRoot != stateRoot {
 		return xerrors.Errorf("state root mismatch: provided=%s, expected=%s: %w", stateRoot.Hex(), expectedStateRoot.Hex(), ErrAccountVerifyProofFailure)
 	}
 
-	// Store the state root node
-	err = proofDB.Put(stateRoot.Bytes(), firstNodeData)
+	err = proofDB.Put(stateRoot.Bytes(), stateRootNode)
 	if err != nil {
 		return xerrors.Errorf("failed to store state root node: %w", err)
 	}
 
-	// Then store the rest of the proof nodes
+	// store the rest of the proof nodes
 	for i, node := range result.AccountProof[1:] {
 		nodeData, err := hexutil.Decode(node)
 		if err != nil {
@@ -180,7 +221,7 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 		}
 	}
 
-	// Calculate the account hash - this is the key in the state trie
+	// Calculate the account hash
 	accountHash := crypto.Keccak256(result.Address[:])
 
 	// Use state_root_hash to walk through the returned proof to verify the state
@@ -189,18 +230,16 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 		return xerrors.Errorf("VerifyProof fails with %v for the account %s: %w", err, result.Address, ErrAccountVerifyProofFailure)
 	}
 
-	// If the err is nil and returned account state is nil, then this means that the state trie doesn't include the target account, and the verification fails.
 	if validAccountState == nil {
 		return xerrors.Errorf("VerifyProof fails, the account %s is not included in the state trie: %w", result.Address, ErrAccountVerifyProofFailure)
 	}
 
-	// If successful, decode the stored account state.
-	var verifiedAccountState ethtypes.StateAccount
+	var verifiedAccountState EthTypes.StateAccount
 	if err := rlp.DecodeBytes(validAccountState, &verifiedAccountState); err != nil {
 		return xerrors.Errorf("failed to rlp decode the verified account state: %w", err)
 	}
 
-	// After the verification is successful, we further check the input account proof is the same as the returned verified account state.
+	// check the input account proof is the same as the returned verified account state.
 	if result.Nonce != hexutil.Uint64(verifiedAccountState.Nonce) {
 		return xerrors.Errorf("account nonce is not matched, (nonce in proof=%v, nonce in verified result=%v): %w", result.Nonce, hexutil.Uint64(verifiedAccountState.Nonce), ErrAccountNonceNotMatched)
 	}
@@ -219,7 +258,7 @@ func (v *trustlessValidator) ValidateAccountState(ctx context.Context, result Ac
 	return nil
 }
 
-func (v *trustlessValidator) validateBlockHeader(ctx context.Context, header *ethtypes.Header, actualHash geth.Hash) error {
+func (v *trustlessValidator) validateBlockHeader(ctx context.Context, header *EthTypes.Header, actualHash geth.Hash) error {
 	if header == nil {
 		return xerrors.New("block header is nil")
 	}
@@ -235,11 +274,12 @@ func (v *trustlessValidator) validateBlockHeader(ctx context.Context, header *et
 }
 
 // Verify the withdrawals in the block with the withdrawals trie root hash.
-func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawals ethtypes.Withdrawals, withdrawalsRoot *geth.Hash, blockTimestamp uint64) error {
+func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawals EthTypes.Withdrawals, withdrawalsRoot *geth.Hash, blockTimestamp uint64) error {
 	if withdrawalsRoot != nil {
 		// https://github.com/ethereum-optimism/op-geth/blame/36501a7023fd85f3492a1af6f1474a0113bb83fe//core/block_validator.go#L76-L79
 		// Optimism based chains use the storage root as the withdrawals root and do not have withdrawals.
 		if isOptimismWithdrawal(withdrawals, withdrawalsRoot) {
+
 			// For Optimism, we trust the withdrawalsRoot from the block header
 			// as they use a different withdrawal format that doesn't follow standard Ethereum
 			fmt.Printf("Detected Optimism-style withdrawal, skipping standard validation\n")
@@ -247,7 +287,7 @@ func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawal
 		}
 
 		// This is how geth calculates the withdrawals trie hash. We just leverage this function of geth to recompute it.
-		if actualHash := ethtypes.DeriveSha(withdrawals, trie.NewStackTrie(nil)); actualHash != *withdrawalsRoot {
+		if actualHash := EthTypes.DeriveSha(withdrawals, trie.NewStackTrie(nil)); actualHash != *withdrawalsRoot {
 			return xerrors.Errorf("Withdrawals root hash mismatch (expected=%x, actual=%x): %w", withdrawalsRoot, actualHash, ErrInvalidWithdrawalsHash)
 		}
 	} else if len(withdrawals) != 0 {
@@ -260,7 +300,7 @@ func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawal
 // isOptimismWithdrawal checks if the withdrawals follow Optimism's non-standard format
 // Optimism uses 0xffffffffffffffff (max uint64) for both index and validatorIndex
 // Berachain is an example of an Optimism based chain.
-func isOptimismWithdrawal(withdrawals ethtypes.Withdrawals, withdrawalsRoot *geth.Hash) bool {
+func isOptimismWithdrawal(withdrawals EthTypes.Withdrawals, withdrawalsRoot *geth.Hash) bool {
 	const OptimismWithdrawalsRoot = "0xdaaca84d096cebe9194d542b918abce37bc8e2d9cc85d5be4d6a9c947552a6ef"
 	if len(withdrawals) == 0 && (withdrawalsRoot.String() == OptimismWithdrawalsRoot) {
 		return true
@@ -270,22 +310,12 @@ func isOptimismWithdrawal(withdrawals ethtypes.Withdrawals, withdrawalsRoot *get
 }
 
 // Verify all the transactions in the block with the transaction trie root hash.
-func (v *trustlessValidator) validateTransactions(ctx context.Context, block *ethtypes.Block, transactionsRoot geth.Hash) error {
+func (v *trustlessValidator) validateTransactions(ctx context.Context, block *EthTypes.Block, transactionsRoot geth.Hash) error {
 	transactions := block.Transactions()
 	numTxs := len(transactions)
 
-	// case common.Blockchain_BLOCKCHAIN_POLYGON:
-	// 	// For Polygon, it is possible that there is a state-sync transaction at the end of transaction array.
-	// 	// It is an internal transaction used to read data from Ethereum in Polygon. It is an internal transaction, and
-	// 	// it is not used to calculate the transaction trie root hash. Once we identify such transaction, we need to
-	// 	// exclude it from the transaction and receipt verification.
-	// 	if hasStateSyncTx(transactions) {
-	// 		numTxs = numTxs - 1
-	// 	}
-	// }
-
 	// This is how geth calculates the transaction trie hash. We just leverage this function of geth to recompute it.
-	if actualHash := ethtypes.DeriveSha(transactions, trie.NewStackTrie(nil)); actualHash != transactionsRoot {
+	if actualHash := EthTypes.DeriveSha(transactions, trie.NewStackTrie(nil)); actualHash != transactionsRoot {
 		return xerrors.Errorf("Computed transaction root hash invalid. One or more transactions are tampered (expected=%x, actual=%x): %w", transactionsRoot, actualHash, ErrInvalidTransactionsHash)
 	}
 
@@ -310,7 +340,7 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 				tx := transactions[idx]
 
 				// Skip validation for unsupported transaction types
-				if tx.Type() == ethtypes.SetCodeTxType {
+				if tx.Type() == EthTypes.SetCodeTxType {
 					return
 				}
 
@@ -344,34 +374,22 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *et
 		}
 	}
 
-	// fmt.Println("All transactions validated successfully!")
 	return nil
 }
 
-// TODO: uncomment and implement this
-// func hasStateSyncTx(transactions []*api.EthereumTransaction) bool {
-// 	num := len(transactions)
-// 	if num == 0 {
-// 		return false
-// 	}
-
-// 	// This is an state-sync transaction in Polygon. It only appears as the last transaction.
-// 	return transactions[num-1].From == ethNullAddress && transactions[num-1].To == ethNullAddress
-// }
-
 // Recalculate the from field from the signer and r,s,v, and compare recalculated from field with the actual from field
 // to ensure it was not tampered with.
-func (v *trustlessValidator) isValidFromField(actualFrom geth.Address, gethTransaction *ethtypes.Transaction, signer ethtypes.Signer) error {
-	//if v.config.RosettaCfg == config.EnvProduction {
-	//	return nil
-	//}
+func (v *trustlessValidator) isValidFromField(actualFrom geth.Address, gethTransaction *EthTypes.Transaction, signer EthTypes.Signer) error {
+	// if v.config.RosettaCfg.Env == config.EnvProduction {
+	// 	return nil
+	// }
 
 	// Signer doesn't support this transaction type yet.
-	if gethTransaction.Type() == ethtypes.SetCodeTxType {
+	if gethTransaction.Type() == EthTypes.SetCodeTxType {
 		return nil
 	}
 
-	expectedFrom, err := ethtypes.Sender(signer, gethTransaction)
+	expectedFrom, err := EthTypes.Sender(signer, gethTransaction)
 	if err != nil {
 		return xerrors.Errorf("failed to recalculate sender: %w)", err)
 	}
@@ -381,32 +399,26 @@ func (v *trustlessValidator) isValidFromField(actualFrom geth.Address, gethTrans
 	return nil
 }
 
-func (v *trustlessValidator) GetSigner(block *ethtypes.Block) ethtypes.Signer {
+func (v *trustlessValidator) GetSigner(block *EthTypes.Block) EthTypes.Signer {
 	if v.config == nil {
 		return nil
 	}
 
-	// Use the chain config from the validator's configuration
-	cfg := v.config.ChainConfig
-
-	signer := ethtypes.LatestSignerForChainID(cfg.ChainID)
+	// since we don't have a complete chain config for all chains we use
+	// we can't use MakeSigner, which is the best way of getting the correct
+	// signer, but LatestSignerForChainID is the next best thing.
+	signer := EthTypes.LatestSignerForChainID(v.config.ChainConfig.ChainID)
 	return signer
 }
 
 // Verify all the receipts in the block with the receipt trie root hash.
-func (v *trustlessValidator) validateReceipts(ctx context.Context, receipts ethtypes.Receipts, receiptsRoot geth.Hash) error {
+func (v *trustlessValidator) validateReceipts(ctx context.Context, receipts EthTypes.Receipts, receiptsRoot geth.Hash) error {
 	numTxs := len(receipts)
 
-	// Similar to validateTransactions(), we need to handle the receipts in state-sync transactions of Polygon.
-	// if v.config.Network.Blockchain == common.Blockchain_BLOCKCHAIN_POLYGON && hasStateSyncTx(transactions) {
-	// 	numTxs = numTxs - 1
-	// }
-
-	// Use the provided receipts directly instead of fetching via RPC
 	gethReceipts := receipts[:numTxs]
 
 	// This is how geth calculates the receipt trie hash. We just leverage this function of geth to recompute it.
-	if actualHash := ethtypes.DeriveSha(gethReceipts, trie.NewStackTrie(nil)); actualHash != receiptsRoot {
+	if actualHash := EthTypes.DeriveSha(gethReceipts, trie.NewStackTrie(nil)); actualHash != receiptsRoot {
 		return xerrors.Errorf("Computed receipt root hash invalid. One or more receipts are tampered (expected=%x, actual=%x): %w", receiptsRoot, actualHash, ErrInvalidReceiptsHash)
 	}
 
