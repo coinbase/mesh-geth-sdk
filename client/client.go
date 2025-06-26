@@ -28,6 +28,7 @@ import (
 
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
+
 	"github.com/coinbase/rosetta-sdk-go/utils"
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
