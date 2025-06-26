@@ -372,6 +372,7 @@ func (s *BlockAPIService) GetBlock(
 	block := EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
 		Transactions: txs,
 		Uncles:       uncles,
+		Withdrawals:  body.Withdrawals,
 	})
 
 	return block, loadedTxs, &body, nil
@@ -395,6 +396,7 @@ func (s *BlockAPIService) Block(
 	if errors.Is(err, AssetTypes.ErrClientBlockOrphaned) {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrBlockOrphaned, err)
 	}
+	fmt.Println("block", block.Withdrawals())
 
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)

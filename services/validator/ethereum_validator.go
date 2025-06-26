@@ -45,8 +45,6 @@ type (
 
 const (
 	maxFromValidationRoutines = 10
-	OptimismWithdrawalsRoot   = "0xdaaca84d096cebe9194d542b918abce37bc8e2d9cc85d5be4d6a9c947552a6ef"
-	StorageHash               = "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
 )
 
 type TrustlessValidator interface {
@@ -265,30 +263,12 @@ func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawal
 		return nil
 	}
 
-	// Optimism based chains use the storage root as the withdrawals root and do not have withdrawals.
-	if isOptimismWithdrawal(withdrawals, withdrawalsRoot) {
-		// For Optimism, we trust the withdrawalsRoot from the block header as they use a different withdrawal format that doesn't follow standard Ethereum
-		log.Printf("Detected Optimism-style withdrawal, skipping standard validation\n")
-		return nil
-	}
-
 	// This is how geth calculates the withdrawals trie hash. We just leverage this function of geth to recompute it.
 	if actualHash := EthTypes.DeriveSha(withdrawals, trie.NewStackTrie(nil)); actualHash != *withdrawalsRoot {
 		return fmt.Errorf("withdrawals root hash mismatch (expected=%x, actual=%x): %w", withdrawalsRoot, actualHash, sdkTypes.ErrInvalidWithdrawalsHash)
 	}
 
 	return nil
-}
-
-// isOptimismWithdrawal checks if the withdrawals follow Optimism's non-standard format
-// Optimism uses 0xffffffffffffffff (max uint64) for both index and validatorIndex
-// Berachain is an example of an Optimism based chain.
-func isOptimismWithdrawal(withdrawals EthTypes.Withdrawals, withdrawalsRoot *geth.Hash) bool {
-	if len(withdrawals) == 0 && (withdrawalsRoot.String() == OptimismWithdrawalsRoot) {
-		return true
-	}
-
-	return false
 }
 
 // Verify all the transactions in the block with the transaction trie root hash.
