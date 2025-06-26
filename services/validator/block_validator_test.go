@@ -26,13 +26,11 @@ import (
 const (
 	NETWORK_ETHEREUM_MAINNET = "ethereum"
 	NETWORK_SONIC            = "sonic"
-	NETWORK_MONAD            = "monad"
 )
 
 const (
 	BLOCKCHAIN_ETHEREUM = "ethereum"
 	BLOCKCHAIN_SONIC    = "sonic"
-	BLOCKCHAIN_MONAD    = "monad"
 )
 
 type BlockFixture struct {
@@ -96,21 +94,6 @@ var (
 		BerlinBlock:         big.NewInt(0),
 		LondonBlock:         big.NewInt(0),
 	}
-
-	MonadChainConfig = &params.ChainConfig{
-		ChainID:             big.NewInt(10143),
-		HomesteadBlock:      big.NewInt(0),
-		DAOForkSupport:      false,
-		EIP150Block:         big.NewInt(0),
-		EIP155Block:         big.NewInt(0),
-		EIP158Block:         big.NewInt(0),
-		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: big.NewInt(0),
-		PetersburgBlock:     big.NewInt(0),
-		IstanbulBlock:       big.NewInt(0),
-		BerlinBlock:         big.NewInt(0),
-		LondonBlock:         big.NewInt(0),
-	}
 )
 
 // Network identifiers for all supported chains
@@ -123,11 +106,6 @@ var (
 	SonicNetwork = &types.NetworkIdentifier{
 		Blockchain: BLOCKCHAIN_SONIC,
 		Network:    NETWORK_SONIC,
-	}
-
-	MonadNetwork = &types.NetworkIdentifier{
-		Blockchain: BLOCKCHAIN_MONAD,
-		Network:    NETWORK_MONAD,
 	}
 )
 
@@ -161,15 +139,6 @@ var TestChains = []ChainTestData{
 		TestBlockNumber:    big.NewInt(5219647),
 		GethURL:            "https://rpc.blaze.soniclabs.com",
 	},
-	// {
-	// 	Name:               "Monad",
-	// 	ChainConfig:        MonadChainConfig,
-	// 	Network:            MonadNetwork,
-	// 	BlockFixtureFile:   "testdata/monad_test.json",
-	// 	AccountFixtureFile: "testdata/monad_account_proof.json",
-	// 	TestBlockNumber:    big.NewInt(5629700),
-	// 	GethURL:            "https://compatible-cold-scion.monad-testnet.quiknode.pro/cd4401229700c5737ef3cd087a0e11def842b65f",
-	// },
 }
 
 func newUint64(val uint64) *uint64 { return &val }

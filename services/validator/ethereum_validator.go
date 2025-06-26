@@ -158,6 +158,8 @@ func (v *trustlessValidator) GetAccountProof(ctx context.Context, account geth.A
 		return AccountResult{}, fmt.Errorf("failed to get account proof: %w", err)
 	}
 
+	fmt.Println("result", result)
+
 	// Verify that this proofResult is for the target account
 	if result.Address != account {
 		return AccountResult{}, fmt.Errorf("the input proofResult has different account address, address in proof: %s, expected: %s", result.Address.Hex(), account)
