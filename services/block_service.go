@@ -429,7 +429,6 @@ func (s *BlockAPIService) Block(
 
 	runValidation := s.config.IsTrustlessBlockValidationEnabled()
 	if runValidation && len(loadedTxns) > 0 {
-		log.Printf("Running validation for block %s", block.Number())
 		receipts, err := getEthReceipts(ctx, loadedTxns, s.client, rpcBlock.Hash)
 		if err != nil {
 			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("error fetching eth receipts: %w", err))

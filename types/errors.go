@@ -222,6 +222,17 @@ var (
 	ErrClientCallParametersInvalid = errors.New("call parameters invalid")
 	ErrClientCallOutputMarshal     = errors.New("call output marshal")
 	ErrClientCallMethodInvalid     = errors.New("call method invalid")
+
+	ErrInvalidBlockHash             = errors.New("invalid block hash")
+	ErrInvalidWithdrawalsHash       = errors.New("invalid withdrawals hash")
+	ErrInvalidTransactionsHash      = errors.New("invalid transactions hash")
+	ErrInvalidReceiptsHash          = errors.New("invalid receipts hash")
+	ErrAccountVerifyProofFailure    = errors.New("account verification fails")
+	ErrAccountNonceNotMatched       = errors.New("mismatched account nonce")
+	ErrAccountBalanceNotMatched     = errors.New("mismatched account balance")
+	ErrAccountStorageHashNotMatched = errors.New("mismatched account storage hash")
+	ErrAccountCodeHashNotMatched    = errors.New("mismatched account code hash")
+	ErrInvalidFromField             = errors.New("invalid from field")
 )
 
 // WrapErr adds details to the types.Error provided. We use a function

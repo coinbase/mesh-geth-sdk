@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/xerrors"
 )
 
 // ***************************************************************
@@ -288,7 +288,7 @@ func TestValidateAccountState_Success(t *testing.T) {
 						go func(goroutineID int) {
 							err := v.ValidateAccountState(ctx, baseAccountResult, correctStateRoot, chainData.TestBlockNumber)
 							if err != nil {
-								errChan <- xerrors.Errorf("goroutine %d failed: %w", goroutineID, err)
+								errChan <- fmt.Errorf("goroutine %d failed: %w", goroutineID, err)
 							} else {
 								errChan <- nil
 							}
