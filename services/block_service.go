@@ -307,7 +307,6 @@ func (s *BlockAPIService) GetBlock(
 		}
 	}
 
-	fmt.Println("raw", string(raw))
 	// Note: We need a full node to return a complete RPCBlock,
 	// otherwise, only body.Hash is populated. body.Transactions is empty.
 	// TODO(xiaying): log warn if len(body.Hash) > 1 && len(body.txs) == 0
