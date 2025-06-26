@@ -25,9 +25,6 @@ import (
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-// Although we use a pinned version of the geth respository, these configs are the up to date configs from the geth
-// repository.
-
 // Result structs for eth_getProof
 type (
 	AccountResult struct {
