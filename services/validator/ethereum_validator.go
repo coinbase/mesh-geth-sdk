@@ -45,6 +45,7 @@ type (
 
 const (
 	maxFromValidationRoutines = 10
+	OptimismWithdrawalsRoot   = "0xdaaca84d096cebe9194d542b918abce37bc8e2d9cc85d5be4d6a9c947552a6ef"
 	StorageHash               = "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
 )
 
@@ -105,21 +106,21 @@ func (v *trustlessValidator) ValidateAccount(ctx context.Context, balanceRespons
 		// On production and mainnet environments
 		if isProofWindowError(err) {
 			log.Printf("Skipping account validation: block %d is outside proof window\n", balanceResponse.BlockIdentifier.Index)
-		} else {
-			return fmt.Errorf("failed to get account proof: %w", err)
+			return nil
 		}
-	} else {
-		// Get the state root from the block
-		stateRoot, err := v.GetBlockStateRoot(ctx, big.NewInt(balanceResponse.BlockIdentifier.Index))
-		if err != nil {
-			return fmt.Errorf("failed to get block state root: %w", err)
-		}
+		return fmt.Errorf("failed to get account proof: %w", err)
+	}
 
-		// Run a Merkle Tree Proof on the state root and account
-		err = v.ValidateAccountState(ctx, result, stateRoot, big.NewInt(balanceResponse.BlockIdentifier.Index))
-		if err != nil {
-			return err
-		}
+	// Get the state root from the block
+	stateRoot, err := v.GetBlockStateRoot(ctx, big.NewInt(balanceResponse.BlockIdentifier.Index))
+	if err != nil {
+		return fmt.Errorf("failed to get block state root: %w", err)
+	}
+
+	// Run a Merkle Tree Proof on the state root and account
+	err = v.ValidateAccountState(ctx, result, stateRoot, big.NewInt(balanceResponse.BlockIdentifier.Index))
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -256,23 +257,24 @@ func (v *trustlessValidator) validateBlockHeader(ctx context.Context, header *Et
 
 // Verify the withdrawals in the block with the withdrawals trie root hash.
 func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawals EthTypes.Withdrawals, withdrawalsRoot *geth.Hash, blockTimestamp uint64) error {
-	if withdrawalsRoot != nil {
-		// https://github.com/ethereum-optimism/op-geth/blame/36501a7023fd85f3492a1af6f1474a0113bb83fe//core/block_validator.go#L76-L79
-		// Optimism based chains use the storage root as the withdrawals root and do not have withdrawals.
-		if isOptimismWithdrawal(withdrawals, withdrawalsRoot) {
-
-			// For Optimism, we trust the withdrawalsRoot from the block header
-			// as they use a different withdrawal format that doesn't follow standard Ethereum
-			log.Printf("Detected Optimism-style withdrawal, skipping standard validation\n")
-			return nil
+	if withdrawalsRoot == nil {
+		// if the withdrawalsRoot is nil, we expect the withdrawals to be empty
+		if len(withdrawals) != 0 {
+			return fmt.Errorf("unexpected withdrawals in block body")
 		}
+		return nil
+	}
 
-		// This is how geth calculates the withdrawals trie hash. We just leverage this function of geth to recompute it.
-		if actualHash := EthTypes.DeriveSha(withdrawals, trie.NewStackTrie(nil)); actualHash != *withdrawalsRoot {
-			return fmt.Errorf("withdrawals root hash mismatch (expected=%x, actual=%x): %w", withdrawalsRoot, actualHash, sdkTypes.ErrInvalidWithdrawalsHash)
-		}
-	} else if len(withdrawals) != 0 {
-		return fmt.Errorf("unexpected withdrawals in block body")
+	// Optimism based chains use the storage root as the withdrawals root and do not have withdrawals.
+	if isOptimismWithdrawal(withdrawals, withdrawalsRoot) {
+		// For Optimism, we trust the withdrawalsRoot from the block header as they use a different withdrawal format that doesn't follow standard Ethereum
+		log.Printf("Detected Optimism-style withdrawal, skipping standard validation\n")
+		return nil
+	}
+
+	// This is how geth calculates the withdrawals trie hash. We just leverage this function of geth to recompute it.
+	if actualHash := EthTypes.DeriveSha(withdrawals, trie.NewStackTrie(nil)); actualHash != *withdrawalsRoot {
+		return fmt.Errorf("withdrawals root hash mismatch (expected=%x, actual=%x): %w", withdrawalsRoot, actualHash, sdkTypes.ErrInvalidWithdrawalsHash)
 	}
 
 	return nil
@@ -282,7 +284,6 @@ func (v *trustlessValidator) validateWithdrawals(ctx context.Context, withdrawal
 // Optimism uses 0xffffffffffffffff (max uint64) for both index and validatorIndex
 // Berachain is an example of an Optimism based chain.
 func isOptimismWithdrawal(withdrawals EthTypes.Withdrawals, withdrawalsRoot *geth.Hash) bool {
-	const OptimismWithdrawalsRoot = "0xdaaca84d096cebe9194d542b918abce37bc8e2d9cc85d5be4d6a9c947552a6ef"
 	if len(withdrawals) == 0 && (withdrawalsRoot.String() == OptimismWithdrawalsRoot) {
 		return true
 	}
@@ -301,58 +302,60 @@ func (v *trustlessValidator) validateTransactions(ctx context.Context, block *Et
 	}
 
 	signer := v.GetSigner(block)
-	if signer != nil {
-		// Create channels for error handling and throttling
-		errCh := make(chan error, numTxs)
-		sem := make(chan struct{}, maxFromValidationRoutines)
-		var wg sync.WaitGroup
+	if signer == nil {
+		return fmt.Errorf("signer is nil")
+	}
 
-		// Process each transaction
-		for i := 0; i < numTxs; i++ {
-			wg.Add(1)
-			go func(idx int) {
-				defer wg.Done()
+	// Create channels for error handling and throttling
+	errCh := make(chan error, numTxs)
+	sem := make(chan struct{}, maxFromValidationRoutines)
+	var wg sync.WaitGroup
 
-				// Acquire semaphore
-				sem <- struct{}{}
-				defer func() { <-sem }()
+	// Process each transaction
+	for i := range numTxs {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
 
-				// Get transaction
-				tx := transactions[idx]
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-				// Skip validation for unsupported transaction types
-				if tx.Type() == EthTypes.SetCodeTxType {
-					return
-				}
+			// Get transaction
+			tx := transactions[idx]
 
-				// Get the cached sender from the transaction
-				sender, err := signer.Sender(tx)
-				if err != nil {
-					errCh <- fmt.Errorf("transaction %d: failed to get sender: %w", idx, err)
-					return
-				}
+			// Skip validation for unsupported transaction types
+			if tx.Type() == EthTypes.SetCodeTxType {
+				return
+			}
 
-				// Compare with the actual sender
-				if err := v.isValidFromField(sender, tx, signer); err != nil {
-					errCh <- fmt.Errorf("transaction %d: %w", idx, err)
-				}
-			}(i)
-		}
+			// Get the cached sender from the transaction
+			sender, err := signer.Sender(tx)
+			if err != nil {
+				errCh <- fmt.Errorf("transaction %d: failed to get sender: %w", idx, err)
+				return
+			}
 
-		// Wait for all goroutines to finish
-		wg.Wait()
-		close(errCh)
+			// Compare with the actual sender
+			if err := v.isValidFromField(sender, tx, signer); err != nil {
+				errCh <- fmt.Errorf("transaction %d: %w", idx, err)
+			}
+		}(i)
+	}
 
-		// Collect any errors
-		var errs []error
-		for err := range errCh {
-			errs = append(errs, err)
-		}
+	// Wait for all goroutines to finish
+	wg.Wait()
+	close(errCh)
 
-		// Return combined errors if any
-		if len(errs) > 0 {
-			return fmt.Errorf("validation errors: %v", errs)
-		}
+	// Collect any errors
+	var errs []error
+	for err := range errCh {
+		errs = append(errs, err)
+	}
+
+	// Return combined errors if any
+	if len(errs) > 0 {
+		return fmt.Errorf("validation errors: %v", errs)
 	}
 
 	return nil
