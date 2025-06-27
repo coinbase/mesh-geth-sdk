@@ -92,13 +92,14 @@ var (
 	}
 )
 
-// Network identifiers for all supported chains
 var (
+	// testnet
 	SonicNetwork = &types.NetworkIdentifier{
 		Blockchain: BLOCKCHAIN_SONIC,
 		Network:    NETWORK_SONIC,
 	}
 
+	// mainnet
 	BerachainNetwork = &types.NetworkIdentifier{
 		Blockchain: BLOCKCHAIN_BERACHAIN,
 		Network:    NETWORK_BERACHAIN,
