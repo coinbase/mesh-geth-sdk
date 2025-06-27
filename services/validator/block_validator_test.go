@@ -116,6 +116,7 @@ type ChainTestData struct {
 	Network            *types.NetworkIdentifier
 	BlockFixtureFile   string
 	AccountFixtureFile string
+	ReceiptFixtureFile string
 	TestBlockNumber    *big.Int
 	GethURL            string
 }
@@ -136,12 +137,25 @@ var TestChains = []ChainTestData{
 		Network:            SonicNetwork,
 		BlockFixtureFile:   "testdata/sonic_test.json",
 		AccountFixtureFile: "testdata/sonic_account_proof.json",
+		ReceiptFixtureFile: "testdata/sonic_receipts.json",
 		TestBlockNumber:    big.NewInt(5219647),
 		GethURL:            "https://rpc.blaze.soniclabs.com",
 	},
 }
 
 func newUint64(val uint64) *uint64 { return &val }
+
+func loadReceiptsFromJSON(filepath string, t *testing.T) (ethtypes.Receipts, error) {
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read fixture file: %w", err)
+	}
+	var receipts ethtypes.Receipts
+	if err := json.Unmarshal(data, &receipts); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal receipts: %w", err)
+	}
+	return receipts, nil
+}
 
 // loadBlockFromJSON loads a block from a JSON fixture file
 func loadBlockFromJSON(filepath string, t *testing.T) (*ethtypes.Block, error) {
@@ -273,21 +287,21 @@ func TestBlockValidator_HeaderFailures(t *testing.T) {
 					modifyFn: func(h *ethtypes.Header) {
 						h.TxHash = common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 					},
-					wantErr: "Block hash invalid",
+					wantErr: "invalid block header",
 				},
 				{
 					name: "corrupt block number",
 					modifyFn: func(h *ethtypes.Header) {
 						h.Number = big.NewInt(16000000)
 					},
-					wantErr: "Block hash invalid",
+					wantErr: "invalid block header",
 				},
 				{
 					name: "corrupt miner",
 					modifyFn: func(h *ethtypes.Header) {
 						h.Coinbase = common.HexToAddress("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 					},
-					wantErr: "Block hash invalid",
+					wantErr: "invalid block header",
 				},
 				// Add more header test cases here
 			}
@@ -354,7 +368,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 						)
 						*tx = *newTx
 					},
-					wantErr: "Computed transaction root hash invalid.",
+					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt gas used",
@@ -370,7 +384,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 						)
 						*tx = *newTx
 					},
-					wantErr: "Computed transaction root hash invalid.",
+					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt to field",
@@ -387,7 +401,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 						)
 						*tx = *newTx
 					},
-					wantErr: "Computed transaction root hash invalid.",
+					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt value field",
@@ -403,7 +417,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 						)
 						*tx = *newTx
 					},
-					wantErr: "Computed transaction root hash invalid.",
+					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt data field",
@@ -419,7 +433,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 						)
 						*tx = *newTx
 					},
-					wantErr: "Computed transaction root hash invalid.",
+					wantErr: "invalid transactions hash",
 				},
 			}
 
@@ -544,6 +558,12 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 				t.Fatalf("Failed to load base block fixture for %s: %v", chainData.Name, err)
 			}
 
+			// Load the actual receipts
+			baseReceipts, err := loadReceiptsFromJSON(chainData.ReceiptFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load receipts fixture for %s: %v", chainData.Name, err)
+			}
+
 			cfg := &configuration.Configuration{
 				ChainConfig: chainData.ChainConfig,
 				Network:     chainData.Network,
@@ -554,29 +574,179 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 			}
 			v := NewEthereumValidator(cfg)
 
-			// Note: Receipt validation requires modifying the actual receipts in the RPC response
-			// This is more complex as it requires mocking the RPC client
-			// For now we'll just test that the receipt hash validation works
 			testCases := []struct {
+				name     string
+				modifyFn func(ethtypes.Receipts) ethtypes.Receipts
+				wantErr  string
+			}{
+				{
+					name: "corrupt receipt status",
+					modifyFn: func(receipts ethtypes.Receipts) ethtypes.Receipts {
+						if len(receipts) > 0 {
+							modifiedReceipts := make(ethtypes.Receipts, len(receipts))
+							copy(modifiedReceipts, receipts)
+							// Create a new receipt with modified status
+							modifiedReceipt := &ethtypes.Receipt{
+								Type:              receipts[0].Type,
+								PostState:         receipts[0].PostState,
+								Status:            1 - receipts[0].Status, // Flip status (0->1 or 1->0)
+								CumulativeGasUsed: receipts[0].CumulativeGasUsed,
+								Bloom:             receipts[0].Bloom,
+								Logs:              receipts[0].Logs,
+								TxHash:            receipts[0].TxHash,
+								ContractAddress:   receipts[0].ContractAddress,
+								GasUsed:           receipts[0].GasUsed,
+								EffectiveGasPrice: receipts[0].EffectiveGasPrice,
+								BlockHash:         receipts[0].BlockHash,
+								BlockNumber:       receipts[0].BlockNumber,
+								TransactionIndex:  receipts[0].TransactionIndex,
+							}
+							modifiedReceipts[0] = modifiedReceipt
+							return modifiedReceipts
+						}
+						return receipts
+					},
+					wantErr: "invalid receipts hash",
+				},
+				{
+					name: "corrupt cumulative gas used",
+					modifyFn: func(receipts ethtypes.Receipts) ethtypes.Receipts {
+						if len(receipts) > 0 {
+							modifiedReceipts := make(ethtypes.Receipts, len(receipts))
+							copy(modifiedReceipts, receipts)
+							modifiedReceipt := &ethtypes.Receipt{
+								Type:              receipts[0].Type,
+								PostState:         receipts[0].PostState,
+								Status:            receipts[0].Status,
+								CumulativeGasUsed: receipts[0].CumulativeGasUsed + 1000, // Add 1000 to gas
+								Bloom:             receipts[0].Bloom,
+								Logs:              receipts[0].Logs,
+								TxHash:            receipts[0].TxHash,
+								ContractAddress:   receipts[0].ContractAddress,
+								GasUsed:           receipts[0].GasUsed,
+								EffectiveGasPrice: receipts[0].EffectiveGasPrice,
+								BlockHash:         receipts[0].BlockHash,
+								BlockNumber:       receipts[0].BlockNumber,
+								TransactionIndex:  receipts[0].TransactionIndex,
+							}
+							modifiedReceipts[0] = modifiedReceipt
+							return modifiedReceipts
+						}
+						return receipts
+					},
+					wantErr: "invalid receipts hash",
+				},
+				{
+					name: "corrupt bloom filter",
+					modifyFn: func(receipts ethtypes.Receipts) ethtypes.Receipts {
+						if len(receipts) > 0 {
+							modifiedReceipts := make(ethtypes.Receipts, len(receipts))
+							copy(modifiedReceipts, receipts)
+							// Create a modified bloom filter
+							modifiedBloom := receipts[0].Bloom
+							modifiedBloom[0] = modifiedBloom[0] ^ 0xFF // Flip first byte
+							modifiedReceipt := &ethtypes.Receipt{
+								Type:              receipts[0].Type,
+								PostState:         receipts[0].PostState,
+								Status:            receipts[0].Status,
+								CumulativeGasUsed: receipts[0].CumulativeGasUsed,
+								Bloom:             modifiedBloom,
+								Logs:              receipts[0].Logs,
+								TxHash:            receipts[0].TxHash,
+								ContractAddress:   receipts[0].ContractAddress,
+								GasUsed:           receipts[0].GasUsed,
+								EffectiveGasPrice: receipts[0].EffectiveGasPrice,
+								BlockHash:         receipts[0].BlockHash,
+								BlockNumber:       receipts[0].BlockNumber,
+								TransactionIndex:  receipts[0].TransactionIndex,
+							}
+							modifiedReceipts[0] = modifiedReceipt
+							return modifiedReceipts
+						}
+						return receipts
+					},
+					wantErr: "invalid receipts hash",
+				},
+				// Note: We don't test TxHash, BlockHash, BlockNumber, TransactionIndex, ContractAddress, or GasUsed
+				// because these are "implementation fields" that are NOT part of the receipt hash calculation.
+				// Only "consensus fields" (Type, Status, CumulativeGasUsed, Bloom, Logs) are used in the hash.
+				{
+					name: "add extra receipt",
+					modifyFn: func(receipts ethtypes.Receipts) ethtypes.Receipts {
+						if len(receipts) > 0 {
+							modifiedReceipts := make(ethtypes.Receipts, len(receipts)+1)
+							copy(modifiedReceipts, receipts)
+							// Add a duplicate of the first receipt
+							extraReceipt := &ethtypes.Receipt{
+								Type:              receipts[0].Type,
+								PostState:         receipts[0].PostState,
+								Status:            receipts[0].Status,
+								CumulativeGasUsed: receipts[0].CumulativeGasUsed,
+								Bloom:             receipts[0].Bloom,
+								Logs:              receipts[0].Logs,
+								TxHash:            receipts[0].TxHash,
+								ContractAddress:   receipts[0].ContractAddress,
+								GasUsed:           receipts[0].GasUsed,
+								EffectiveGasPrice: receipts[0].EffectiveGasPrice,
+								BlockHash:         receipts[0].BlockHash,
+								BlockNumber:       receipts[0].BlockNumber,
+								TransactionIndex:  receipts[0].TransactionIndex,
+							}
+							modifiedReceipts[len(receipts)] = extraReceipt
+							return modifiedReceipts
+						}
+						return receipts
+					},
+					wantErr: "invalid receipts hash",
+				},
+				{
+					name: "remove receipt",
+					modifyFn: func(receipts ethtypes.Receipts) ethtypes.Receipts {
+						if len(receipts) > 1 {
+							// Remove the last receipt
+							return receipts[:len(receipts)-1]
+						}
+						return receipts
+					},
+					wantErr: "invalid receipts hash",
+				},
+			}
+
+			// Also test the header corruption case
+			headerTestCases := []struct {
 				name     string
 				modifyFn func(*ethtypes.Header)
 				wantErr  string
 			}{
 				{
-					name: "corrupt receipts root",
+					name: "corrupt receipts root in header",
 					modifyFn: func(h *ethtypes.Header) {
 						h.ReceiptHash = common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 					},
-					wantErr: "Block hash invalid",
+					wantErr: "invalid block hash",
 				},
 			}
 
+			// Test receipt modifications
 			for _, tc := range testCases {
 				t.Run(tc.name, func(t *testing.T) {
+					modifiedReceipts := tc.modifyFn(baseReceipts)
+					err := v.ValidateBlock(ctx, baseBlock, modifiedReceipts, baseBlock.Hash())
+					if err == nil {
+						t.Error("expected error but got none")
+						return
+					}
+					if !strings.Contains(err.Error(), tc.wantErr) {
+						t.Errorf("got error %v, want error containing %q", err, tc.wantErr)
+					}
+				})
+			}
+
+			// Test header modifications
+			for _, tc := range headerTestCases {
+				t.Run(tc.name, func(t *testing.T) {
 					modifiedBlock := modifyBlockHeader(baseBlock, tc.modifyFn)
-					// Provide empty receipts since we're testing header validation
-					emptyReceipts := make(ethtypes.Receipts, 0)
-					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					err := v.ValidateBlock(ctx, modifiedBlock, baseReceipts, baseBlock.Hash())
 					if err == nil {
 						t.Error("expected error but got none")
 						return
@@ -590,63 +760,29 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 	}
 }
 
-// func TestBlockValidator_Success(t *testing.T) {
-// 	ctx := context.Background()
-// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
+func TestBlockValidator_Success(t *testing.T) {
+	ctx := context.Background()
 
-// 	for _, chainData := range TestChains {
-// 		t.Run(chainData.Name, func(t *testing.T) {
-// 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
-// 			if err != nil {
-// 				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
-// 			}
+	for _, chainData := range TestChains {
+		t.Run(chainData.Name, func(t *testing.T) {
+			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
+			if err != nil {
+				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
+			}
 
-// 			cfg := &configuration.Configuration{
-// 				ChainConfig: chainData.ChainConfig,
-// 				Network:     chainData.Network,
-// 				GethURL:     chainData.GethURL,
-// 			}
-// 			v := NewEthereumValidator(cfg)
+			cfg := &configuration.Configuration{
+				ChainConfig: chainData.ChainConfig,
+				Network:     chainData.Network,
+				GethURL:     chainData.GethURL,
+			}
+			v := NewEthereumValidator(cfg)
 
-// 			// Provide empty receipts for basic validation test
-// 			emptyReceipts := make(ethtypes.Receipts, 0)
-// 			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
-// 			if err != nil {
-// 				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
-// 			}
-// 		})
-// 	}
-// }
-
-// func TestBlockValidator_Failures(t *testing.T) {
-// 	ctx := context.Background()
-// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-// 	os.Setenv("EVM_BLOCK_VALIDATION_ENABLED", "true")
-// 	t.Logf("EVM_BLOCK_VALIDATION_ENABLED: %s", os.Getenv("EVM_BLOCK_VALIDATION_ENABLED"))
-
-// 	for _, chainData := range TestChains {
-// 		t.Run(chainData.Name, func(t *testing.T) {
-// 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
-// 			if err != nil {
-// 				t.Fatalf("Failed to load block fixture for %s: %v", chainData.Name, err)
-// 			}
-
-// 			cfg := &configuration.Configuration{
-// 				ChainConfig: chainData.ChainConfig,
-// 				Network:     chainData.Network,
-// 				GethURL:     chainData.GethURL,
-// 			}
-// 			v := NewEthereumValidator(cfg)
-
-// 			// Provide empty receipts for basic validation test
-// 			emptyReceipts := make(ethtypes.Receipts, 0)
-// 			err = v.ValidateBlock(ctx, block, emptyReceipts, block.Hash())
-// 			if err != nil {
-// 				t.Logf("ValidateBlock failed for %s: %v", chainData.Name, err)
-// 			} else {
-// 				t.Errorf("ValidateBlock should have failed for %s", chainData.Name)
-// 			}
-// 		})
-// 	}
-// }
+			// Provide empty receipts for basic validation test
+			receipts, err := loadReceiptsFromJSON(chainData.ReceiptFixtureFile, t)
+			err = v.ValidateBlock(ctx, block, receipts, block.Hash())
+			if err != nil {
+				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
+			}
+		})
+	}
+}

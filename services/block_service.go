@@ -396,7 +396,6 @@ func (s *BlockAPIService) Block(
 	if errors.Is(err, AssetTypes.ErrClientBlockOrphaned) {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrBlockOrphaned, err)
 	}
-	fmt.Println("block", block.Withdrawals())
 
 	if err != nil {
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
@@ -514,6 +513,14 @@ func getEthReceipts(ctx context.Context, loadedTxns []*client.LoadedTransaction,
 				return nil, fmt.Errorf("got nil receipt for transaction %d", i)
 			}
 		}
+	}
+	for i, receipt := range ethReceipts {
+		receiptJSON, err := json.MarshalIndent(receipt, "", "  ")
+		if err != nil {
+			fmt.Printf("Error marshaling receipt %d: %v\n", i, err)
+			continue
+		}
+		fmt.Printf("Receipt %d:\n%s\n\n", i, string(receiptJSON))
 	}
 	return ethReceipts, nil
 }
