@@ -435,7 +435,7 @@ func (s *BlockAPIService) Block(
 			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("error fetching eth receipts: %w", err))
 		}
 		v := validator.NewEthereumValidator(s.config)
-		err = v.ValidateBlock(ctx, block, receipts, rpcBlock.Hash)
+		err = v.ValidateBlock(block, receipts, rpcBlock.Hash)
 		if err != nil {
 			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
 		}
@@ -486,7 +486,12 @@ func (s *BlockAPIService) Block(
 }
 
 // fetch the EthTypes receipts via RPC because the Rosetta Receipts do not contain the full information for validation
-func getEthReceipts(ctx context.Context, loadedTxns []*client.LoadedTransaction, client construction.Client, hash common.Hash) ([]*EthTypes.Receipt, error) {
+func getEthReceipts(
+	ctx context.Context,
+	loadedTxns []*client.LoadedTransaction,
+	client construction.Client,
+	hash common.Hash,
+) ([]*EthTypes.Receipt, error) {
 	ethReceipts := make(EthTypes.Receipts, len(loadedTxns))
 	reqs := make([]rpc.BatchElem, len(loadedTxns))
 

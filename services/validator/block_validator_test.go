@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -145,7 +144,7 @@ var TestChains = []ChainTestData{
 
 func newUint64(val uint64) *uint64 { return &val }
 
-func loadReceiptsFromJSON(filepath string, t *testing.T) (ethtypes.Receipts, error) {
+func loadReceiptsFromJSON(filepath string) (ethtypes.Receipts, error) {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read fixture file: %w", err)
@@ -231,12 +230,13 @@ func modifyBlockHeader(original *ethtypes.Block, modifyFn func(*ethtypes.Header)
 	})
 }
 
-func modifyTransaction(original *ethtypes.Block, txIndex int, modifyFn func(*ethtypes.Transaction)) *ethtypes.Block {
+func modifyTransaction(original *ethtypes.Block, txIndex int, modifyFn func(*ethtypes.Transaction) *ethtypes.Transaction) *ethtypes.Block {
 	transactions := make([]*ethtypes.Transaction, len(original.Transactions()))
 	copy(transactions, original.Transactions())
 	if txIndex < len(transactions) {
 		tx := transactions[txIndex]
-		modifyFn(tx)
+		modifiedTx := modifyFn(tx)
+		transactions[txIndex] = modifiedTx
 	}
 	return ethtypes.NewBlockWithHeader(original.Header()).WithBody(ethtypes.Body{
 		Transactions: transactions,
@@ -257,8 +257,6 @@ func modifyWithdrawals(original *ethtypes.Block, modifyFn func([]*ethtypes.Withd
 }
 
 func TestBlockValidator_HeaderFailures(t *testing.T) {
-	ctx := context.Background()
-
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
 			// Load the base block that we'll modify for each test
@@ -311,7 +309,7 @@ func TestBlockValidator_HeaderFailures(t *testing.T) {
 					modifiedBlock := modifyBlockHeader(baseBlock, tc.modifyFn)
 					// Provide empty receipts since we're testing header validation
 					emptyReceipts := make(ethtypes.Receipts, 0)
-					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					err := v.ValidateBlock(modifiedBlock, emptyReceipts, baseBlock.Hash())
 					if err == nil {
 						t.Error("expected error but got none")
 						return
@@ -326,8 +324,6 @@ func TestBlockValidator_HeaderFailures(t *testing.T) {
 }
 
 func TestBlockValidator_TransactionFailures(t *testing.T) {
-	ctx := context.Background()
-
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
 			// Load the base block that we'll modify for each test
@@ -349,16 +345,15 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 			testCases := []struct {
 				name     string
 				txIndex  int
-				modifyFn func(*ethtypes.Transaction)
+				modifyFn func(*ethtypes.Transaction) *ethtypes.Transaction
 				wantErr  string
 			}{
 				{
 					name:    "corrupt chain id",
 					txIndex: 0,
-					modifyFn: func(tx *ethtypes.Transaction) {
-						// This requires modifying the underlying transaction data
-						// We'll need to create a new transaction with modified values
-						newTx := ethtypes.NewTransaction(
+					modifyFn: func(tx *ethtypes.Transaction) *ethtypes.Transaction {
+						// Create a new transaction with modified values
+						return ethtypes.NewTransaction(
 							tx.Nonce(),
 							*tx.To(),
 							tx.Value(),
@@ -366,15 +361,14 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 							tx.GasPrice(),
 							tx.Data(),
 						)
-						*tx = *newTx
 					},
 					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt gas used",
 					txIndex: 0,
-					modifyFn: func(tx *ethtypes.Transaction) {
-						newTx := ethtypes.NewTransaction(
+					modifyFn: func(tx *ethtypes.Transaction) *ethtypes.Transaction {
+						return ethtypes.NewTransaction(
 							tx.Nonce(),
 							*tx.To(),
 							tx.Value(),
@@ -382,16 +376,15 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 							tx.GasPrice(),
 							tx.Data(),
 						)
-						*tx = *newTx
 					},
 					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt to field",
 					txIndex: 0,
-					modifyFn: func(tx *ethtypes.Transaction) {
+					modifyFn: func(tx *ethtypes.Transaction) *ethtypes.Transaction {
 						addr := common.HexToAddress("0x086d426f8b653b88a2d6d03051c8b4ab8783be2c") // Modified last char
-						newTx := ethtypes.NewTransaction(
+						return ethtypes.NewTransaction(
 							tx.Nonce(),
 							addr,
 							tx.Value(),
@@ -399,15 +392,14 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 							tx.GasPrice(),
 							tx.Data(),
 						)
-						*tx = *newTx
 					},
 					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt value field",
 					txIndex: 0,
-					modifyFn: func(tx *ethtypes.Transaction) {
-						newTx := ethtypes.NewTransaction(
+					modifyFn: func(tx *ethtypes.Transaction) *ethtypes.Transaction {
+						return ethtypes.NewTransaction(
 							tx.Nonce(),
 							*tx.To(),
 							big.NewInt(1), // Modified from 0 to 1
@@ -415,15 +407,14 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 							tx.GasPrice(),
 							tx.Data(),
 						)
-						*tx = *newTx
 					},
 					wantErr: "invalid transactions hash",
 				},
 				{
 					name:    "corrupt data field",
 					txIndex: 0,
-					modifyFn: func(tx *ethtypes.Transaction) {
-						newTx := ethtypes.NewTransaction(
+					modifyFn: func(tx *ethtypes.Transaction) *ethtypes.Transaction {
+						return ethtypes.NewTransaction(
 							tx.Nonce(),
 							*tx.To(),
 							tx.Value(),
@@ -431,7 +422,6 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 							tx.GasPrice(),
 							[]byte{0x1}, // Modified data
 						)
-						*tx = *newTx
 					},
 					wantErr: "invalid transactions hash",
 				},
@@ -442,7 +432,7 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 					modifiedBlock := modifyTransaction(baseBlock, tc.txIndex, tc.modifyFn)
 					// Provide empty receipts since we're testing header validation
 					emptyReceipts := make(ethtypes.Receipts, 0)
-					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					err := v.ValidateBlock(modifiedBlock, emptyReceipts, baseBlock.Hash())
 					if err == nil {
 						t.Error("expected error but got none")
 						return
@@ -457,8 +447,6 @@ func TestBlockValidator_TransactionFailures(t *testing.T) {
 }
 
 func TestBlockValidator_WithdrawalFailures(t *testing.T) {
-	ctx := context.Background()
-
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
 			// Load the base block that we'll modify for each test
@@ -492,7 +480,7 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 					name: "corrupt withdrawal index",
 					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
 						if len(withdrawals) > 0 {
-							withdrawals[0].Index = withdrawals[0].Index + 1 // Modify index
+							withdrawals[0].Index++ // Modify index
 						}
 					},
 					wantErr: "invalid withdrawals hash",
@@ -501,7 +489,7 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 					name: "corrupt validator index",
 					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
 						if len(withdrawals) > 0 {
-							withdrawals[0].Validator = withdrawals[0].Validator + 1 // Modify validator index
+							withdrawals[0].Validator++ // Modify validator index
 						}
 					},
 					wantErr: "invalid withdrawals hash",
@@ -522,7 +510,7 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 					name: "corrupt withdrawal amount",
 					modifyFn: func(withdrawals []*ethtypes.Withdrawal) {
 						if len(withdrawals) > 0 {
-							withdrawals[0].Amount = withdrawals[0].Amount + 1 // Modify amount
+							withdrawals[0].Amount++ // Modify amount
 						}
 					},
 					wantErr: "invalid withdrawals hash",
@@ -534,7 +522,7 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 					modifiedBlock := modifyWithdrawals(baseBlock, tc.modifyFn)
 					// Provide empty receipts since we're testing withdrawal validation
 					emptyReceipts := make(ethtypes.Receipts, 0)
-					err := v.ValidateBlock(ctx, modifiedBlock, emptyReceipts, baseBlock.Hash())
+					err := v.ValidateBlock(modifiedBlock, emptyReceipts, baseBlock.Hash())
 					if err == nil {
 						t.Error("expected error but got none")
 						return
@@ -549,8 +537,6 @@ func TestBlockValidator_WithdrawalFailures(t *testing.T) {
 }
 
 func TestBlockValidator_ReceiptFailures(t *testing.T) {
-	ctx := context.Background()
-
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
 			baseBlock, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
@@ -559,7 +545,7 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 			}
 
 			// Load the actual receipts
-			baseReceipts, err := loadReceiptsFromJSON(chainData.ReceiptFixtureFile, t)
+			baseReceipts, err := loadReceiptsFromJSON(chainData.ReceiptFixtureFile)
 			if err != nil {
 				t.Fatalf("Failed to load receipts fixture for %s: %v", chainData.Name, err)
 			}
@@ -644,7 +630,7 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 							copy(modifiedReceipts, receipts)
 							// Create a modified bloom filter
 							modifiedBloom := receipts[0].Bloom
-							modifiedBloom[0] = modifiedBloom[0] ^ 0xFF // Flip first byte
+							modifiedBloom[0] ^= 0xFF // Flip first byte
 							modifiedReceipt := &ethtypes.Receipt{
 								Type:              receipts[0].Type,
 								PostState:         receipts[0].PostState,
@@ -731,7 +717,7 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 			for _, tc := range testCases {
 				t.Run(tc.name, func(t *testing.T) {
 					modifiedReceipts := tc.modifyFn(baseReceipts)
-					err := v.ValidateBlock(ctx, baseBlock, modifiedReceipts, baseBlock.Hash())
+					err := v.ValidateBlock(baseBlock, modifiedReceipts, baseBlock.Hash())
 					if err == nil {
 						t.Error("expected error but got none")
 						return
@@ -746,7 +732,7 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 			for _, tc := range headerTestCases {
 				t.Run(tc.name, func(t *testing.T) {
 					modifiedBlock := modifyBlockHeader(baseBlock, tc.modifyFn)
-					err := v.ValidateBlock(ctx, modifiedBlock, baseReceipts, baseBlock.Hash())
+					err := v.ValidateBlock(modifiedBlock, baseReceipts, baseBlock.Hash())
 					if err == nil {
 						t.Error("expected error but got none")
 						return
@@ -761,8 +747,6 @@ func TestBlockValidator_ReceiptFailures(t *testing.T) {
 }
 
 func TestBlockValidator_Success(t *testing.T) {
-	ctx := context.Background()
-
 	for _, chainData := range TestChains {
 		t.Run(chainData.Name, func(t *testing.T) {
 			block, err := loadBlockFromJSON(chainData.BlockFixtureFile, t)
@@ -777,9 +761,13 @@ func TestBlockValidator_Success(t *testing.T) {
 			}
 			v := NewEthereumValidator(cfg)
 
-			// Provide empty receipts for basic validation test
-			receipts, err := loadReceiptsFromJSON(chainData.ReceiptFixtureFile, t)
-			err = v.ValidateBlock(ctx, block, receipts, block.Hash())
+			// Load receipts for validation test
+			receipts, err := loadReceiptsFromJSON(chainData.ReceiptFixtureFile)
+			if err != nil {
+				t.Fatalf("Failed to load receipts fixture for %s: %v", chainData.Name, err)
+			}
+
+			err = v.ValidateBlock(block, receipts, block.Hash())
 			if err != nil {
 				t.Errorf("ValidateBlock failed for %s: %v", chainData.Name, err)
 			}
