@@ -290,6 +290,7 @@ func (s *BlockAPIService) GetBlock(
 		return nil, nil, nil, goEthereum.NotFound
 	}
 
+	fmt.Printf("raw: %s\n", string(raw))
 	// Decode header and transactions
 	var head EthTypes.Header
 	var body client.RPCBlock
@@ -518,14 +519,6 @@ func getEthReceipts(
 				return nil, fmt.Errorf("got nil receipt for transaction %d", i)
 			}
 		}
-	}
-	for i, receipt := range ethReceipts {
-		receiptJSON, err := json.MarshalIndent(receipt, "", "  ")
-		if err != nil {
-			fmt.Printf("Error marshaling receipt %d: %v\n", i, err)
-			continue
-		}
-		fmt.Printf("Receipt %d:\n%s\n\n", i, string(receiptJSON))
 	}
 	return ethReceipts, nil
 }
