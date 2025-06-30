@@ -27,7 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
 
 	client "github.com/coinbase/rosetta-geth-sdk/client"
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
@@ -378,6 +377,52 @@ func (s *BlockAPIService) GetBlock(
 	return block, loadedTxs, &body, nil
 }
 
+// convertRosettaReceiptsToEthReceipts converts already-fetched Rosetta receipts to EthTypes.Receipts for validation
+func convertRosettaReceiptsToEthReceipts(rosettaReceipts []*client.RosettaTxReceipt, loadedTxns []*client.LoadedTransaction) ([]*EthTypes.Receipt, error) {
+	ethReceipts := make([]*EthTypes.Receipt, len(rosettaReceipts))
+
+	for i, rosettaReceipt := range rosettaReceipts {
+		if rosettaReceipt == nil {
+			return nil, fmt.Errorf("rosetta receipt %d is nil", i)
+		}
+
+		// if we have the raw message, we can unmarshal from it
+		if rosettaReceipt.RawMessage != nil {
+			receipt := &EthTypes.Receipt{}
+			if err := receipt.UnmarshalJSON(rosettaReceipt.RawMessage); err == nil {
+				ethReceipts[i] = receipt
+				continue
+			}
+		}
+
+		// if for some reason we can't unmarshal from RawMessage, we need to reconstruct the receipt from the available fields
+		// Calculate cumulative gas used (sum of all previous + current)
+		var cumulativeGasUsed uint64
+		for j := 0; j <= i; j++ {
+			if rosettaReceipts[j] != nil && rosettaReceipts[j].GasUsed != nil {
+				cumulativeGasUsed += rosettaReceipts[j].GasUsed.Uint64()
+			}
+		}
+
+		ethReceipt := &EthTypes.Receipt{
+			Type:              rosettaReceipt.Type,
+			Status:            rosettaReceipt.Status,
+			CumulativeGasUsed: cumulativeGasUsed, // Critical for Merkle validation
+			Bloom:             EthTypes.Bloom{},  // Will be reconstructed from logs
+			Logs:              rosettaReceipt.Logs,
+		}
+
+		// Reconstruct bloom filter from logs (required for Merkle validation)
+		if len(rosettaReceipt.Logs) > 0 {
+			ethReceipt.Bloom = EthTypes.CreateBloom(ethReceipt)
+		}
+
+		ethReceipts[i] = ethReceipt
+	}
+
+	return ethReceipts, nil
+}
+
 // Block implements the /block endpoint.
 func (s *BlockAPIService) Block(
 	ctx context.Context,
@@ -428,19 +473,6 @@ func (s *BlockAPIService) Block(
 		}
 	}
 
-	runValidation := s.config.IsTrustlessBlockValidationEnabled()
-	if runValidation && len(loadedTxns) > 0 {
-		receipts, err := getEthReceipts(ctx, loadedTxns, s.client, rpcBlock.Hash)
-		if err != nil {
-			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("error fetching eth receipts: %w", err))
-		}
-		v := validator.NewEthereumValidator(s.config)
-		err = v.ValidateBlock(block, receipts, rpcBlock.Hash)
-		if err != nil {
-			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
-		}
-	}
-
 	blockIdentifier = &RosettaTypes.BlockIdentifier{
 		Index: block.Number().Int64(),
 		Hash:  block.Hash().String(),
@@ -474,7 +506,7 @@ func (s *BlockAPIService) Block(
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
 	}
 
-	return &RosettaTypes.BlockResponse{
+	blockResponse := &RosettaTypes.BlockResponse{
 		Block: &RosettaTypes.Block{
 			BlockIdentifier:       blockIdentifier,
 			ParentBlockIdentifier: parentBlockIdentifier,
@@ -482,44 +514,27 @@ func (s *BlockAPIService) Block(
 			Transactions:          append(transactions, crossTxns...),
 			Metadata:              nil,
 		},
-	}, nil
-}
+	}
 
-// fetch the EthTypes receipts via RPC because the Rosetta Receipts do not contain the full information for validation
-func getEthReceipts(
-	ctx context.Context,
-	loadedTxns []*client.LoadedTransaction,
-	client construction.Client,
-	hash common.Hash,
-) ([]*EthTypes.Receipt, error) {
-	ethReceipts := make(EthTypes.Receipts, len(loadedTxns))
-	reqs := make([]rpc.BatchElem, len(loadedTxns))
+	if !s.config.IsTrustlessBlockValidationEnabled() {
+		return blockResponse, nil
+	}
 
-	for i, tx := range loadedTxns {
-		reqs[i] = rpc.BatchElem{
-			Method: "eth_getTransactionReceipt",
-			Args:   []interface{}{tx.TxHash.String()},
-			Result: &ethReceipts[i],
+	// run validation
+	ethReceipts, err := convertRosettaReceiptsToEthReceipts(receipts, loadedTxns)
+	if err != nil {
+		if err != nil {
+			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("error fetching eth receipts: %w", err))
 		}
 	}
 
-	// Execute batch RPC call to get complete receipts
-	if err := client.CallContext(ctx, &ethReceipts, "eth_getBlockReceipts", hash); err != nil {
-		// Fallback to individual receipt fetching if eth_getBlockReceipts is not available
-		if err := client.BatchCallContext(ctx, reqs); err != nil {
-			return nil, fmt.Errorf("failed to fetch receipts for validation: %w", err)
-		}
-
-		for i := range reqs {
-			if reqs[i].Error != nil {
-				return nil, fmt.Errorf("failed to fetch receipt %d: %w", i, reqs[i].Error)
-			}
-			if ethReceipts[i] == nil {
-				return nil, fmt.Errorf("got nil receipt for transaction %d", i)
-			}
-		}
+	v := validator.NewEthereumValidator(s.config)
+	err = v.ValidateBlock(block, ethReceipts, rpcBlock.Hash)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
 	}
-	return ethReceipts, nil
+
+	return blockResponse, nil
 }
 
 // BlockTransaction implements the /block/transaction endpoint.
