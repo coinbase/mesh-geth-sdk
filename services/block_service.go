@@ -26,18 +26,18 @@ import (
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	lru "github.com/hashicorp/golang-lru"
-
-	client "github.com/coinbase/rosetta-geth-sdk/client"
-	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
-
-	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 
+	client "github.com/coinbase/rosetta-geth-sdk/client"
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
+	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
+	validator "github.com/coinbase/rosetta-geth-sdk/services/validator"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
+	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/coinbase/rosetta-sdk-go/utils"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -368,10 +368,59 @@ func (s *BlockAPIService) GetBlock(
 		}
 	}
 
-	return EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
+	block := EthTypes.NewBlockWithHeader(&head).WithBody(EthTypes.Body{
 		Transactions: txs,
 		Uncles:       uncles,
-	}), loadedTxs, &body, nil
+		Withdrawals:  body.Withdrawals,
+	})
+
+	return block, loadedTxs, &body, nil
+}
+
+// convertRosettaReceiptsToEthReceipts converts already-fetched Rosetta receipts to EthTypes.Receipts for validation
+func convertRosettaReceiptsToEthReceipts(rosettaReceipts []*client.RosettaTxReceipt, loadedTxns []*client.LoadedTransaction) ([]*EthTypes.Receipt, error) {
+	ethReceipts := make([]*EthTypes.Receipt, len(rosettaReceipts))
+
+	for i, rosettaReceipt := range rosettaReceipts {
+		if rosettaReceipt == nil {
+			return nil, fmt.Errorf("rosetta receipt %d is nil", i)
+		}
+
+		// if we have the raw message, we can unmarshal from it
+		if rosettaReceipt.RawMessage != nil {
+			receipt := &EthTypes.Receipt{}
+			if err := receipt.UnmarshalJSON(rosettaReceipt.RawMessage); err == nil {
+				ethReceipts[i] = receipt
+				continue
+			}
+		}
+
+		// if for some reason we can't unmarshal from RawMessage, we need to reconstruct the receipt from the available fields
+		// Calculate cumulative gas used (sum of all previous + current)
+		var cumulativeGasUsed uint64
+		for j := 0; j <= i; j++ {
+			if rosettaReceipts[j] != nil && rosettaReceipts[j].GasUsed != nil {
+				cumulativeGasUsed += rosettaReceipts[j].GasUsed.Uint64()
+			}
+		}
+
+		ethReceipt := &EthTypes.Receipt{
+			Type:              rosettaReceipt.Type,
+			Status:            rosettaReceipt.Status,
+			CumulativeGasUsed: cumulativeGasUsed, // Critical for Merkle validation
+			Bloom:             EthTypes.Bloom{},  // Will be reconstructed from logs
+			Logs:              rosettaReceipt.Logs,
+		}
+
+		// Reconstruct bloom filter from logs (required for Merkle validation)
+		if len(rosettaReceipt.Logs) > 0 {
+			ethReceipt.Bloom = EthTypes.CreateBloom(ethReceipt)
+		}
+
+		ethReceipts[i] = ethReceipt
+	}
+
+	return ethReceipts, nil
 }
 
 // Block implements the /block endpoint.
@@ -457,7 +506,7 @@ func (s *BlockAPIService) Block(
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
 	}
 
-	return &RosettaTypes.BlockResponse{
+	blockResponse := &RosettaTypes.BlockResponse{
 		Block: &RosettaTypes.Block{
 			BlockIdentifier:       blockIdentifier,
 			ParentBlockIdentifier: parentBlockIdentifier,
@@ -465,7 +514,27 @@ func (s *BlockAPIService) Block(
 			Transactions:          append(transactions, crossTxns...),
 			Metadata:              nil,
 		},
-	}, nil
+	}
+
+	if !s.config.IsTrustlessBlockValidationEnabled() {
+		return blockResponse, nil
+	}
+
+	// run validation
+	ethReceipts, err := convertRosettaReceiptsToEthReceipts(receipts, loadedTxns)
+	if err != nil {
+		if err != nil {
+			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("error fetching eth receipts: %w", err))
+		}
+	}
+
+	v := validator.NewEthereumValidator(s.config)
+	err = v.ValidateBlock(block, ethReceipts, rpcBlock.Hash)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
+	}
+
+	return blockResponse, nil
 }
 
 // BlockTransaction implements the /block/transaction endpoint.

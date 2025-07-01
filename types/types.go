@@ -152,6 +152,7 @@ var (
 		"eth_getTransactionReceipt",
 		"eth_call",
 		"eth_estimateGas",
+		"eth_getProof",
 	}
 
 	Currency = &RosettaTypes.Currency{
