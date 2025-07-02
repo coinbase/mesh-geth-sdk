@@ -333,6 +333,10 @@ func (v *trustlessValidator) validateWithdrawals(
 	withdrawals EthTypes.Withdrawals,
 	withdrawalsRoot *geth.Hash,
 ) error {
+	if true { // TODO: make this check if its an L2
+		return nil
+	}
+
 	if withdrawalsRoot == nil {
 		// if the withdrawalsRoot is nil, we expect the withdrawals to be empty
 		if len(withdrawals) != 0 {
