@@ -333,6 +333,11 @@ func (v *trustlessValidator) validateWithdrawals(
 	withdrawals EthTypes.Withdrawals,
 	withdrawalsRoot *geth.Hash,
 ) error {
+	// only validate withdrawals if the blockchain supports withdrawals (EIP-4895)
+	if !v.config.RosettaCfg.SupportsWithdrawals {
+		return nil
+	}
+
 	if withdrawalsRoot == nil {
 		// if the withdrawalsRoot is nil, we expect the withdrawals to be empty
 		if len(withdrawals) != 0 {
