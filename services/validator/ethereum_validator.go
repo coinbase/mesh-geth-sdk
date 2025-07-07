@@ -333,7 +333,8 @@ func (v *trustlessValidator) validateWithdrawals(
 	withdrawals EthTypes.Withdrawals,
 	withdrawalsRoot *geth.Hash,
 ) error {
-	if true { // TODO: make this check if its an L2
+	// only validate withdrawals if the blockchain supports withdrawals (EIP-4895)
+	if !v.config.RosettaCfg.SupportsWithdrawals {
 		return nil
 	}
 
