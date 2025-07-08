@@ -26,18 +26,18 @@ import (
 	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	lru "github.com/hashicorp/golang-lru"
-
-	client "github.com/coinbase/rosetta-geth-sdk/client"
-	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
-
-	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 
+	client "github.com/coinbase/rosetta-geth-sdk/client"
 	"github.com/coinbase/rosetta-geth-sdk/configuration"
+	construction "github.com/coinbase/rosetta-geth-sdk/services/construction"
+	validator "github.com/coinbase/rosetta-geth-sdk/services/validator"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 
+	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 	"github.com/coinbase/rosetta-sdk-go/utils"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -454,7 +454,7 @@ func (s *BlockAPIService) Block(
 		return nil, AssetTypes.WrapErr(AssetTypes.ErrGeth, err)
 	}
 
-	return &RosettaTypes.BlockResponse{
+	blockResponse := &RosettaTypes.BlockResponse{
 		Block: &RosettaTypes.Block{
 			BlockIdentifier:       blockIdentifier,
 			ParentBlockIdentifier: parentBlockIdentifier,
@@ -462,7 +462,27 @@ func (s *BlockAPIService) Block(
 			Transactions:          append(transactions, crossTxns...),
 			Metadata:              nil,
 		},
-	}, nil
+	}
+
+	if !s.config.IsTrustlessBlockValidationEnabled() {
+		return blockResponse, nil
+	}
+
+	// run validation
+	ethReceipts, err := convertRosettaReceiptsToEthReceipts(receipts, loadedTxns)
+	if err != nil {
+		if err != nil {
+			return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("error fetching eth receipts: %w", err))
+		}
+	}
+
+	v := validator.NewEthereumValidator(s.config)
+	err = v.ValidateBlock(block, ethReceipts, rpcBlock.Hash)
+	if err != nil {
+		return nil, AssetTypes.WrapErr(AssetTypes.ErrInternalError, fmt.Errorf("block validation failed: %w", err))
+	}
+
+	return blockResponse, nil
 }
 
 // BlockTransaction implements the /block/transaction endpoint.

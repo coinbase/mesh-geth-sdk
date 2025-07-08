@@ -31,7 +31,7 @@ import (
 
 	evmClient "github.com/coinbase/rosetta-geth-sdk/client"
 	sdkTypes "github.com/coinbase/rosetta-geth-sdk/types"
-	EthTypes "github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type EthereumClient struct {
@@ -66,7 +66,7 @@ func (c *EthereumClient) GetBlockReceipts(
 		return receipts, nil
 	}
 
-	ethReceipts := make([]*EthTypes.Receipt, len(txs))
+	ethReceipts := make([]*ethtypes.Receipt, len(txs))
 	reqs := make([]rpc.BatchElem, len(txs))
 	for i := range reqs {
 		reqs[i] = rpc.BatchElem{
@@ -122,7 +122,7 @@ func (c *EthereumClient) GetTransactionReceipt(
 	ctx context.Context,
 	tx *evmClient.LoadedTransaction,
 ) (*evmClient.RosettaTxReceipt, error) {
-	var r *EthTypes.Receipt
+	var r *ethtypes.Receipt
 	err := c.CallContext(ctx, &r, "eth_getTransactionReceipt", tx.TxHash)
 	if err == nil {
 		if r == nil {

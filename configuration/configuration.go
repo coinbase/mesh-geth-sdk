@@ -79,6 +79,9 @@ type RosettaConfig struct {
 	// SupportsEIP1559 indicates if the blockchain supports EIP-1559
 	SupportsEIP1559 bool
 
+	// SupportsWithdrawals indicates if the blockchain supports EIP-4895 (withdrawals)
+	SupportsWithdrawals bool
+
 	// SupportsOpStack indicates if the blockchain supports OP stack
 	SupportsOpStack bool
 
@@ -131,6 +134,12 @@ type RosettaConfig struct {
 
 	// ForwardHeaders is the list of headers to forward to and from the native node
 	ForwardHeaders []string
+
+	// EnableTrustlessBlockValidation determines whether we will try to enable block validation
+	EnableTrustlessBlockValidation bool
+
+	// EnableTrustlessAccountValidation determines whether we will try to enable account validation
+	EnableTrustlessAccountValidation bool
 
 	// Functor to access allowlisted tokens.
 	// This should be defined in rosetta-xxx implementation if needed
@@ -193,4 +202,14 @@ func (c Configuration) IsAnalyticsMode() bool {
 // IsTokenListEmpty returns true if the token addresses list is empty
 func (c Configuration) IsTokenListEmpty() bool {
 	return len(c.RosettaCfg.TokenWhiteList) == 0
+}
+
+// IsTrustlessBlockValidationEnabled returns true if trustless block validation is enabled
+func (c Configuration) IsTrustlessBlockValidationEnabled() bool {
+	return c.RosettaCfg.EnableTrustlessBlockValidation
+}
+
+// IsTrustlessAccountValidationEnabled returns true if trustless account validation is enabled
+func (c Configuration) IsTrustlessAccountValidationEnabled() bool {
+	return c.RosettaCfg.EnableTrustlessAccountValidation
 }
