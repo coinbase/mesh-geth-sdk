@@ -571,7 +571,7 @@ func EffectiveGasPrice(tx *EthTypes.Transaction, baseFee *big.Int) (*big.Int, er
 	return new(big.Int).Add(tip, baseFee), nil
 }
 
-// flattenTraces recursively flattens all traces.
+// FlattenTraces recursively flattens all traces.
 func FlattenTraces(data *Call, flattened []*FlatCall) []*FlatCall {
 	if data == nil {
 		return flattened

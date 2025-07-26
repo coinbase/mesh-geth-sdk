@@ -275,7 +275,7 @@ func (t *OpenEthAction) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
-// flattenTraces recursively flattens all traces.
+// FlattenOpenEthTraces recursively flattens all traces.
 func FlattenOpenEthTraces(data *OpenEthTraceCall, flattened []*FlatCall) []*FlatCall {
 	for _, child := range data.Trace {
 		action := child.Action
