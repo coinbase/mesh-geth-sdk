@@ -161,6 +161,14 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 				}
 				argData = uint32(u64)
 			}
+		case v == "uint64":
+			{
+				u64, err := strconv.ParseUint(methodArgs[i], 10, 64)
+				if err != nil {
+					log.Fatal(err)
+				}
+				argData = u64
+			}
 		case strings.HasPrefix(v, "uint") || strings.HasPrefix(v, "int"):
 			{
 				value := new(big.Int)
