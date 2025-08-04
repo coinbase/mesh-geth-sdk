@@ -233,7 +233,7 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 
 	abiEncodeData, err := arguments.PackValues(argumentsData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode arguments: %w", err)
+		return nil, fmt.Errorf("encode arguments error: %w", err)
 	}
 
 	data = append(data, abiEncodeData...)
