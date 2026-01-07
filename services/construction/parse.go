@@ -67,7 +67,7 @@ func (s *APIService) ConstructionParse(
 		tx.ChainID = t.ChainId()
 		tx.Currency = wrappedTx.Currency
 
-		msg, err := core.TransactionToMessage(&t, EthTypes.LatestSignerForChainID(t.ChainId()), nil, core.MessageReplayMode)
+		msg, err := core.TransactionToMessage(&t, EthTypes.LatestSignerForChainID(t.ChainId()), nil, core.NewMessageReplayContext())
 		if err != nil {
 			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, err)
 		}

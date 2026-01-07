@@ -933,7 +933,7 @@ func (ec *SDKClient) GetLoadedTransaction(
 	}
 
 	signer := EthTypes.LatestSignerForChainID(ec.P.ChainID)
-	msg, err := core.TransactionToMessage(tx, signer, header.BaseFee, core.MessageReplayMode)
+	msg, err := core.TransactionToMessage(tx, signer, header.BaseFee, core.NewMessageReplayContext())
 	if err != nil {
 		return nil, err
 	}
