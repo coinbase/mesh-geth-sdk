@@ -98,6 +98,16 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodArgs:    []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", true},
 			expectedError: errors.New("invalid method_args type at index 2: bool (must be a string)"),
 		},
+		"error: pass arguments to no-arg method": {
+			methodSig:     "pause()",
+			methodArgs:    []string{"0x12345"},
+			expectedError: errors.New("invalid method arguments"),
+		},
+		"error: pass wrong number of arguments method": {
+			methodSig:     "pause(uint256)",
+			methodArgs:    []string{"0", "1"},
+			expectedError: errors.New("invalid method arguments"),
+		},
 	}
 
 	for name, test := range tests {
