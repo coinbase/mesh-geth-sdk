@@ -103,7 +103,7 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodArgs:    []string{"0x12345"},
 			expectedError: errors.New("invalid method arguments"),
 		},
-		"error: pass wrong number of arguments method": {
+		"error: pass wrong number of arguments to the method": {
 			methodSig:     "pause(uint256)",
 			methodArgs:    []string{"0", "1"},
 			expectedError: errors.New("invalid method arguments"),
