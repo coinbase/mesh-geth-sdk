@@ -51,6 +51,16 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodArgs:       []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", "true"},
 			expectedResponse: "0x60d7a2780000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000008626f6f6c20616263000000000000000000000000000000000000000000000000",
 		},
+		"happy path: no-arg method with empty string list args": {
+			methodSig:        "pause()",
+			methodArgs:       []string{},
+			expectedResponse: "0x8456cb59",
+		},
+		"happy path: no-arg method with empty interface list args": {
+			methodSig:        "pause()",
+			methodArgs:       []interface{}{},
+			expectedResponse: "0x8456cb59",
+		},
 		"happy path: method sig is an empty string and args is a list of interface": {
 			methodSig:        "",
 			methodArgs:       []interface{}{"0xabcde12345"},
@@ -87,6 +97,16 @@ func TestConstruction_ContractCallData(t *testing.T) {
 			methodSig:     "register(string,address,bool)",
 			methodArgs:    []interface{}{"bool abc", "0x0000000000000000000000000000000000000000", true},
 			expectedError: errors.New("invalid method_args type at index 2: bool (must be a string)"),
+		},
+		"error: pass arguments to no-arg method": {
+			methodSig:     "pause()",
+			methodArgs:    []string{"0x12345"},
+			expectedError: errors.New("invalid method arguments"),
+		},
+		"error: pass wrong number of arguments to the method": {
+			methodSig:     "pause(uint256)",
+			methodArgs:    []string{"1", "2"},
+			expectedError: errors.New("invalid method arguments"),
 		},
 	}
 
