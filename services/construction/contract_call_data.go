@@ -131,7 +131,14 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 	if len(splitSigByTrailingParenthesis) < 1 {
 		return data, nil
 	}
-	splitSigByComma := strings.Split(splitSigByTrailingParenthesis[0], ",")
+	argsSignature := strings.TrimSpace(splitSigByTrailingParenthesis[0])
+	var splitSigByComma []string
+	if argsSignature == "" {
+		// Methods like pause() have zero arguments and should accept empty arg lists.
+		splitSigByComma = []string{}
+	} else {
+		splitSigByComma = strings.Split(argsSignature, ",")
+	}
 
 	if len(splitSigByComma) != len(methodArgs) {
 		return nil, errors.New("invalid method arguments")
