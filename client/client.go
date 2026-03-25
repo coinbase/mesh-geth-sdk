@@ -39,7 +39,6 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -48,7 +47,7 @@ import (
 
 type SDKClient struct {
 	P            *params.ChainConfig
-	tc           *tracers.TraceConfig
+	tc           *RethCompatibleTraceConfig
 	customizedTc interface{}
 
 	rosettaConfig configuration.RosettaConfig
@@ -1005,7 +1004,8 @@ func (ec *SDKClient) GetBlockReceipts(
 }
 
 func (ec *SDKClient) GetNativeTransferGasLimit(ctx context.Context, toAddress string,
-	fromAddress string, value *big.Int) (uint64, error) {
+	fromAddress string, value *big.Int,
+) (uint64, error) {
 	return 0, errors.New("GetNativeTransferGasLimit not implemented")
 }
 
