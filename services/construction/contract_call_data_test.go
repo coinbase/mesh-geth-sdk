@@ -16,7 +16,6 @@ package construction
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -94,7 +93,6 @@ func TestConstruction_ContractCallData(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			bytes, err := ConstructContractCallDataGeneric(test.methodSig, test.methodArgs)
 			if err != nil {
-				fmt.Println(err)
 				assert.EqualError(t, err, test.expectedError.Error())
 			} else {
 				assert.Equal(t, test.expectedResponse, hexutil.Encode(bytes))
@@ -117,12 +115,14 @@ func TestConstruction_preprocessArgs(t *testing.T) {
 				"0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
 				"32941055343948244352",
 				"0",
-				"0x"},
+				"0x",
+			},
 			expectedResponse: []interface{}{
 				"0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
 				"32941055343948244352",
 				"0",
-				"0x"},
+				"0x",
+			},
 		},
 		"happy path: method sig is empty and args is nil": {
 			methodSig:        "",
