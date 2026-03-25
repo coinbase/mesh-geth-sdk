@@ -22,7 +22,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 )
 
 // convert raw eth data from SDKClient to rosetta
@@ -36,9 +36,28 @@ var (
 	nativeTracer  = "callTracer"
 )
 
-func GetTraceConfig(useNative bool) (*tracers.TraceConfig, error) {
+// RethCompatibleTraceConfig copies the fields from github.com/ethereum/go-ethereum/eth/tracers.TraceConfig
+// but defines json-encoding tags that use the correct casing. We've seen that geth is case-insensitive,
+// but reth implementations are case-sensitive (because they use the rust standard library `serde`).
+//
+// Using the builtin geth trace config struct when calling reth nodes causes the default tracer
+// to be used instead of callTracer, which causes the node to return huge (1.5Gb) payloads that consume
+// lots of resources on the node and client.
+type RethCompatibleTraceConfig struct {
+	*logger.Config
+
+	Tracer  *string `json:"tracer"`
+	Timeout *string `json:"timeout"`
+	Reexec  *uint64 `json:"reexec"`
+
+	// Config specific to given tracer. Note struct logger
+	// config are historically embedded in main object.
+	TracerConfig json.RawMessage `json:"tracerConfig"`
+}
+
+func GetTraceConfig(useNative bool) (*RethCompatibleTraceConfig, error) {
 	if useNative {
-		return &tracers.TraceConfig{
+		return &RethCompatibleTraceConfig{
 			Timeout: &tracerTimeout,
 			Tracer:  &nativeTracer,
 		}, nil
@@ -46,14 +65,14 @@ func GetTraceConfig(useNative bool) (*tracers.TraceConfig, error) {
 	return loadTraceConfig()
 }
 
-func loadTraceConfig() (*tracers.TraceConfig, error) {
+func loadTraceConfig() (*RethCompatibleTraceConfig, error) {
 	loadedFile, err := os.ReadFile(tracerPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not load tracer file: %w", err)
 	}
 
 	loadedTracer := string(loadedFile)
-	return &tracers.TraceConfig{
+	return &RethCompatibleTraceConfig{
 		Timeout: &tracerTimeout,
 		Tracer:  &loadedTracer,
 	}, nil
