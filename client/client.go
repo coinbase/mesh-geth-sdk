@@ -448,8 +448,8 @@ func (ec *SDKClient) TraceBlockByHash(
 	}
 	m := make(map[string][]*FlatCall)
 	for i, tx := range calls {
-		if tx.Result.Type == "" {
-			// ignore calls with an empty type
+		if tx.Result == nil || tx.Result.Type == "" {
+			// ignore calls with a nil result or an empty type
 			continue
 		}
 		flatCalls := FlattenTraces(tx.Result, []*FlatCall{})
