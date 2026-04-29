@@ -536,10 +536,7 @@ func (ec *SDKClient) TraceReplayTransaction(
 	var raw json.RawMessage
 	err := ec.CallContext(ctx, &raw, ec.rosettaConfig.TracePrefix+"_replayTransaction", hsh, []string{"trace"})
 	if err != nil {
-		log.Fatalln(err)
-	}
-
-	if err != nil {
+		log.Print(err)
 		return nil, nil, err
 	}
 
