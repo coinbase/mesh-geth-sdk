@@ -164,7 +164,8 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 			{
 				u64, err := strconv.ParseUint(methodArgs[i], 10, 32)
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
+					return nil, fmt.Errorf("failed to parse uint32 argument: %w", err)
 				}
 				argData = uint32(u64)
 			}
@@ -172,7 +173,8 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 			{
 				u64, err := strconv.ParseUint(methodArgs[i], 10, 64)
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
+					return nil, fmt.Errorf("failed to parse uint64 argument: %w", err)
 				}
 				argData = u64
 			}
@@ -187,7 +189,8 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 				value := [32]byte{}
 				bytes, err := hexutil.Decode(methodArgs[i])
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
+					return nil, fmt.Errorf("failed to parse bytes32 argument: %w", err)
 				}
 				copy(value[:], bytes)
 				argData = value
@@ -197,14 +200,16 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 			{
 				var bytesArgs []string
 				if err := json.Unmarshal([]byte(methodArgs[i]), &bytesArgs); err != nil {
-					log.Fatal(err)
+					log.Print(err)
+					return nil, fmt.Errorf("failed to parse bytes[] argument: %w", err)
 				}
 
 				value := make([][]byte, len(bytesArgs))
 				for j, bytesArg := range bytesArgs {
 					bytes, err := hexutil.Decode(bytesArg)
 					if err != nil {
-						log.Fatal(err)
+						log.Print(err)
+						return nil, fmt.Errorf("failed to parse bytes[] argument: %w", err)
 					}
 					value[j] = bytes
 				}
@@ -216,7 +221,8 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 				// of a "slice" when encoding. We want it to be a slice.
 				bytes, err := hexutil.Decode(methodArgs[i])
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
+					return nil, fmt.Errorf("failed to parse bytes argument: %w", err)
 				}
 				value := make([]byte, len(bytes))
 				copy(value[:], bytes) // nolint:gocritic
@@ -230,7 +236,8 @@ func encodeMethodArgsStrings(methodID []byte, methodSig string, methodArgs []str
 			{
 				value, err := strconv.ParseBool(methodArgs[i])
 				if err != nil {
-					log.Fatal(err)
+					log.Print(err)
+					return nil, fmt.Errorf("failed to parse bool argument: %w", err)
 				}
 				argData = value
 			}
