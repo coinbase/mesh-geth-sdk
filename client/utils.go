@@ -115,7 +115,7 @@ func UnmarshalJSONMap(m map[string]interface{}, i interface{}) error {
 	return json.Unmarshal(b, i)
 }
 
-// marshalJSONMap converts an interface into a map[string]interface{}.
+// MarshalJSONMap converts an interface into a map[string]interface{}.
 func MarshalJSONMap(i interface{}) (map[string]interface{}, error) {
 	b, err := json.Marshal(i)
 	if err != nil {
