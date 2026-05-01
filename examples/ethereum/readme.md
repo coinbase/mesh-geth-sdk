@@ -4,7 +4,7 @@ make build-geth
 ```
 
 ### Start geth node
-#### mainnnet
+#### mainnet
 ```
 make run-geth-mainnet
 ```
