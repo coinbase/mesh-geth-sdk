@@ -414,7 +414,9 @@ func convertRosettaReceiptsToEthReceipts(rosettaReceipts []*client.RosettaTxRece
 
 		// Reconstruct bloom filter from logs (required for Merkle validation)
 		if len(rosettaReceipt.Logs) > 0 {
-			ethReceipt.Bloom = EthTypes.CreateBloom(ethReceipt)
+			// coredao-org/core-chain's CreateBloom takes Receipts (a slice) rather
+			// than upstream go-ethereum's single *Receipt signature.
+			ethReceipt.Bloom = EthTypes.CreateBloom(EthTypes.Receipts{ethReceipt})
 		}
 
 		ethReceipts[i] = ethReceipt
