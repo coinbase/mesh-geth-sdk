@@ -121,6 +121,96 @@ func TestConstruction_ContractCallData(t *testing.T) {
 	}
 }
 
+func TestConstruction_MatchMethodSignature(t *testing.T) {
+	delegateData, err := ConstructContractCallDataGeneric("delegate(address)", []string{testingFromAddress})
+	assert.NoError(t, err)
+
+	supported := []string{"transfer(address,uint256)", "delegate(address)"}
+
+	tests := map[string]struct {
+		supported []string
+		callData  []byte
+		expected  string
+	}{
+		"matches supported method": {
+			supported: supported,
+			callData:  delegateData,
+			expected:  "delegate(address)",
+		},
+		"no match returns empty": {
+			supported: []string{"transfer(address,uint256)"},
+			callData:  delegateData,
+			expected:  "",
+		},
+		"calldata shorter than selector": {
+			supported: supported,
+			callData:  []byte{0x01, 0x02},
+			expected:  "",
+		},
+		"empty supported list": {
+			supported: nil,
+			callData:  delegateData,
+			expected:  "",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			sig, matchErr := MatchMethodSignature(test.supported, test.callData)
+			assert.NoError(t, matchErr)
+			assert.Equal(t, test.expected, sig)
+		})
+	}
+}
+
+// TestConstruction_ParseContractCallData verifies that decoding calldata is the
+// exact inverse of ConstructContractCallDataGeneric: encoding a method's args
+// and decoding the resulting calldata yields the original string arguments.
+func TestConstruction_ParseContractCallData(t *testing.T) {
+	tests := map[string]struct {
+		methodSig    string
+		encodeArgs   interface{}
+		expectedArgs []string
+	}{
+		"address arg": {
+			methodSig:    "delegate(address)",
+			encodeArgs:   []string{testingFromAddress},
+			expectedArgs: []string{testingFromAddress},
+		},
+		"string, address, bool args": {
+			methodSig:    "register(string,address,bool)",
+			encodeArgs:   []string{"bool abc", "0x0000000000000000000000000000000000000000", "true"},
+			expectedArgs: []string{"bool abc", "0x0000000000000000000000000000000000000000", "true"},
+		},
+		"address, uint256, uint64, bool args": {
+			methodSig:    "testFunction(address,uint256,uint64,bool)",
+			encodeArgs:   []string{"0x4e7E5249d2Cb9255367C716e1452752A1390e44A", "100000000000000", "200000", "true"},
+			expectedArgs: []string{"0x4e7E5249d2Cb9255367C716e1452752A1390e44A", "100000000000000", "200000", "true"},
+		},
+		"address, address, bytes args": {
+			methodSig:    "createRecoverySigner(address,address,bytes)",
+			encodeArgs:   []string{"0x4e7E5249d2Cb9255367C716e1452752A1390e44A", "0x2149ada7A6B036c0C5215A88921856D9974D810C", "0x9ba55864842d7142d780c93c0112994ba08ce5fed82d574ec864eb0f16fb6b767b69030cec56ec2662e483ae6fbddf1f4d233b9dad4bb4190d9178fc1cdfaa951c"},
+			expectedArgs: []string{"0x4e7E5249d2Cb9255367C716e1452752A1390e44A", "0x2149ada7A6B036c0C5215A88921856D9974D810C", "0x9ba55864842d7142d780c93c0112994ba08ce5fed82d574ec864eb0f16fb6b767b69030cec56ec2662e483ae6fbddf1f4d233b9dad4bb4190d9178fc1cdfaa951c"},
+		},
+		"no-arg method": {
+			methodSig:    "pause()",
+			encodeArgs:   []string{},
+			expectedArgs: []string{},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			data, err := ConstructContractCallDataGeneric(test.methodSig, test.encodeArgs)
+			assert.NoError(t, err)
+
+			decoded, err := ParseContractCallData(test.methodSig, data)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedArgs, decoded)
+		})
+	}
+}
+
 func TestConstruction_preprocessArgs(t *testing.T) {
 	tests := map[string]struct {
 		methodSig  string

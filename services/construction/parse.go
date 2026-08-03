@@ -75,8 +75,6 @@ func (s *APIService) ConstructionParse(
 		tx.From = msg.From.Hex()
 	}
 
-	//TODO: add logic for contract call parsing
-
 	value := tx.Value
 	opMethod := sdkTypes.CallOpType
 	fromAddress := tx.From
@@ -92,6 +90,30 @@ func (s *APIService) ConstructionParse(
 		value = amountSent
 		opMethod = sdkTypes.OpErc20Transfer
 		toAddress = address.Hex()
+	}
+
+	// Contract call parsing: when a non-ERC20-transfer transaction targets a
+	// supported contract method, decode the method signature and arguments
+	// directly from the transaction calldata. Because these values are derived
+	// from the (signed) transaction bytes rather than caller-supplied metadata,
+	// downstream consumers can treat them as a verified source of truth for the
+	// transaction's intent. Calldata that does not match a supported method is
+	// left undecoded so no unverified values are emitted.
+	var methodSignature string
+	var methodArgs interface{}
+	if opMethod == sdkTypes.CallOpType && len(tx.Data) >= methodIDLength {
+		sig, matchErr := MatchMethodSignature(s.config.RosettaCfg.SupportedContractMethods, tx.Data)
+		if matchErr != nil {
+			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, matchErr)
+		}
+		if sig != "" {
+			args, parseErr := ParseContractCallData(sig, tx.Data)
+			if parseErr != nil {
+				return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, parseErr)
+			}
+			methodSignature = sig
+			methodArgs = args
+		}
 	}
 
 	// Address validation
@@ -134,12 +156,14 @@ func (s *APIService) ConstructionParse(
 	}
 
 	metadata := &client.ParseMetadata{
-		Nonce:     tx.Nonce,
-		GasPrice:  tx.GasPrice,
-		GasLimit:  tx.GasLimit,
-		GasTipCap: tx.GasTipCap,
-		GasFeeCap: tx.GasFeeCap,
-		ChainID:   tx.ChainID,
+		Nonce:           tx.Nonce,
+		GasPrice:        tx.GasPrice,
+		GasLimit:        tx.GasLimit,
+		GasTipCap:       tx.GasTipCap,
+		GasFeeCap:       tx.GasFeeCap,
+		ChainID:         tx.ChainID,
+		MethodSignature: methodSignature,
+		MethodArgs:      methodArgs,
 	}
 	metaMap, err := client.MarshalJSONMap(metadata)
 	if err != nil {

@@ -100,6 +100,13 @@ type ParseMetadata struct {
 	GasTipCap *big.Int `json:"gas_tip_cap,omitempty"`
 	GasFeeCap *big.Int `json:"gas_fee_cap,omitempty"`
 	ChainID   *big.Int `json:"chain_id"`
+	// MethodSignature and MethodArgs are populated for contract-call transactions
+	// whose 4-byte selector matches a configured supported method signature. They
+	// are decoded from the transaction calldata itself and are therefore a verified
+	// representation of the transaction intent, not caller-supplied metadata. Both
+	// are omitted when the calldata does not match a supported method.
+	MethodSignature string      `json:"method_signature,omitempty"`
+	MethodArgs      interface{} `json:"method_args,omitempty"`
 }
 
 type Transaction struct {

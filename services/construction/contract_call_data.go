@@ -15,12 +15,14 @@
 package construction
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"math/big"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -31,6 +33,9 @@ import (
 )
 
 const NoMethodSig = "NO-METHOD-SIG"
+
+// methodIDLength is the number of bytes in an ABI function selector.
+const methodIDLength = 4
 
 // ConstructContractCallDataGeneric constructs the data field of a transaction.
 // The methodArgs can be already in ABI encoded format in case of a single string
@@ -269,4 +274,167 @@ func contractCallMethodID(methodSig string) ([]byte, error) {
 	}
 
 	return hash.Sum(nil)[:4], nil
+}
+
+// MatchMethodSignature returns the first supported method signature whose 4-byte
+// selector matches the leading bytes of the provided calldata, or an empty
+// string if the calldata is too short or does not match any supported signature.
+//
+// This is the inverse-lookup side of contractCallMethodID: because a selector is
+// a one-way hash of the signature, recovering the human-readable signature from
+// calldata is only possible against a known allowlist of signatures.
+func MatchMethodSignature(supportedSigs []string, callData []byte) (string, error) {
+	if len(callData) < methodIDLength {
+		return "", nil
+	}
+
+	selector := callData[:methodIDLength]
+	for _, sig := range supportedSigs {
+		id, err := contractCallMethodID(sig)
+		if err != nil {
+			return "", err
+		}
+		if len(id) == methodIDLength && bytes.Equal(id, selector) {
+			return sig, nil
+		}
+	}
+
+	return "", nil
+}
+
+// ParseContractCallData decodes the ABI-encoded arguments of a contract call
+// into a list of string-encoded arguments, using the argument types declared in
+// methodSig. It is the inverse of encodeMethodArgsStrings: the returned strings
+// use the same textual representation that the encoder accepts as input, so a
+// decoded (method_signature, method_args) pair round-trips back to the original
+// calldata.
+//
+// The methodSig is expected to already match the calldata's selector (see
+// MatchMethodSignature). The leading 4-byte selector is stripped before decoding.
+func ParseContractCallData(methodSig string, callData []byte) ([]string, error) {
+	argTypes, err := parseSigArgTypes(methodSig)
+	if err != nil {
+		return nil, err
+	}
+	if len(argTypes) == 0 {
+		return []string{}, nil
+	}
+
+	arguments := abi.Arguments{}
+	for _, t := range argTypes {
+		typed, typeErr := abi.NewType(t, t, nil)
+		if typeErr != nil {
+			return nil, fmt.Errorf("failed to construct abi type for %q: %w", t, typeErr)
+		}
+		arguments = append(arguments, abi.Argument{Type: typed})
+	}
+
+	var payload []byte
+	if len(callData) >= methodIDLength {
+		payload = callData[methodIDLength:]
+	}
+
+	values, err := arguments.UnpackValues(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode method args for %q: %w", methodSig, err)
+	}
+
+	strArgs := make([]string, len(values))
+	for i, v := range values {
+		strArgs[i], err = stringifyABIValue(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return strArgs, nil
+}
+
+// parseSigArgTypes extracts the comma-separated argument types from a method
+// signature (e.g. "delegate(address,uint256)" -> ["address", "uint256"]). It
+// mirrors the signature-splitting logic in encodeMethodArgsStrings.
+func parseSigArgTypes(methodSig string) ([]string, error) {
+	const split = 2
+	splitByLeading := strings.Split(methodSig, "(")
+	if len(splitByLeading) < split {
+		return nil, fmt.Errorf("invalid method signature: %q", methodSig)
+	}
+
+	splitByTrailing := strings.Split(splitByLeading[1], ")")
+	argsSignature := strings.TrimSpace(splitByTrailing[0])
+	if argsSignature == "" {
+		return []string{}, nil
+	}
+
+	argTypes := strings.Split(argsSignature, ",")
+	for i := range argTypes {
+		argTypes[i] = strings.TrimSpace(argTypes[i])
+	}
+
+	return argTypes, nil
+}
+
+// stringifyABIValue converts a value produced by abi.Arguments.UnpackValues into
+// the same textual form that encodeMethodArgsStrings accepts, so that decoded
+// arguments round-trip back to identical calldata.
+func stringifyABIValue(v interface{}) (string, error) {
+	switch val := v.(type) {
+	case common.Address:
+		return val.Hex(), nil
+	case *big.Int:
+		return val.String(), nil
+	case bool:
+		return strconv.FormatBool(val), nil
+	case string:
+		return val, nil
+	case uint8:
+		return strconv.FormatUint(uint64(val), 10), nil
+	case uint16:
+		return strconv.FormatUint(uint64(val), 10), nil
+	case uint32:
+		return strconv.FormatUint(uint64(val), 10), nil
+	case uint64:
+		return strconv.FormatUint(val, 10), nil
+	case int8:
+		return strconv.FormatInt(int64(val), 10), nil
+	case int16:
+		return strconv.FormatInt(int64(val), 10), nil
+	case int32:
+		return strconv.FormatInt(int64(val), 10), nil
+	case int64:
+		return strconv.FormatInt(val, 10), nil
+	case []byte:
+		// Dynamically-sized bytes (e.g. "bytes").
+		return hexutil.Encode(val), nil
+	}
+
+	// Handle fixed-size byte arrays (e.g. bytes32 -> [32]byte) and slices of
+	// nested types (e.g. bytes[] -> [][]byte) via reflection.
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Array:
+		if rv.Type().Elem().Kind() == reflect.Uint8 {
+			b := make([]byte, rv.Len())
+			for i := 0; i < rv.Len(); i++ {
+				b[i] = byte(rv.Index(i).Uint())
+			}
+			return hexutil.Encode(b), nil
+		}
+	case reflect.Slice:
+		elems := make([]string, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			s, err := stringifyABIValue(rv.Index(i).Interface())
+			if err != nil {
+				return "", err
+			}
+			elems[i] = s
+		}
+		out, err := json.Marshal(elems)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode decoded slice argument: %w", err)
+		}
+		return string(out), nil
+	}
+
+	return "", fmt.Errorf("unsupported decoded argument type %T", v)
 }

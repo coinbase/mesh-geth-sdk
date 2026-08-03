@@ -16,10 +16,16 @@ package construction
 
 import (
 	"context"
+	"encoding/json"
+	"math/big"
 	"testing"
 
+	"github.com/coinbase/rosetta-geth-sdk/client"
+	"github.com/coinbase/rosetta-geth-sdk/configuration"
+	mockedServices "github.com/coinbase/rosetta-geth-sdk/mocks/services"
 	AssetTypes "github.com/coinbase/rosetta-geth-sdk/types"
 	"github.com/coinbase/rosetta-sdk-go/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -123,4 +129,69 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseContractCallMethodDecoding verifies that /construction/parse decodes
+// method_signature and method_args from the transaction calldata for supported
+// contract methods, and emits neither field for unsupported methods.
+func TestParseContractCallMethodDecoding(t *testing.T) {
+	delegatee := testingFromAddress
+	calldata, err := ConstructContractCallDataGeneric("delegate(address)", []string{delegatee})
+	assert.NoError(t, err)
+
+	newServicer := func(supported []string) *APIService {
+		cfg := &configuration.Configuration{
+			Mode:    configuration.ModeOnline,
+			Network: ethereumNetworkIdentifier,
+			RosettaCfg: configuration.RosettaConfig{
+				Currency:                 ethereumCurrencyConfig,
+				SupportedContractMethods: supported,
+			},
+			ChainConfig: &params.ChainConfig{ChainID: big.NewInt(int64(ethRopstenChainID))},
+		}
+		return NewAPIService(cfg, AssetTypes.LoadTypes(), AssetTypes.Errors, &mockedServices.Client{})
+	}
+
+	tx := &client.Transaction{
+		From:     testingFromAddress,
+		To:       "0x1E77ad77925Ac0075CF61Fb76bA35D884985019d",
+		Value:    big.NewInt(0),
+		Data:     calldata,
+		Nonce:    1,
+		GasPrice: big.NewInt(2000000009),
+		GasLimit: 21000,
+		ChainID:  big.NewInt(int64(ethRopstenChainID)),
+		Currency: ethereumCurrencyConfig,
+	}
+	txJSON, err := json.Marshal(tx)
+	assert.NoError(t, err)
+
+	request := &types.ConstructionParseRequest{
+		NetworkIdentifier: ethereumNetworkIdentifier,
+		Signed:            false,
+		Transaction:       string(txJSON),
+	}
+
+	t.Run("supported method is decoded from calldata", func(t *testing.T) {
+		resp, parseErr := newServicer([]string{"delegate(address)"}).ConstructionParse(
+			context.Background(),
+			request,
+		)
+		assert.Nil(t, parseErr)
+		assert.Equal(t, "delegate(address)", resp.Metadata["method_signature"])
+		// []string is marshaled through JSON into []interface{} in the metadata map.
+		assert.Equal(t, []interface{}{delegatee}, resp.Metadata["method_args"])
+	})
+
+	t.Run("unsupported method emits no method fields", func(t *testing.T) {
+		resp, parseErr := newServicer(nil).ConstructionParse(
+			context.Background(),
+			request,
+		)
+		assert.Nil(t, parseErr)
+		_, hasSig := resp.Metadata["method_signature"]
+		_, hasArgs := resp.Metadata["method_args"]
+		assert.False(t, hasSig)
+		assert.False(t, hasArgs)
+	})
 }
