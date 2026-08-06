@@ -211,6 +211,63 @@ func TestConstruction_ParseContractCallData(t *testing.T) {
 	}
 }
 
+// TestConstruction_ParseContractCallData_TupleRejected ensures tuple/struct
+// signatures are rejected with an error rather than silently decoding to the
+// wrong (often empty) argument list.
+func TestConstruction_ParseContractCallData_TupleRejected(t *testing.T) {
+	tuples := []string{
+		"attest((bytes32,uint256))",   // leading tuple
+		"foo((address,uint256),bool)", // tuple first arg
+		"bar(uint256,(address,bool))", // tuple last arg
+	}
+
+	for _, sig := range tuples {
+		t.Run(sig, func(t *testing.T) {
+			_, err := ParseContractCallData(sig, []byte{0x00, 0x01, 0x02, 0x03})
+			assert.Error(t, err)
+		})
+	}
+}
+
+func TestConstruction_ValidateSupportedContractMethods(t *testing.T) {
+	tests := map[string]struct {
+		sigs      []string
+		expectErr bool
+	}{
+		"valid flat signatures": {
+			sigs:      []string{"delegate(address)", "transfer(address,uint256)", "pause()"},
+			expectErr: false,
+		},
+		"empty list is valid": {
+			sigs:      nil,
+			expectErr: false,
+		},
+		"tuple argument rejected": {
+			sigs:      []string{"attest((bytes32,uint256))"},
+			expectErr: true,
+		},
+		"malformed signature rejected": {
+			sigs:      []string{"notAMethod"},
+			expectErr: true,
+		},
+		"unknown abi type rejected": {
+			sigs:      []string{"foo(notAType)"},
+			expectErr: true,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := ValidateSupportedContractMethods(test.sigs)
+			if test.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestConstruction_preprocessArgs(t *testing.T) {
 	tests := map[string]struct {
 		methodSig  string

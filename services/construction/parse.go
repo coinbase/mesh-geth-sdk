@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 
 	"errors"
@@ -99,20 +100,27 @@ func (s *APIService) ConstructionParse(
 	// downstream consumers can treat them as a verified source of truth for the
 	// transaction's intent. Calldata that does not match a supported method is
 	// left undecoded so no unverified values are emitted.
+	//
+	// Decoding here fails closed rather than failing the request: a matched-but-
+	// undecodable signature (e.g. a misconfigured entry) omits the method fields
+	// and logs, instead of turning /construction/parse into a 500 for otherwise
+	// valid transactions. Use ValidateSupportedContractMethods at startup to catch
+	// such misconfiguration loudly.
 	var methodSignature string
 	var methodArgs interface{}
 	if opMethod == sdkTypes.CallOpType && len(tx.Data) >= methodIDLength {
 		sig, matchErr := MatchMethodSignature(s.config.RosettaCfg.SupportedContractMethods, tx.Data)
-		if matchErr != nil {
-			return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, matchErr)
-		}
-		if sig != "" {
+		switch {
+		case matchErr != nil:
+			log.Printf("construction/parse: failed to match contract method signature: %v", matchErr)
+		case sig != "":
 			args, parseErr := ParseContractCallData(sig, tx.Data)
 			if parseErr != nil {
-				return nil, sdkTypes.WrapErr(sdkTypes.ErrUnableToParseIntermediateResult, parseErr)
+				log.Printf("construction/parse: failed to decode calldata for %q: %v", sig, parseErr)
+			} else {
+				methodSignature = sig
+				methodArgs = args
 			}
-			methodSignature = sig
-			methodArgs = args
 		}
 	}
 

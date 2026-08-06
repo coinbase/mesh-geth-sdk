@@ -194,4 +194,29 @@ func TestParseContractCallMethodDecoding(t *testing.T) {
 		assert.False(t, hasSig)
 		assert.False(t, hasArgs)
 	})
+
+	// A matched selector whose payload cannot be decoded (here, truncated
+	// calldata) must fail closed: the request still succeeds and simply omits the
+	// method fields, rather than returning a 500.
+	t.Run("matched but undecodable calldata fails closed", func(t *testing.T) {
+		truncated := calldata[:methodIDLength+8] // valid selector, short payload
+		truncatedTx := *tx
+		truncatedTx.Data = truncated
+		truncatedJSON, marshalErr := json.Marshal(&truncatedTx)
+		assert.NoError(t, marshalErr)
+
+		resp, parseErr := newServicer([]string{"delegate(address)"}).ConstructionParse(
+			context.Background(),
+			&types.ConstructionParseRequest{
+				NetworkIdentifier: ethereumNetworkIdentifier,
+				Signed:            false,
+				Transaction:       string(truncatedJSON),
+			},
+		)
+		assert.Nil(t, parseErr)
+		_, hasSig := resp.Metadata["method_signature"]
+		_, hasArgs := resp.Metadata["method_args"]
+		assert.False(t, hasSig)
+		assert.False(t, hasArgs)
+	})
 }

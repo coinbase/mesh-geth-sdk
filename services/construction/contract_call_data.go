@@ -353,11 +353,25 @@ func ParseContractCallData(methodSig string, callData []byte) ([]string, error) 
 // parseSigArgTypes extracts the comma-separated argument types from a method
 // signature (e.g. "delegate(address,uint256)" -> ["address", "uint256"]). It
 // mirrors the signature-splitting logic in encodeMethodArgsStrings.
+//
+// Tuple/struct arguments (which contain nested parentheses, e.g.
+// "attest((bytes32,uint256))") are not supported by the decoder and are rejected
+// with an error rather than silently parsed into the wrong types. This keeps the
+// decoded (method_signature, method_args) pair a faithful, round-trippable
+// representation of the calldata for any signature this function accepts.
 func parseSigArgTypes(methodSig string) ([]string, error) {
 	const split = 2
 	splitByLeading := strings.Split(methodSig, "(")
 	if len(splitByLeading) < split {
 		return nil, fmt.Errorf("invalid method signature: %q", methodSig)
+	}
+
+	// A well-formed flat signature has exactly one "(" and one ")". More than one
+	// of either means the argument list contains a tuple/struct, which the naive
+	// comma split below cannot decode correctly, so reject it explicitly instead
+	// of returning misleading (often empty) arg types.
+	if strings.Count(methodSig, "(") != 1 || strings.Count(methodSig, ")") != 1 {
+		return nil, fmt.Errorf("tuple/struct arguments are not supported: %q", methodSig)
 	}
 
 	splitByTrailing := strings.Split(splitByLeading[1], ")")
@@ -372,6 +386,39 @@ func parseSigArgTypes(methodSig string) ([]string, error) {
 	}
 
 	return argTypes, nil
+}
+
+// ValidateSupportedContractMethods checks that every configured method signature
+// is well-formed and that its argument types are valid, decodable ABI types. It
+// is intended to be called once at startup (e.g. from the chain's config load) so
+// a misconfigured SupportedContractMethods entry fails loudly at boot instead of
+// silently degrading /construction/parse — or, worse, matching a selector and
+// then failing to decode — on live traffic.
+//
+// Note that decoding at request time additionally fails closed: even if a bad
+// signature slips past this check, /construction/parse omits the method fields
+// rather than erroring the request.
+func ValidateSupportedContractMethods(supportedSigs []string) error {
+	for _, sig := range supportedSigs {
+		if _, err := contractCallMethodID(sig); err != nil {
+			return fmt.Errorf("invalid supported contract method %q: %w", sig, err)
+		}
+
+		argTypes, err := parseSigArgTypes(sig)
+		if err != nil {
+			return fmt.Errorf("invalid supported contract method %q: %w", sig, err)
+		}
+
+		for _, t := range argTypes {
+			if _, err := abi.NewType(t, t, nil); err != nil {
+				return fmt.Errorf(
+					"invalid supported contract method %q: unsupported argument type %q: %w", sig, t, err,
+				)
+			}
+		}
+	}
+
+	return nil
 }
 
 // stringifyABIValue converts a value produced by abi.Arguments.UnpackValues into
