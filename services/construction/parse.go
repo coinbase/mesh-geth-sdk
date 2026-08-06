@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 
 	"errors"
@@ -75,8 +76,6 @@ func (s *APIService) ConstructionParse(
 		tx.From = msg.From.Hex()
 	}
 
-	//TODO: add logic for contract call parsing
-
 	value := tx.Value
 	opMethod := sdkTypes.CallOpType
 	fromAddress := tx.From
@@ -92,6 +91,37 @@ func (s *APIService) ConstructionParse(
 		value = amountSent
 		opMethod = sdkTypes.OpErc20Transfer
 		toAddress = address.Hex()
+	}
+
+	// Contract call parsing: when a non-ERC20-transfer transaction targets a
+	// supported contract method, decode the method signature and arguments
+	// directly from the transaction calldata. Because these values are derived
+	// from the (signed) transaction bytes rather than caller-supplied metadata,
+	// downstream consumers can treat them as a verified source of truth for the
+	// transaction's intent. Calldata that does not match a supported method is
+	// left undecoded so no unverified values are emitted.
+	//
+	// Decoding here fails closed rather than failing the request: a matched-but-
+	// undecodable signature (e.g. a misconfigured entry) omits the method fields
+	// and logs, instead of turning /construction/parse into a 500 for otherwise
+	// valid transactions. Use ValidateSupportedContractMethods at startup to catch
+	// such misconfiguration loudly.
+	var methodSignature string
+	var methodArgs interface{}
+	if opMethod == sdkTypes.CallOpType && len(tx.Data) >= methodIDLength {
+		sig, matchErr := MatchMethodSignature(s.config.RosettaCfg.SupportedContractMethods, tx.Data)
+		switch {
+		case matchErr != nil:
+			log.Printf("construction/parse: failed to match contract method signature: %v", matchErr)
+		case sig != "":
+			args, parseErr := ParseContractCallData(sig, tx.Data)
+			if parseErr != nil {
+				log.Printf("construction/parse: failed to decode calldata for %q: %v", sig, parseErr)
+			} else {
+				methodSignature = sig
+				methodArgs = args
+			}
+		}
 	}
 
 	// Address validation
@@ -134,12 +164,14 @@ func (s *APIService) ConstructionParse(
 	}
 
 	metadata := &client.ParseMetadata{
-		Nonce:     tx.Nonce,
-		GasPrice:  tx.GasPrice,
-		GasLimit:  tx.GasLimit,
-		GasTipCap: tx.GasTipCap,
-		GasFeeCap: tx.GasFeeCap,
-		ChainID:   tx.ChainID,
+		Nonce:           tx.Nonce,
+		GasPrice:        tx.GasPrice,
+		GasLimit:        tx.GasLimit,
+		GasTipCap:       tx.GasTipCap,
+		GasFeeCap:       tx.GasFeeCap,
+		ChainID:         tx.ChainID,
+		MethodSignature: methodSignature,
+		MethodArgs:      methodArgs,
 	}
 	metaMap, err := client.MarshalJSONMap(metadata)
 	if err != nil {

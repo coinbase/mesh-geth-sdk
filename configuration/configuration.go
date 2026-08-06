@@ -144,6 +144,18 @@ type RosettaConfig struct {
 	// Functor to access allowlisted tokens.
 	// This should be defined in rosetta-xxx implementation if needed
 	TokenWhitelistAccessor func() ([]Token, error)
+
+	// SupportedContractMethods is the allowlist of contract method signatures
+	// (e.g. "delegate(address)") that /construction/parse will decode directly
+	// from transaction calldata into method_signature and method_args.
+	//
+	// A 4-byte function selector is a one-way hash of the signature and cannot
+	// be reversed, so parse can only recover the human-readable signature and
+	// typed arguments for methods listed here. Selectors that do not match any
+	// entry are left undecoded (no method_signature/method_args are emitted),
+	// and consumers relying on this data for verification should fail closed
+	// rather than trust caller-supplied values.
+	SupportedContractMethods []string
 }
 
 type Token struct {
