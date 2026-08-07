@@ -259,9 +259,9 @@ func (s *BlockAPIService) GetEthBlock(
 	blockIdentifier *RosettaTypes.PartialBlockIdentifier,
 ) (*EthTypes.Block, []*client.LoadedTransaction, *client.RPCBlock, error) {
 	if blockIdentifier != nil {
-		if blockIdentifier.Hash != nil {
-			return s.GetBlock(ctx, "eth_getBlockByHash", *blockIdentifier.Hash, true)
-		}
+		//if blockIdentifier.Hash != nil {
+		//	return s.GetBlock(ctx, "eth_getBlockByHash", *blockIdentifier.Hash, true)
+		//}
 
 		if blockIdentifier.Index != nil {
 			return s.GetBlock(ctx, "eth_getBlockByNumber", client.ToBlockNumArg(big.NewInt(*blockIdentifier.Index)), true)
