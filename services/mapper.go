@@ -130,7 +130,9 @@ func TransferOps(tx *evmClient.LoadedTransaction, startIndex int) []*RosettaType
 	return ops
 }
 
-func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
+func FeeOps(tx *evmClient.LoadedTransaction, args ...interface{}) []*RosettaTypes.Operation {
+	var currency = getCurrency(args)
+
 	var minerEarnedAmount *big.Int
 	if tx.FeeBurned == nil {
 		minerEarnedAmount = tx.FeeAmount
@@ -157,7 +159,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(tx.From.String()),
 			},
-			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), sdkTypes.Currency),
+			Amount: evmClient.Amount(new(big.Int).Neg(minerEarnedAmount), currency),
 		},
 
 		{
@@ -174,7 +176,7 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 			Account: &RosettaTypes.AccountIdentifier{
 				Address: evmClient.MustChecksum(feeRewarder),
 			},
-			Amount: evmClient.Amount(minerEarnedAmount, sdkTypes.Currency),
+			Amount: evmClient.Amount(minerEarnedAmount, currency),
 		},
 	}
 
@@ -197,13 +199,28 @@ func FeeOps(tx *evmClient.LoadedTransaction) []*RosettaTypes.Operation {
 	return ops
 }
 
+func getCurrency(params []interface{}) *RosettaTypes.Currency {
+	var nativeCurrency *RosettaTypes.Currency
+	if len(params) > 0 {
+		if currencyParam, ok := params[0].(*RosettaTypes.Currency); ok {
+			nativeCurrency = currencyParam
+		}
+	}
+	if nativeCurrency == nil {
+		nativeCurrency = sdkTypes.Currency
+	}
+	return nativeCurrency
+}
+
 // TraceOps returns all *RosettaTypes.Operation for a given
 // array of flattened traces.
 // nolint:gocognit
 func TraceOps(
 	calls []*evmClient.FlatCall,
 	startIndex int,
+	args ...interface{},
 ) []*RosettaTypes.Operation { // nolint: gocognit
+	var currency = getCurrency(args)
 	var ops []*RosettaTypes.Operation
 	if len(calls) == 0 {
 		return ops
@@ -250,7 +267,7 @@ func TraceOps(
 				},
 				Amount: &RosettaTypes.Amount{
 					Value:    new(big.Int).Neg(trace.Value).String(),
-					Currency: sdkTypes.Currency,
+					Currency: currency,
 				},
 				Metadata: metadata,
 			}
@@ -311,7 +328,7 @@ func TraceOps(
 				},
 				Amount: &RosettaTypes.Amount{
 					Value:    trace.Value.String(),
-					Currency: sdkTypes.Currency,
+					Currency: currency,
 				},
 				Metadata: metadata,
 			}
@@ -355,7 +372,7 @@ func TraceOps(
 			},
 			Amount: &RosettaTypes.Amount{
 				Value:    new(big.Int).Neg(val).String(),
-				Currency: sdkTypes.Currency,
+				Currency: currency,
 			},
 		})
 	}
