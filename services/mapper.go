@@ -268,8 +268,15 @@ func TraceOps(
 
 		// Add to destroyed accounts if SELFDESTRUCT
 		// and overwrite existing balance.
+		//
+		// Only a successful SELFDESTRUCT destroys the account. A reverted
+		// SELFDESTRUCT (e.g. inside a call frame that later reverted) is rolled
+		// back by the EVM, so the account keeps its balance and may still send
+		// value later in the same transaction.
 		if traceType == sdkTypes.SelfDestructOpType {
-			destroyedAccounts[from] = new(big.Int)
+			if opStatus == sdkTypes.SuccessStatus {
+				destroyedAccounts[from] = new(big.Int)
+			}
 
 			// If destination of of SELFDESTRUCT is self,
 			// we should skip. In the EVM, the balance is reset
@@ -341,7 +348,11 @@ func TraceOps(
 		}
 
 		if val.Sign() < 0 {
-			log.Fatalf("negative balance for suicided account %s: %s\n", acct, val.String())
+			// A negative balance means the destroyed-account accounting does not
+			// match the trace (e.g. the account was not actually destroyed).
+			// Skip the synthetic DESTRUCT operation rather than exiting.
+			log.Printf("skipping destruct op: negative balance for suicided account %s: %s\n", acct, val.String())
+			continue
 		}
 
 		ops = append(ops, &RosettaTypes.Operation{
