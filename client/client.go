@@ -40,6 +40,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	EthTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -67,19 +68,17 @@ type ReplaceableRPCClient interface {
 
 // NewClient creates a client that connects to the network.
 func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient, transport http.RoundTripper) (*SDKClient, error) {
-	c, err := NewRPCClient(cfg.GethURL, transport)
+	geth, err := newGethRPCClient(cfg.GethURL, transport)
 	if err != nil {
 		return nil, err
 	}
 
+	c := &RPCClient{geth}
 	if rpcClient != nil {
 		c = rpcClient
 	}
 
-	ec, err := NewEthClient(cfg.GethURL)
-	if err != nil {
-		return nil, err
-	}
+	ec := &EthClient{ethclient.NewClient(geth)}
 
 	enableNativeTracer := cfg.RosettaCfg.TraceType == configuration.GethNativeTrace
 	tc, err := GetTraceConfig(enableNativeTracer)
@@ -103,13 +102,15 @@ func NewClient(cfg *configuration.Configuration, rpcClient *RPCClient, transport
 	}, nil
 }
 
+// WithRPCTransport reconnects to the node through the given transport.
 func (ec *SDKClient) WithRPCTransport(endpoint string, transport http.RoundTripper) (ReplaceableRPCClient, error) {
-	newClient, err := NewRPCClient(endpoint, transport)
+	geth, err := newGethRPCClient(endpoint, transport)
 	if err != nil {
 		return ec, err
 	}
 
-	ec.RPCClient = newClient
+	ec.RPCClient = &RPCClient{geth}
+	ec.EthClient = &EthClient{ethclient.NewClient(geth)}
 	return ec, nil
 }
 
