@@ -67,6 +67,15 @@ const (
 
 // NewRPCClient connects a SDKClient to the given URL.
 func NewRPCClient(endpoint string, transport http.RoundTripper) (*RPCClient, error) {
+	geth, err := newGethRPCClient(endpoint, transport)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RPCClient{geth}, nil
+}
+
+func newGethRPCClient(endpoint string, transport http.RoundTripper) (*rpc.Client, error) {
 	if transport == nil {
 		transport = NewDefaultHTTPTransport()
 	}
@@ -82,7 +91,7 @@ func NewRPCClient(endpoint string, transport http.RoundTripper) (*RPCClient, err
 		return nil, fmt.Errorf("unable to dial node: %w", err)
 	}
 
-	return &RPCClient{client}, nil
+	return client, nil
 }
 
 // Close shuts down the RPC SDKClient connection.
