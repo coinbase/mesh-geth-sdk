@@ -15,8 +15,6 @@
 package client
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -26,13 +24,12 @@ type EthClient struct {
 
 // NewEthClient connects a SDKClient to the given URL.
 func NewEthClient(endpoint string) (*EthClient, error) {
-	client, err := ethclient.Dial(endpoint)
-
+	geth, err := newGethRPCClient(endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("unable to dial node: %w", err)
+		return nil, err
 	}
 
-	return &EthClient{client}, nil
+	return &EthClient{ethclient.NewClient(geth)}, nil
 }
 
 // Close shuts down the RPC SDKClient connection.

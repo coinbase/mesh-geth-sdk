@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"strconv"
 	"testing"
@@ -26,13 +27,16 @@ import (
 	mocks "github.com/coinbase/rosetta-geth-sdk/mocks/client"
 
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
+	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -361,4 +365,50 @@ func TestBalance(t *testing.T) {
 	assert.NoError(t, err)
 
 	mockJSONRPC.AssertExpectations(t)
+}
+
+// callNode makes one JSON-RPC call and two ethclient calls and returns their methods.
+func callNode(t *testing.T, c *SDKClient) []string {
+	ctx := context.Background()
+
+	var blockNumber string
+	require.NoError(t, c.CallContext(ctx, &blockNumber, "eth_blockNumber"))
+
+	_, err := c.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+
+	_, err = c.EstimateGas(ctx, goEthereum.CallMsg{To: &common.Address{}, Value: big.NewInt(1)})
+	require.NoError(t, err)
+
+	return []string{"eth_blockNumber", "eth_gasPrice", "eth_estimateGas"}
+}
+
+func nodeConfig(url string) *configuration.Configuration {
+	return &configuration.Configuration{
+		GethURL:     url,
+		ChainConfig: params.MainnetChainConfig,
+		RosettaCfg:  configuration.RosettaConfig{TraceType: configuration.GethNativeTrace},
+	}
+}
+
+func TestNewClient_NodeCallsUseTransport(t *testing.T) {
+	transport := &recordingTransport{}
+
+	c, err := NewClient(nodeConfig(newNode(t)), nil, transport)
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, callNode(t, c), transport.methods)
+}
+
+func TestWithRPCTransport_NodeCallsUseTransport(t *testing.T) {
+	url := newNode(t)
+
+	c, err := NewClient(nodeConfig(url), nil, nil)
+	require.NoError(t, err)
+
+	transport := &recordingTransport{}
+	replaced, err := c.WithRPCTransport(url, transport)
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, callNode(t, replaced.(*SDKClient)), transport.methods)
 }
