@@ -419,6 +419,7 @@ func TestBlockService_Online(t *testing.T) {
 			"GetContractCurrency",
 			mock.Anything,
 			mock.Anything,
+			mock.Anything,
 		).Return(
 			&client.ContractCurrency{
 				Symbol:   "USDC",

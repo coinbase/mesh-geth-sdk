@@ -261,9 +261,9 @@ func (_m *Client) GetContractCallGasLimit(ctx context.Context, toAddress string,
 	return r0, r1
 }
 
-// GetContractCurrency provides a mock function with given fields: addr, erc20
-func (_m *Client) GetContractCurrency(addr common.Address, erc20 bool) (*client.ContractCurrency, error) {
-	ret := _m.Called(addr, erc20)
+// GetContractCurrency provides a mock function with given fields: ctx, addr, erc20
+func (_m *Client) GetContractCurrency(ctx context.Context, addr common.Address, erc20 bool) (*client.ContractCurrency, error) {
+	ret := _m.Called(ctx, addr, erc20)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetContractCurrency")
@@ -271,19 +271,19 @@ func (_m *Client) GetContractCurrency(addr common.Address, erc20 bool) (*client.
 
 	var r0 *client.ContractCurrency
 	var r1 error
-	if rf, ok := ret.Get(0).(func(common.Address, bool) (*client.ContractCurrency, error)); ok {
-		return rf(addr, erc20)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, bool) (*client.ContractCurrency, error)); ok {
+		return rf(ctx, addr, erc20)
 	}
-	if rf, ok := ret.Get(0).(func(common.Address, bool) *client.ContractCurrency); ok {
-		r0 = rf(addr, erc20)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, bool) *client.ContractCurrency); ok {
+		r0 = rf(ctx, addr, erc20)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*client.ContractCurrency)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(common.Address, bool) error); ok {
-		r1 = rf(addr, erc20)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, bool) error); ok {
+		r1 = rf(ctx, addr, erc20)
 	} else {
 		r1 = ret.Error(1)
 	}
