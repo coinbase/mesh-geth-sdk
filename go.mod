@@ -6,7 +6,7 @@ go 1.24.0
 replace github.com/ethereum/go-ethereum => github.com/OffchainLabs/go-ethereum v0.0.0-20251125183601-c1d0e20730a5
 
 require (
-	github.com/coinbase/rosetta-sdk-go v0.8.9
+	github.com/coinbase/rosetta-sdk-go v0.8.10
 	github.com/coinbase/rosetta-sdk-go/types v1.0.0
 	github.com/ethereum/go-ethereum v1.15.5
 	github.com/hashicorp/golang-lru v1.0.2

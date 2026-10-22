@@ -140,8 +140,12 @@ type Client interface {
 		[]*evmClient.LoadedTransaction,
 	) ([]*RosettaTypes.Transaction, error)
 
-	// GetContractCurrency returns the ERC20 currency into for a specific token contract address
-	GetContractCurrency(addr common.Address, erc20 bool) (*evmClient.ContractCurrency, error)
+	// GetContractCurrency returns the ERC20 currency info for a specific token contract address
+	GetContractCurrency(
+		ctx context.Context,
+		addr common.Address,
+		erc20 bool,
+	) (*evmClient.ContractCurrency, error)
 
 	// CallContext performs a JSON-RPC call with the given arguments.
 	// The method is used by the JSON RPC Client, which is the interface
