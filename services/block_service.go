@@ -106,11 +106,15 @@ func (s *BlockAPIService) populateTransactions(
 }
 
 // getCurrencyFromNodeOrCache checks if the currency is in the cache and fetches it from the node if not.
-func (s *BlockAPIService) getCurrencyFromNodeOrCache(address common.Address, addressStr string) (*client.ContractCurrency, error) {
+func (s *BlockAPIService) getCurrencyFromNodeOrCache(
+	ctx context.Context,
+	address common.Address,
+	addressStr string,
+) (*client.ContractCurrency, error) {
 	if cachedCurrency, found := s.currencyCache.Get(addressStr); found {
 		return cachedCurrency.(*client.ContractCurrency), nil
 	}
-	currency, err := s.client.GetContractCurrency(address, true)
+	currency, err := s.client.GetContractCurrency(ctx, address, true)
 	if err != nil {
 		return nil, err
 	}
@@ -183,14 +187,14 @@ func (s *BlockAPIService) PopulateTransaction(
 				}
 			} else {
 				var err error
-				currency, err = s.getCurrencyFromNodeOrCache(log.Address, contractAddress)
+				currency, err = s.getCurrencyFromNodeOrCache(ctx, log.Address, contractAddress)
 				if err != nil {
 					return nil, err
 				}
 			}
 		} else {
 			var err error
-			currency, err = s.getCurrencyFromNodeOrCache(log.Address, contractAddress)
+			currency, err = s.getCurrencyFromNodeOrCache(ctx, log.Address, contractAddress)
 			if err != nil {
 				return nil, err
 			}

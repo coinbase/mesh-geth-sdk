@@ -34,6 +34,7 @@ import (
 	RosettaTypes "github.com/coinbase/rosetta-sdk-go/types"
 
 	goEthereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -884,6 +885,7 @@ func (ec *SDKClient) GetContractCallGasLimit(
 
 // GetContractCurrency returns the currency for a specific address
 func (ec *SDKClient) GetContractCurrency(
+	ctx context.Context,
 	addr common.Address,
 	erc20 bool,
 ) (*ContractCurrency, error) {
@@ -892,8 +894,9 @@ func (ec *SDKClient) GetContractCurrency(
 		return nil, err
 	}
 
-	symbol, symbolErr := token.Symbol(nil)
-	decimals, decimalErr := token.Decimals(nil)
+	opts := &bind.CallOpts{Context: ctx}
+	symbol, symbolErr := token.Symbol(opts)
+	decimals, decimalErr := token.Decimals(opts)
 
 	// Any of these indicate a failure to get complete information from contract
 	if symbolErr != nil || decimalErr != nil || symbol == "" || decimals == 0 {
